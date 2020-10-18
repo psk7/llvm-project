@@ -11,6 +11,7 @@
 #include "ToolChains/AIX.h"
 #include "ToolChains/AMDGPU.h"
 #include "ToolChains/AVR.h"
+#include "ToolChains/Z80.h"
 #include "ToolChains/Ananas.h"
 #include "ToolChains/BareMetal.h"
 #include "ToolChains/Clang.h"
@@ -5022,6 +5023,9 @@ const ToolChain &Driver::getToolChain(const ArgList &Args,
         break;
       case llvm::Triple::avr:
         TC = std::make_unique<toolchains::AVRToolChain>(*this, Target, Args);
+        break;
+      case llvm::Triple::z80:
+        TC = std::make_unique<toolchains::Z80ToolChain>(*this, Target, Args);
         break;
       case llvm::Triple::msp430:
         TC =

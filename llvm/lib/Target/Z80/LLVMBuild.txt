@@ -1,0 +1,19 @@
+[common]
+subdirectories = MCTargetDesc TargetInfo
+
+[component_0]
+type = TargetGroup
+name = Z80
+parent = Target
+has_asmprinter = 1
+#has_asmparser = 1
+#has_disassembler = 1
+
+[component_1]
+type = Library
+name = Z80CodeGen
+parent = Z80
+required_libraries = AsmPrinter CodeGen Core MC Z80Desc Z80Info SelectionDAG Support Target
+add_to_library_groups = Z80
+
+

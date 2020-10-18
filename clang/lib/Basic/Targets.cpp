@@ -18,6 +18,7 @@
 #include "Targets/ARC.h"
 #include "Targets/ARM.h"
 #include "Targets/AVR.h"
+#include "Targets/Z80.h"
 #include "Targets/BPF.h"
 #include "Targets/Hexagon.h"
 #include "Targets/Lanai.h"
@@ -234,6 +235,10 @@ TargetInfo *AllocateTarget(const llvm::Triple &Triple,
 
   case llvm::Triple::avr:
     return new AVRTargetInfo(Triple, Opts);
+
+  case llvm::Triple::z80:
+    return new Z80TargetInfo(Triple, Opts);
+
   case llvm::Triple::bpfeb:
   case llvm::Triple::bpfel:
     return new BPFTargetInfo(Triple, Opts);

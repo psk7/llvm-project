@@ -69,6 +69,7 @@ add_clang_library(clangBasic
   Targets/ARC.cpp
   Targets/ARM.cpp
   Targets/AVR.cpp
+  Targets/Z80.cpp
   Targets/BPF.cpp
   Targets/Hexagon.cpp
   Targets/Lanai.cpp

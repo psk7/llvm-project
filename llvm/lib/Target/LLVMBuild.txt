@@ -23,6 +23,7 @@ subdirectories =
  ARC
  ARM
  AVR
+ Z80
  BPF
  Hexagon
  Lanai

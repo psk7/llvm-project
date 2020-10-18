@@ -1,0 +1,43 @@
+//===-- Z80.h - Top-level interface for Z80 representation ------*- C++ -*-===//
+//
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//===----------------------------------------------------------------------===//
+//
+// This file contains the entry points for global functions defined in the LLVM
+// Z80 back-end.
+//
+//===----------------------------------------------------------------------===//
+
+#ifndef LLVM_Z80_H
+#define LLVM_Z80_H
+
+#include "llvm/CodeGen/SelectionDAGNodes.h"
+#include "llvm/Target/TargetMachine.h"
+
+namespace llvm {
+
+class Z80TargetMachine;
+class FunctionPass;
+
+FunctionPass *createZ80ISelDag(Z80TargetMachine &TM,
+                               CodeGenOpt::Level OptLevel);
+FunctionPass *createZ80ExpandPseudoPass();
+FunctionPass *createZ80FrameAnalyzerPass();
+FunctionPass *createZ80RelaxMemPass();
+FunctionPass *createZ80DynAllocaSRPass();
+FunctionPass *createZ80BranchSelectionPass();
+
+void initializeZ80ExpandPseudoPass(PassRegistry&);
+void initializeZ80RelaxMemPass(PassRegistry&);
+
+/// Contains the Z80 backend.
+namespace Z80 {
+
+} // end of namespace Z80
+
+} // end namespace llvm
+
+#endif // LLVM_Z80_H
