@@ -37,8 +37,7 @@ public:
   const Z80Subtarget *getSubtargetImpl(const Function &) const override;
 
   TargetLoweringObjectFile *getObjFileLowering() const override {
-    /*return this->TLOF.get();*/
-      return nullptr;
+      return this->TLOF.get();
   }
 
   TargetPassConfig *createPassConfig(PassManagerBase &PM) override;
@@ -48,7 +47,7 @@ public:
   }
 
 private:
-  //std::unique_ptr<TargetLoweringObjectFile> TLOF;
+  std::unique_ptr<TargetLoweringObjectFile> TLOF;
   Z80Subtarget SubTarget;
 };
 

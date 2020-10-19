@@ -42,7 +42,7 @@ MCAsmBackend *createZ80AsmBackend(const Target &T, const MCSubtargetInfo &STI,
                                   const llvm::MCTargetOptions &TO);
 
 /// Creates an ELF object writer for Z80.
-//std::unique_ptr<MCObjectTargetWriter> createZ80ELFObjectWriter(uint8_t OSABI);
+std::unique_ptr<MCObjectTargetWriter> createZ80ELFObjectWriter(uint8_t OSABI);
 
 } // end namespace llvm
 

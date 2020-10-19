@@ -1,6 +1,6 @@
 add_llvm_component_library(LLVMZ80Desc
         Z80AsmBackend.cpp
-#       Z80ELFObjectWriter.cpp
+        Z80ELFObjectWriter.cpp
 #       Z80ELFStreamer.cpp
         Z80InstPrinter.cpp
         Z80MCAsmInfo.cpp

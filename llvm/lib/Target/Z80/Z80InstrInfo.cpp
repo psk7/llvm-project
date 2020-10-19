@@ -35,10 +35,8 @@
 
 namespace llvm {
 
-/*Z80InstrInfo::Z80InstrInfo()
-    : Z80GenInstrInfo(Z80::ADJCALLSTACKDOWN, Z80::ADJCALLSTACKUP), RI() {}*/
 Z80InstrInfo::Z80InstrInfo()
-    : Z80GenInstrInfo(), RI() {}
+    : Z80GenInstrInfo(/*Z80::ADJCALLSTACKDOWN, Z80::ADJCALLSTACKUP*/), RI() {}
 
 void Z80InstrInfo::copyPhysReg(MachineBasicBlock &MBB,
                                MachineBasicBlock::iterator MI,
@@ -276,8 +274,8 @@ bool Z80InstrInfo::analyzeBranch(MachineBasicBlock &MBB,
                                  MachineBasicBlock *&FBB,
                                  SmallVectorImpl<MachineOperand> &Cond,
                                  bool AllowModify) const {
-  llvm_unreachable("Z80InstrInfo::analyzeBranch");
-  /*// Start from the bottom of the block and work up, examining the
+
+  // Start from the bottom of the block and work up, examining the
   // terminator instructions.
   MachineBasicBlock::iterator I = MBB.end();
   MachineBasicBlock::iterator UnCondBrIter = MBB.end();
@@ -302,7 +300,7 @@ bool Z80InstrInfo::analyzeBranch(MachineBasicBlock &MBB,
 
     // Handle unconditional branches.
     //:TODO: add here jmp
-    if (I->getOpcode() == Z80::RJMPk) {
+    /*if (I->getOpcode() == Z80::RJMPk) {
       UnCondBrIter = I;
 
       if (!AllowModify) {
@@ -330,7 +328,7 @@ bool Z80InstrInfo::analyzeBranch(MachineBasicBlock &MBB,
       // TBB is used to indicate the unconditinal destination.
       TBB = I->getOperand(0).getMBB();
       continue;
-    }
+    }*/
 
     // Handle conditional branches.
     Z80CC::CondCodes BranchCode = getCondFromBranchOpc(I->getOpcode());
@@ -364,10 +362,10 @@ bool Z80InstrInfo::analyzeBranch(MachineBasicBlock &MBB,
         unsigned JNCC = getBrCond(BranchCode).getOpcode();
         MachineBasicBlock::iterator OldInst = I;
 
-        BuildMI(MBB, UnCondBrIter, MBB.findDebugLoc(I), get(JNCC))
+        /*BuildMI(MBB, UnCondBrIter, MBB.findDebugLoc(I), get(JNCC))
             .addMBB(UnCondBrIter->getOperand(0).getMBB());
         BuildMI(MBB, UnCondBrIter, MBB.findDebugLoc(I), get(Z80::RJMPk))
-            .addMBB(TargetBB);
+            .addMBB(TargetBB);*/
 
         OldInst->eraseFromParent();
         UnCondBrIter->eraseFromParent();
@@ -404,7 +402,7 @@ bool Z80InstrInfo::analyzeBranch(MachineBasicBlock &MBB,
     return true;
   }
 
-  return false;*/
+  return false;
 }
 
 unsigned Z80InstrInfo::insertBranch(MachineBasicBlock &MBB,
@@ -489,8 +487,7 @@ bool Z80InstrInfo::reverseBranchCondition(
 }
 
 unsigned Z80InstrInfo::getInstSizeInBytes(const MachineInstr &MI) const {
-  llvm_unreachable("Z80InstrInfo::getInstSizeInBytes");
-  /*unsigned Opcode = MI.getOpcode();
+  unsigned Opcode = MI.getOpcode();
 
   switch (Opcode) {
   // A regular instruction
@@ -513,7 +510,7 @@ unsigned Z80InstrInfo::getInstSizeInBytes(const MachineInstr &MI) const {
     return TII.getInlineAsmLength(MI.getOperand(0).getSymbolName(),
                                   *TM.getMCAsmInfo());
   }
-  }*/
+  }
 }
 
 MachineBasicBlock *

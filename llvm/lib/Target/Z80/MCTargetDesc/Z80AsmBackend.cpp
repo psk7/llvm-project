@@ -37,7 +37,9 @@ using namespace llvm;
 static void signed_width(unsigned Width, uint64_t Value,
                          std::string Description, const MCFixup &Fixup,
                          MCContext *Ctx = nullptr) {
-  if (!isIntN(Width, Value)) {
+  llvm_unreachable("signed_width");
+
+  /*if (!isIntN(Width, Value)) {
     std::string Diagnostic = "out of range " + Description;
 
     int64_t Min = minIntN(Width);
@@ -51,13 +53,15 @@ static void signed_width(unsigned Width, uint64_t Value,
     } else {
       llvm_unreachable(Diagnostic.c_str());
     }
-  }
+  }*/
 }
 
 static void unsigned_width(unsigned Width, uint64_t Value,
                            std::string Description, const MCFixup &Fixup,
                            MCContext *Ctx = nullptr) {
-  if (!isUIntN(Width, Value)) {
+  llvm_unreachable("unsigned_width");
+
+  /*if (!isUIntN(Width, Value)) {
     std::string Diagnostic = "out of range " + Description;
 
     int64_t Max = maxUIntN(Width);
@@ -70,12 +74,13 @@ static void unsigned_width(unsigned Width, uint64_t Value,
     } else {
       llvm_unreachable(Diagnostic.c_str());
     }
-  }
+  }*/
 }
 
 /// Adjusts the value of a branch target before fixup application.
 static void adjustBranch(unsigned Size, const MCFixup &Fixup, uint64_t &Value,
                          MCContext *Ctx = nullptr) {
+  llvm_unreachable("adjustBranch");
 /*
   // We have one extra bit of precision because the value is rightshifted by
   // one.
@@ -89,6 +94,7 @@ static void adjustBranch(unsigned Size, const MCFixup &Fixup, uint64_t &Value,
 /// Adjusts the value of a relative branch target before fixup application.
 static void adjustRelativeBranch(unsigned Size, const MCFixup &Fixup,
                                  uint64_t &Value, MCContext *Ctx = nullptr) {
+  llvm_unreachable("adjustRelativeBranch");
 /*
   // We have one extra bit of precision because the value is rightshifted by
   // one.
@@ -364,9 +370,8 @@ void Z80AsmBackend::adjustFixupValue(const MCFixup &Fixup,
 
 std::unique_ptr<MCObjectTargetWriter>
 Z80AsmBackend::createObjectTargetWriter() const {
-  //  return
-  //  createZ80ELFObjectWriter(MCELFObjectTargetWriter::getOSABI(OSType));
-  return nullptr;
+  return
+  createZ80ELFObjectWriter(MCELFObjectTargetWriter::getOSABI(OSType));
 }
 
 void Z80AsmBackend::applyFixup(const MCAssembler &Asm, const MCFixup &Fixup,
@@ -374,6 +379,7 @@ void Z80AsmBackend::applyFixup(const MCAssembler &Asm, const MCFixup &Fixup,
                                MutableArrayRef<char> Data, uint64_t Value,
                                bool IsResolved,
                                const MCSubtargetInfo *STI) const {
+  llvm_unreachable("applyFixup");
   /*adjustFixupValue(Fixup, Target, Value, &Asm.getContext());
   if (Value == 0)
     return; // Doesn't change encoding.
@@ -399,6 +405,7 @@ void Z80AsmBackend::applyFixup(const MCAssembler &Asm, const MCFixup &Fixup,
 }
 
 MCFixupKindInfo const &Z80AsmBackend::getFixupKindInfo(MCFixupKind Kind) const {
+  llvm_unreachable("Z80AsmBackend::getFixupKindInfo");
  /* // NOTE: Many Z80 fixups work on sets of non-contignous bits. We work around
   // this by saying that the fixup is the size of the entire instruction.
   const static MCFixupKindInfo Infos[Z80::NumTargetFixupKinds] = {
@@ -464,17 +471,17 @@ MCFixupKindInfo const &Z80AsmBackend::getFixupKindInfo(MCFixupKind Kind) const {
          "Invalid kind!");
 
   return Infos[Kind - FirstTargetFixupKind];*/
-  llvm_unreachable("!!!");
 }
 
 bool Z80AsmBackend::writeNopData(raw_ostream &OS, uint64_t Count) const {
-  // If the count is not 2-byte aligned, we must be writing data into the text
+  llvm_unreachable("Z80AsmBackend::writeNopData");
+ /* // If the count is not 2-byte aligned, we must be writing data into the text
   // section (otherwise we have unaligned instructions, and thus have far
   // bigger problems), so just write zeros instead.
   assert((Count % 2) == 0 && "NOP instructions must be 2 bytes");
 
   OS.write_zeros(Count);
-  return true;
+  return true;*/
 }
 
 /*bool Z80AsmBackend::shouldForceRelocation(const MCAssembler &Asm,

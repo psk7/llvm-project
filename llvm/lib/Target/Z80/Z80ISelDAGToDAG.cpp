@@ -548,10 +548,6 @@ bool Z80DAGToDAGISel::selectMultiplication(llvm::SDNode *N) {
 }
 
 void Z80DAGToDAGISel::Select(SDNode *N) {
-
-  llvm_unreachable("Z80DAGToDAGISel::Select");
-
-  /*
   // If we have a custom node, we already have selected!
   if (N->isMachineOpcode()) {
     LLVM_DEBUG(errs() << "== "; N->dump(CurDAG); errs() << "\n");
@@ -559,19 +555,19 @@ void Z80DAGToDAGISel::Select(SDNode *N) {
     return;
   }
 
+  N->dumpr(CurDAG);
+
   // See if subclasses can handle this node.
   if (trySelect(N))
     return;
 
   // Select the default instruction
-  SelectCode(N);*/
+  SelectCode(N);
 }
 
 bool Z80DAGToDAGISel::trySelect(SDNode *N) {
 
-  llvm_unreachable("Z80DAGToDAGISel::trySelect");
-
-  /*unsigned Opcode = N->getOpcode();
+  unsigned Opcode = N->getOpcode();
   SDLoc DL(N);
 
   switch (Opcode) {
@@ -586,7 +582,7 @@ bool Z80DAGToDAGISel::trySelect(SDNode *N) {
   case ISD::LOAD:    return select<ISD::LOAD>(N);
   case Z80ISD::CALL: return select<Z80ISD::CALL>(N);
   default:           return false;
-  }*/
+  }
 }
 
 FunctionPass *createZ80ISelDag(Z80TargetMachine &TM,

@@ -133,6 +133,9 @@ public:
     return false;
   }
 
+  EVT getTypeForExtReturn(LLVMContext &Context, EVT VT,
+                          ISD::NodeType nodeType) const override;
+
 private:
   SDValue getZ80Cmp(SDValue LHS, SDValue RHS, ISD::CondCode CC, SDValue &Z80cc,
                     SelectionDAG &DAG, SDLoc dl) const;
@@ -160,6 +163,8 @@ private:
                                const SmallVectorImpl<ISD::InputArg> &Ins,
                                const SDLoc &dl, SelectionDAG &DAG,
                                SmallVectorImpl<SDValue> &InVals) const override;
+
+private:
   SDValue LowerCall(TargetLowering::CallLoweringInfo &CLI,
                     SmallVectorImpl<SDValue> &InVals) const override;
   SDValue LowerCallResult(SDValue Chain, SDValue InFlag,

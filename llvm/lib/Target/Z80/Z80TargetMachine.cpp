@@ -19,7 +19,7 @@
 #include "llvm/Support/TargetRegistry.h"
 
 #include "Z80.h"
-//#include "Z80TargetObjectFile.h"
+#include "Z80TargetObjectFile.h"
 #include "MCTargetDesc/Z80MCTargetDesc.h"
 #include "TargetInfo/Z80TargetInfo.h"
 
@@ -50,9 +50,9 @@ Z80TargetMachine::Z80TargetMachine(const Target &T, const Triple &TT,
                                    CodeGenOpt::Level OL, bool JIT)
     : LLVMTargetMachine(T, Z80DataLayout, TT, getCPU(CPU), FS, Options,
                         getEffectiveRelocModel(RM),
-                        getEffectiveCodeModel(CM, CodeModel::Small), OL),
+                        getEffectiveCodeModel(CM, CodeModel::Tiny), OL),
       SubTarget(TT, std::string(getCPU(CPU)), std::string(FS), *this) {
-  /*this->TLOF = std::make_unique<Z80TargetObjectFile>();*/
+  this->TLOF = std::make_unique<Z80TargetObjectFile>();
   initAsmInfo();
 }
 

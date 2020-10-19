@@ -37,11 +37,11 @@ void Z80InstPrinter::printInst(const MCInst *MI, uint64_t Address,
                                raw_ostream &O) {
   unsigned Opcode = MI->getOpcode();
 
-/*  // First handle load and store instructions with postinc or predec
+  // First handle load and store instructions with postinc or predec
   // of the form "ld reg, X+".
   // TODO: We should be able to rewrite this using TableGen data.
   switch (Opcode) {
-  case Z80::LDRdPtr:
+  /*case Z80::LDRdPtr:
   case Z80::LDRdPtrPi:
   case Z80::LDRdPtrPd:
     O << "\tld\t";
@@ -76,37 +76,37 @@ void Z80InstPrinter::printInst(const MCInst *MI, uint64_t Address,
 
     O << ", ";
     printOperand(MI, 2, O);
-    break;
+    break;*/
   default:
     if (!printAliasInstr(MI, Address, O))
       printInstruction(MI, Address, O);
 
     printAnnotation(O, Annot);
     break;
-  }*/
+  }
 }
 
 const char *Z80InstPrinter::getPrettyRegisterName(unsigned RegNum,
                                                   MCRegisterInfo const &MRI) {
-  // GCC prints register pairs by just printing the lower register
+  /*// GCC prints register pairs by just printing the lower register
   // If the register contains a subregister, print it instead
   if (MRI.getNumSubRegIndices() > 0) {
     unsigned RegLoNum = MRI.getSubReg(RegNum, Z80::sub_lo);
     RegNum = (RegLoNum != Z80::NoRegister) ? RegLoNum : RegNum;
-  }
+  }*/
 
   return getRegisterName(RegNum);
 }
 
 void Z80InstPrinter::printOperand(const MCInst *MI, unsigned OpNo,
                                   raw_ostream &O) {
-/*  const MCOperandInfo &MOI = this->MII.get(MI->getOpcode()).OpInfo[OpNo];
-  if (MOI.RegClass == Z80::ZREGRegClassID) {
+  const MCOperandInfo &MOI = this->MII.get(MI->getOpcode()).OpInfo[OpNo];
+  /*if (MOI.RegClass == Z80::ZREGRegClassID) {
     // Special case for the Z register, which sometimes doesn't have an operand
     // in the MCInst.
     O << "Z";
     return;
-  }
+  }*/
 
   if (OpNo >= MI->size()) {
     // Not all operands are correctly disassembled at the moment. This means
@@ -121,9 +121,9 @@ void Z80InstPrinter::printOperand(const MCInst *MI, unsigned OpNo,
   const MCOperand &Op = MI->getOperand(OpNo);
 
   if (Op.isReg()) {
-    bool isPtrReg = (MOI.RegClass == Z80::PTRREGSRegClassID) ||
+    bool isPtrReg = false; /*(MOI.RegClass == Z80::PTRREGSRegClassID) ||
                     (MOI.RegClass == Z80::PTRDISPREGSRegClassID) ||
-                    (MOI.RegClass == Z80::ZREGRegClassID);
+                    (MOI.RegClass == Z80::ZREGRegClassID);*/
 
     if (isPtrReg) {
       O << getRegisterName(Op.getReg(), Z80::ptr);
@@ -135,14 +135,15 @@ void Z80InstPrinter::printOperand(const MCInst *MI, unsigned OpNo,
   } else {
     assert(Op.isExpr() && "Unknown operand kind in printOperand");
     O << *Op.getExpr();
-  }*/
+  }
 }
 
 /// This is used to print an immediate value that ends up
 /// being encoded as a pc-relative value.
 void Z80InstPrinter::printPCRelImm(const MCInst *MI, unsigned OpNo,
                                    raw_ostream &O) {
-  if (OpNo >= MI->size()) {
+  llvm_unreachable("Z80InstPrinter::printPCRelImm");
+  /*if (OpNo >= MI->size()) {
     // Not all operands are correctly disassembled at the moment. This means
     // that some machine instructions won't have all the necessary operands
     // set.
@@ -167,12 +168,13 @@ void Z80InstPrinter::printPCRelImm(const MCInst *MI, unsigned OpNo,
   } else {
     assert(Op.isExpr() && "Unknown pcrel immediate operand");
     O << *Op.getExpr();
-  }
+  }*/
 }
 
 void Z80InstPrinter::printMemri(const MCInst *MI, unsigned OpNo,
                                 raw_ostream &O) {
-  assert(MI->getOperand(OpNo).isReg() && "Expected a register for the first operand");
+  llvm_unreachable("Z80InstPrinter::printMemri");
+  /*assert(MI->getOperand(OpNo).isReg() && "Expected a register for the first operand");
 
   const MCOperand &OffsetOp = MI->getOperand(OpNo + 1);
 
@@ -191,7 +193,7 @@ void Z80InstPrinter::printMemri(const MCInst *MI, unsigned OpNo,
     O << *OffsetOp.getExpr();
   } else {
     llvm_unreachable("unknown type for offset");
-  }
+  }*/
 }
 
 } // end of namespace llvm

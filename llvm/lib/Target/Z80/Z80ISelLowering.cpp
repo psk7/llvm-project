@@ -38,6 +38,7 @@ Z80TargetLowering::Z80TargetLowering(const Z80TargetMachine &TM,
   // Set up the register classes.
   addRegisterClass(MVT::i8, &Z80::GPR8RegClass);
   addRegisterClass(MVT::i16, &Z80::DREGSRegClass);
+  addRegisterClass(MVT::i16, &Z80::XDREGSRegClass);
 
   // Compute derived properties from the register classes.
   computeRegisterProperties(Subtarget.getRegisterInfo());
@@ -66,127 +67,127 @@ Z80TargetLowering::Z80TargetLowering(const Z80TargetMachine &TM,
   setTruncStoreAction(MVT::i16, MVT::i8, Expand);
 
   for (MVT VT : MVT::integer_valuetypes()) {
-    setOperationAction(ISD::ADDC, VT, Legal);
-    setOperationAction(ISD::SUBC, VT, Legal);
-    setOperationAction(ISD::ADDE, VT, Legal);
-    setOperationAction(ISD::SUBE, VT, Legal);
+//    setOperationAction(ISD::ADDC, VT, Legal);
+//    setOperationAction(ISD::SUBC, VT, Legal);
+//    setOperationAction(ISD::ADDE, VT, Legal);
+//    setOperationAction(ISD::SUBE, VT, Legal);
   }
 
   // sub (x, imm) gets canonicalized to add (x, -imm), so for illegal types
   // revert into a sub since we don't have an add with immediate instruction.
-  setOperationAction(ISD::ADD, MVT::i32, Custom);
-  setOperationAction(ISD::ADD, MVT::i64, Custom);
+//  setOperationAction(ISD::ADD, MVT::i32, Custom);
+//  setOperationAction(ISD::ADD, MVT::i64, Custom);
 
   // our shift instructions are only able to shift 1 bit at a time, so handle
   // this in a custom way.
-  setOperationAction(ISD::SRA, MVT::i8, Custom);
-  setOperationAction(ISD::SHL, MVT::i8, Custom);
-  setOperationAction(ISD::SRL, MVT::i8, Custom);
-  setOperationAction(ISD::SRA, MVT::i16, Custom);
-  setOperationAction(ISD::SHL, MVT::i16, Custom);
-  setOperationAction(ISD::SRL, MVT::i16, Custom);
-  setOperationAction(ISD::SHL_PARTS, MVT::i16, Expand);
-  setOperationAction(ISD::SRA_PARTS, MVT::i16, Expand);
-  setOperationAction(ISD::SRL_PARTS, MVT::i16, Expand);
+//  setOperationAction(ISD::SRA, MVT::i8, Custom);
+//  setOperationAction(ISD::SHL, MVT::i8, Custom);
+//  setOperationAction(ISD::SRL, MVT::i8, Custom);
+//  setOperationAction(ISD::SRA, MVT::i16, Custom);
+//  setOperationAction(ISD::SHL, MVT::i16, Custom);
+//  setOperationAction(ISD::SRL, MVT::i16, Custom);
+//  setOperationAction(ISD::SHL_PARTS, MVT::i16, Expand);
+//  setOperationAction(ISD::SRA_PARTS, MVT::i16, Expand);
+//  setOperationAction(ISD::SRL_PARTS, MVT::i16, Expand);
 
-  setOperationAction(ISD::ROTL, MVT::i8, Custom);
-  setOperationAction(ISD::ROTL, MVT::i16, Expand);
-  setOperationAction(ISD::ROTR, MVT::i8, Custom);
-  setOperationAction(ISD::ROTR, MVT::i16, Expand);
+//  setOperationAction(ISD::ROTL, MVT::i8, Custom);
+//  setOperationAction(ISD::ROTL, MVT::i16, Expand);
+//  setOperationAction(ISD::ROTR, MVT::i8, Custom);
+//  setOperationAction(ISD::ROTR, MVT::i16, Expand);
 
-  setOperationAction(ISD::BR_CC, MVT::i8, Custom);
-  setOperationAction(ISD::BR_CC, MVT::i16, Custom);
-  setOperationAction(ISD::BR_CC, MVT::i32, Custom);
-  setOperationAction(ISD::BR_CC, MVT::i64, Custom);
-  setOperationAction(ISD::BRCOND, MVT::Other, Expand);
+//  setOperationAction(ISD::BR_CC, MVT::i8, Custom);
+//  setOperationAction(ISD::BR_CC, MVT::i16, Custom);
+//  setOperationAction(ISD::BR_CC, MVT::i32, Custom);
+//  setOperationAction(ISD::BR_CC, MVT::i64, Custom);
+//  setOperationAction(ISD::BRCOND, MVT::Other, Expand);
 
-  setOperationAction(ISD::SELECT_CC, MVT::i8, Custom);
-  setOperationAction(ISD::SELECT_CC, MVT::i16, Custom);
-  setOperationAction(ISD::SELECT_CC, MVT::i32, Expand);
-  setOperationAction(ISD::SELECT_CC, MVT::i64, Expand);
-  setOperationAction(ISD::SETCC, MVT::i8, Custom);
-  setOperationAction(ISD::SETCC, MVT::i16, Custom);
-  setOperationAction(ISD::SETCC, MVT::i32, Custom);
-  setOperationAction(ISD::SETCC, MVT::i64, Custom);
-  setOperationAction(ISD::SELECT, MVT::i8, Expand);
-  setOperationAction(ISD::SELECT, MVT::i16, Expand);
+//  setOperationAction(ISD::SELECT_CC, MVT::i8, Custom);
+//  setOperationAction(ISD::SELECT_CC, MVT::i16, Custom);
+//  setOperationAction(ISD::SELECT_CC, MVT::i32, Expand);
+//  setOperationAction(ISD::SELECT_CC, MVT::i64, Expand);
+//  setOperationAction(ISD::SETCC, MVT::i8, Custom);
+//  setOperationAction(ISD::SETCC, MVT::i16, Custom);
+//  setOperationAction(ISD::SETCC, MVT::i32, Custom);
+//  setOperationAction(ISD::SETCC, MVT::i64, Custom);
+//  setOperationAction(ISD::SELECT, MVT::i8, Expand);
+//  setOperationAction(ISD::SELECT, MVT::i16, Expand);
 
-  setOperationAction(ISD::BSWAP, MVT::i16, Expand);
+//  setOperationAction(ISD::BSWAP, MVT::i16, Expand);
 
   // Add support for postincrement and predecrement load/stores.
-  setIndexedLoadAction(ISD::POST_INC, MVT::i8, Legal);
-  setIndexedLoadAction(ISD::POST_INC, MVT::i16, Legal);
-  setIndexedLoadAction(ISD::PRE_DEC, MVT::i8, Legal);
-  setIndexedLoadAction(ISD::PRE_DEC, MVT::i16, Legal);
-  setIndexedStoreAction(ISD::POST_INC, MVT::i8, Legal);
-  setIndexedStoreAction(ISD::POST_INC, MVT::i16, Legal);
-  setIndexedStoreAction(ISD::PRE_DEC, MVT::i8, Legal);
-  setIndexedStoreAction(ISD::PRE_DEC, MVT::i16, Legal);
+//  setIndexedLoadAction(ISD::POST_INC, MVT::i8, Legal);
+//  setIndexedLoadAction(ISD::POST_INC, MVT::i16, Legal);
+//  setIndexedLoadAction(ISD::PRE_DEC, MVT::i8, Legal);
+//  setIndexedLoadAction(ISD::PRE_DEC, MVT::i16, Legal);
+//  setIndexedStoreAction(ISD::POST_INC, MVT::i8, Legal);
+//  setIndexedStoreAction(ISD::POST_INC, MVT::i16, Legal);
+//  setIndexedStoreAction(ISD::PRE_DEC, MVT::i8, Legal);
+//  setIndexedStoreAction(ISD::PRE_DEC, MVT::i16, Legal);
 
-  setOperationAction(ISD::BR_JT, MVT::Other, Expand);
+//  setOperationAction(ISD::BR_JT, MVT::Other, Expand);
 
-  setOperationAction(ISD::VASTART, MVT::Other, Custom);
-  setOperationAction(ISD::VAEND, MVT::Other, Expand);
-  setOperationAction(ISD::VAARG, MVT::Other, Expand);
-  setOperationAction(ISD::VACOPY, MVT::Other, Expand);
+//  setOperationAction(ISD::VASTART, MVT::Other, Custom);
+//  setOperationAction(ISD::VAEND, MVT::Other, Expand);
+//  setOperationAction(ISD::VAARG, MVT::Other, Expand);
+//  setOperationAction(ISD::VACOPY, MVT::Other, Expand);
 
   // Atomic operations which must be lowered to rtlib calls
   for (MVT VT : MVT::integer_valuetypes()) {
-    setOperationAction(ISD::ATOMIC_SWAP, VT, Expand);
-    setOperationAction(ISD::ATOMIC_CMP_SWAP, VT, Expand);
-    setOperationAction(ISD::ATOMIC_LOAD_NAND, VT, Expand);
-    setOperationAction(ISD::ATOMIC_LOAD_MAX, VT, Expand);
-    setOperationAction(ISD::ATOMIC_LOAD_MIN, VT, Expand);
-    setOperationAction(ISD::ATOMIC_LOAD_UMAX, VT, Expand);
-    setOperationAction(ISD::ATOMIC_LOAD_UMIN, VT, Expand);
+//    setOperationAction(ISD::ATOMIC_SWAP, VT, Expand);
+//    setOperationAction(ISD::ATOMIC_CMP_SWAP, VT, Expand);
+//    setOperationAction(ISD::ATOMIC_LOAD_NAND, VT, Expand);
+//    setOperationAction(ISD::ATOMIC_LOAD_MAX, VT, Expand);
+//    setOperationAction(ISD::ATOMIC_LOAD_MIN, VT, Expand);
+//    setOperationAction(ISD::ATOMIC_LOAD_UMAX, VT, Expand);
+//    setOperationAction(ISD::ATOMIC_LOAD_UMIN, VT, Expand);
   }
 
   // Division/remainder
-  setOperationAction(ISD::UDIV, MVT::i8, Expand);
-  setOperationAction(ISD::UDIV, MVT::i16, Expand);
-  setOperationAction(ISD::UREM, MVT::i8, Expand);
-  setOperationAction(ISD::UREM, MVT::i16, Expand);
-  setOperationAction(ISD::SDIV, MVT::i8, Expand);
-  setOperationAction(ISD::SDIV, MVT::i16, Expand);
-  setOperationAction(ISD::SREM, MVT::i8, Expand);
-  setOperationAction(ISD::SREM, MVT::i16, Expand);
+//  setOperationAction(ISD::UDIV, MVT::i8, Expand);
+//  setOperationAction(ISD::UDIV, MVT::i16, Expand);
+//  setOperationAction(ISD::UREM, MVT::i8, Expand);
+//  setOperationAction(ISD::UREM, MVT::i16, Expand);
+//  setOperationAction(ISD::SDIV, MVT::i8, Expand);
+//  setOperationAction(ISD::SDIV, MVT::i16, Expand);
+//  setOperationAction(ISD::SREM, MVT::i8, Expand);
+//  setOperationAction(ISD::SREM, MVT::i16, Expand);
 
   // Make division and modulus custom
-  setOperationAction(ISD::UDIVREM, MVT::i8, Custom);
-  setOperationAction(ISD::UDIVREM, MVT::i16, Custom);
-  setOperationAction(ISD::UDIVREM, MVT::i32, Custom);
-  setOperationAction(ISD::SDIVREM, MVT::i8, Custom);
-  setOperationAction(ISD::SDIVREM, MVT::i16, Custom);
-  setOperationAction(ISD::SDIVREM, MVT::i32, Custom);
+//  setOperationAction(ISD::UDIVREM, MVT::i8, Custom);
+//  setOperationAction(ISD::UDIVREM, MVT::i16, Custom);
+//  setOperationAction(ISD::UDIVREM, MVT::i32, Custom);
+//  setOperationAction(ISD::SDIVREM, MVT::i8, Custom);
+//  setOperationAction(ISD::SDIVREM, MVT::i16, Custom);
+//  setOperationAction(ISD::SDIVREM, MVT::i32, Custom);
 
   // Do not use MUL. The Z80 instructions are closer to SMUL_LOHI &co.
-  setOperationAction(ISD::MUL, MVT::i8, Expand);
-  setOperationAction(ISD::MUL, MVT::i16, Expand);
+//  setOperationAction(ISD::MUL, MVT::i8, Expand);
+//  setOperationAction(ISD::MUL, MVT::i16, Expand);
 
   // Expand 16 bit multiplications.
-  setOperationAction(ISD::SMUL_LOHI, MVT::i16, Expand);
-  setOperationAction(ISD::UMUL_LOHI, MVT::i16, Expand);
+//  setOperationAction(ISD::SMUL_LOHI, MVT::i16, Expand);
+//  setOperationAction(ISD::UMUL_LOHI, MVT::i16, Expand);
 
   // Expand multiplications to libcalls when there is
   // no hardware MUL.
   //if (!Subtarget.supportsMultiplication()) {
-    setOperationAction(ISD::SMUL_LOHI, MVT::i8, Expand);
-    setOperationAction(ISD::UMUL_LOHI, MVT::i8, Expand);
+//    setOperationAction(ISD::SMUL_LOHI, MVT::i8, Expand);
+//    setOperationAction(ISD::UMUL_LOHI, MVT::i8, Expand);
   //}
 
   for (MVT VT : MVT::integer_valuetypes()) {
-    setOperationAction(ISD::MULHS, VT, Expand);
-    setOperationAction(ISD::MULHU, VT, Expand);
+//    setOperationAction(ISD::MULHS, VT, Expand);
+//    setOperationAction(ISD::MULHU, VT, Expand);
   }
 
   for (MVT VT : MVT::integer_valuetypes()) {
-    setOperationAction(ISD::CTPOP, VT, Expand);
-    setOperationAction(ISD::CTLZ, VT, Expand);
-    setOperationAction(ISD::CTTZ, VT, Expand);
+//    setOperationAction(ISD::CTPOP, VT, Expand);
+//    setOperationAction(ISD::CTLZ, VT, Expand);
+//    setOperationAction(ISD::CTTZ, VT, Expand);
   }
 
   for (MVT VT : MVT::integer_valuetypes()) {
-    setOperationAction(ISD::SIGN_EXTEND_INREG, VT, Expand);
+//    setOperationAction(ISD::SIGN_EXTEND_INREG, VT, Expand);
     // TODO: The generated code is pretty poor. Investigate using the
     // same "shift and subtract with carry" trick that we do for
     // extending 8-bit to 16-bit. This may require infrastructure
@@ -194,40 +195,40 @@ Z80TargetLowering::Z80TargetLowering(const Z80TargetMachine &TM,
   }
 
   // Division rtlib functions (not supported), use divmod functions instead
-  setLibcallName(RTLIB::SDIV_I8, nullptr);
-  setLibcallName(RTLIB::SDIV_I16, nullptr);
-  setLibcallName(RTLIB::SDIV_I32, nullptr);
-  setLibcallName(RTLIB::UDIV_I8, nullptr);
-  setLibcallName(RTLIB::UDIV_I16, nullptr);
-  setLibcallName(RTLIB::UDIV_I32, nullptr);
+//  setLibcallName(RTLIB::SDIV_I8, nullptr);
+//  setLibcallName(RTLIB::SDIV_I16, nullptr);
+//  setLibcallName(RTLIB::SDIV_I32, nullptr);
+//  setLibcallName(RTLIB::UDIV_I8, nullptr);
+//  setLibcallName(RTLIB::UDIV_I16, nullptr);
+//  setLibcallName(RTLIB::UDIV_I32, nullptr);
 
   // Modulus rtlib functions (not supported), use divmod functions instead
-  setLibcallName(RTLIB::SREM_I8, nullptr);
-  setLibcallName(RTLIB::SREM_I16, nullptr);
-  setLibcallName(RTLIB::SREM_I32, nullptr);
-  setLibcallName(RTLIB::UREM_I8, nullptr);
-  setLibcallName(RTLIB::UREM_I16, nullptr);
-  setLibcallName(RTLIB::UREM_I32, nullptr);
+//  setLibcallName(RTLIB::SREM_I8, nullptr);
+//  setLibcallName(RTLIB::SREM_I16, nullptr);
+//  setLibcallName(RTLIB::SREM_I32, nullptr);
+//  setLibcallName(RTLIB::UREM_I8, nullptr);
+//  setLibcallName(RTLIB::UREM_I16, nullptr);
+//  setLibcallName(RTLIB::UREM_I32, nullptr);
 
   // Division and modulus rtlib functions
-  setLibcallName(RTLIB::SDIVREM_I8, "__divmodqi4");
-  setLibcallName(RTLIB::SDIVREM_I16, "__divmodhi4");
-  setLibcallName(RTLIB::SDIVREM_I32, "__divmodsi4");
-  setLibcallName(RTLIB::UDIVREM_I8, "__udivmodqi4");
-  setLibcallName(RTLIB::UDIVREM_I16, "__udivmodhi4");
-  setLibcallName(RTLIB::UDIVREM_I32, "__udivmodsi4");
+//  setLibcallName(RTLIB::SDIVREM_I8, "__divmodqi4");
+//  setLibcallName(RTLIB::SDIVREM_I16, "__divmodhi4");
+//  setLibcallName(RTLIB::SDIVREM_I32, "__divmodsi4");
+//  setLibcallName(RTLIB::UDIVREM_I8, "__udivmodqi4");
+//  setLibcallName(RTLIB::UDIVREM_I16, "__udivmodhi4");
+//  setLibcallName(RTLIB::UDIVREM_I32, "__udivmodsi4");
 
   // Several of the runtime library functions use a special calling conv
-  /*setLibcallCallingConv(RTLIB::SDIVREM_I8, CallingConv::Z80_BUILTIN);
-  setLibcallCallingConv(RTLIB::SDIVREM_I16, CallingConv::Z80_BUILTIN);
-  setLibcallCallingConv(RTLIB::UDIVREM_I8, CallingConv::Z80_BUILTIN);
-  setLibcallCallingConv(RTLIB::UDIVREM_I16, CallingConv::Z80_BUILTIN);*/
+//  setLibcallCallingConv(RTLIB::SDIVREM_I8, CallingConv::Z80_BUILTIN);
+//  setLibcallCallingConv(RTLIB::SDIVREM_I16, CallingConv::Z80_BUILTIN);
+//  setLibcallCallingConv(RTLIB::UDIVREM_I8, CallingConv::Z80_BUILTIN);
+//  setLibcallCallingConv(RTLIB::UDIVREM_I16, CallingConv::Z80_BUILTIN);
 
   // Trigonometric rtlib functions
-  setLibcallName(RTLIB::SIN_F32, "sin");
-  setLibcallName(RTLIB::COS_F32, "cos");
+//  setLibcallName(RTLIB::SIN_F32, "sin");
+//  setLibcallName(RTLIB::COS_F32, "cos");
 
-  setMinFunctionAlignment(Align(2));
+  setMinFunctionAlignment(Align(1));
   setMinimumJumpTableEntries(UINT_MAX);
 }
 
@@ -415,7 +416,6 @@ SDValue Z80TargetLowering::LowerGlobalAddress(SDValue Op,
 
 SDValue Z80TargetLowering::LowerBlockAddress(SDValue Op,
                                              SelectionDAG &DAG) const {
-
   llvm_unreachable("Z80TargetLowering::LowerBlockAddress");
 
   /*auto DL = DAG.getDataLayout();
@@ -428,7 +428,6 @@ SDValue Z80TargetLowering::LowerBlockAddress(SDValue Op,
 
 /// IntCCToZ80CC - Convert a DAG integer condition code to an Z80 CC.
 static Z80CC::CondCodes intCCToZ80CC(ISD::CondCode CC) {
-
   llvm_unreachable("Z80CC::CondCodes intCCToZ80CC");
 
   /*switch (CC) {
@@ -901,27 +900,16 @@ bool Z80TargetLowering::isOffsetFoldingLegal(
   //return true;
 }
 
+EVT Z80TargetLowering::getTypeForExtReturn(LLVMContext &Context, EVT VT,
+                                           ISD::NodeType nodeType) const {
+  return VT;
+}
+
 //===----------------------------------------------------------------------===//
 //             Formal Arguments Calling Convention Implementation
 //===----------------------------------------------------------------------===//
 
 #include "Z80GenCallingConv.inc"
-
-/*/// Registers for calling conventions, ordered in reverse as required by ABI.
-/// Both arrays must be of the same length.
-static const MCPhysReg RegList8[] = {
-    Z80::R25, Z80::R24, Z80::R23, Z80::R22, Z80::R21, Z80::R20,
-    Z80::R19, Z80::R18, Z80::R17, Z80::R16, Z80::R15, Z80::R14,
-    Z80::R13, Z80::R12, Z80::R11, Z80::R10, Z80::R9,  Z80::R8};
-static const MCPhysReg RegList16[] = {
-    Z80::R26R25, Z80::R25R24, Z80::R24R23, Z80::R23R22,
-    Z80::R22R21, Z80::R21R20, Z80::R20R19, Z80::R19R18,
-    Z80::R18R17, Z80::R17R16, Z80::R16R15, Z80::R15R14,
-    Z80::R14R13, Z80::R13R12, Z80::R12R11, Z80::R11R10,
-    Z80::R10R9,  Z80::R9R8};
-
-static_assert(array_lengthof(RegList8) == array_lengthof(RegList16),
-        "8-bit and 16-bit register arrays must be of equal length");*/
 
 /// Analyze incoming and outgoing function arguments. We need custom C++ code
 /// to handle special constraints in the ABI.
@@ -932,13 +920,8 @@ static void
 analyzeArguments(TargetLowering::CallLoweringInfo *CLI, const Function *F,
                  const DataLayout *TD, const SmallVectorImpl<ArgT> &Args,
                  SmallVectorImpl<CCValAssign> &ArgLocs, CCState &CCInfo) {
-  llvm_unreachable("analyzeArguments");
-  /*unsigned NumArgs = Args.size();
-  // This is the index of the last used register, in RegList*.
-  // -1 means R26 (R26 is never actually used in CC).
-  int RegLastIdx = -1;
-  // Once a value is passed to the stack it will always be used
-  bool UseStack = false;
+  unsigned NumArgs = Args.size();
+
   for (unsigned i = 0; i != NumArgs;) {
     MVT VT = Args[i].VT;
     // We have to count the number of bytes for each function argument, that is
@@ -958,52 +941,27 @@ analyzeArguments(TargetLowering::CallLoweringInfo *CLI, const Function *F,
     // Skip zero sized arguments
     if (TotalBytes == 0)
       continue;
-    // The index of the first register to be used
-    unsigned RegIdx = RegLastIdx + TotalBytes;
-    RegLastIdx = RegIdx;
-    // If there are not enough registers, use the stack
-    if (RegIdx >= array_lengthof(RegList8)) {
-      UseStack = true;
-    }
+
     for (; i != j; ++i) {
       MVT VT = Args[i].VT;
 
-      if (UseStack) {
-        auto evt = EVT(VT).getTypeForEVT(CCInfo.getContext());
-        unsigned Offset = CCInfo.AllocateStack(TD->getTypeAllocSize(evt),
-                                               TD->getABITypeAlign(evt));
-        CCInfo.addLoc(
-            CCValAssign::getMem(i, VT, Offset, VT, CCValAssign::Full));
-      } else {
-        unsigned Reg;
-        if (VT == MVT::i8) {
-          Reg = CCInfo.AllocateReg(RegList8[RegIdx]);
-        } else if (VT == MVT::i16) {
-          Reg = CCInfo.AllocateReg(RegList16[RegIdx]);
-        } else {
-          llvm_unreachable(
-              "calling convention can only manage i8 and i16 types");
-        }
-        assert(Reg && "register not available in calling convention");
-        CCInfo.addLoc(CCValAssign::getReg(i, VT, Reg, VT, CCValAssign::Full));
-        // Registers inside a particular argument are sorted in increasing order
-        // (remember the array is reversed).
-        RegIdx -= VT.getStoreSize();
-      }
+      auto evt = EVT(VT).getTypeForEVT(CCInfo.getContext());
+      unsigned Offset = CCInfo.AllocateStack(TD->getTypeAllocSize(evt),
+                                             TD->getABITypeAlign(evt));
+      CCInfo.addLoc(CCValAssign::getMem(i, VT, Offset, VT, CCValAssign::Full));
     }
-  }*/
+  }
 }
 
 /// Count the total number of bytes needed to pass or return these arguments.
 template <typename ArgT>
 static unsigned getTotalArgumentsSizeInBytes(const SmallVectorImpl<ArgT> &Args) {
-  llvm_unreachable("getTotalArgumentsSizeInBytes");
-  /*unsigned TotalBytes = 0;
+  unsigned TotalBytes = 0;
 
   for (const ArgT& Arg : Args) {
     TotalBytes += Arg.VT.getStoreSize();
   }
-  return TotalBytes;*/
+  return TotalBytes;
 }
 
 /// Analyze incoming and outgoing value of returning from a function.
@@ -1012,11 +970,10 @@ static unsigned getTotalArgumentsSizeInBytes(const SmallVectorImpl<ArgT> &Args) 
 template <typename ArgT>
 static void analyzeReturnValues(const SmallVectorImpl<ArgT> &Args,
                                 CCState &CCInfo) {
-  llvm_unreachable("analyzeReturnValues");
-  /*unsigned NumArgs = Args.size();
+  unsigned NumArgs = Args.size();
   unsigned TotalBytes = getTotalArgumentsSizeInBytes(Args);
   // CanLowerReturn() guarantees this assertion.
-  assert(TotalBytes <= 8 && "return values greater than 8 bytes cannot be lowered");
+  assert(TotalBytes <= 2 && "return values greater than 2 bytes cannot be lowered");
 
   // GCC-ABI says that the size is rounded up to the next even number,
   // but actually once it is more than 4 it will always round up to 8.
@@ -1026,31 +983,27 @@ static void analyzeReturnValues(const SmallVectorImpl<ArgT> &Args,
     TotalBytes = alignTo(TotalBytes, 2);
   }
 
-  // The index of the first register to use.
-  int RegIdx = TotalBytes - 1;
-  for (unsigned i = 0; i != NumArgs; ++i) {
-    MVT VT = Args[i].VT;
-    unsigned Reg;
-    if (VT == MVT::i8) {
-      Reg = CCInfo.AllocateReg(RegList8[RegIdx]);
-    } else if (VT == MVT::i16) {
-      Reg = CCInfo.AllocateReg(RegList16[RegIdx]);
-    } else {
-      llvm_unreachable("calling convention can only manage i8 and i16 types");
-    }
-    assert(Reg && "register not available in calling convention");
-    CCInfo.addLoc(CCValAssign::getReg(i, VT, Reg, VT, CCValAssign::Full));
-    // Registers sort in increasing order
-    RegIdx -= VT.getStoreSize();
-  }*/
+  assert(NumArgs == 1 && "Too much return values");
+
+  MVT VT = Args[0].VT;
+  unsigned Reg;
+  if (VT == MVT::i8) {
+    Reg = CCInfo.AllocateReg(Z80::L);
+  } else if (VT == MVT::i16) {
+    Reg = CCInfo.AllocateReg(Z80::HL);
+  } else {
+    llvm_unreachable("calling convention can only manage i8 and i16 types");
+  }
+
+  assert(Reg && "register not available in calling convention");
+  CCInfo.addLoc(CCValAssign::getReg(0, VT, Reg, VT, CCValAssign::Full));
 }
 
 SDValue Z80TargetLowering::LowerFormalArguments(
     SDValue Chain, CallingConv::ID CallConv, bool isVarArg,
     const SmallVectorImpl<ISD::InputArg> &Ins, const SDLoc &dl,
     SelectionDAG &DAG, SmallVectorImpl<SDValue> &InVals) const {
-  llvm_unreachable("Z80TargetLowering::LowerFormalArguments");
-  /*MachineFunction &MF = DAG.getMachineFunction();
+  MachineFunction &MF = DAG.getMachineFunction();
   MachineFrameInfo &MFI = MF.getFrameInfo();
   auto DL = DAG.getDataLayout();
 
@@ -1139,7 +1092,7 @@ SDValue Z80TargetLowering::LowerFormalArguments(
     AFI->setVarArgsFrameIndex(MFI.CreateFixedObject(2, StackSize, true));
   }
 
-  return Chain;*/
+  return Chain;
 }
 
 //===----------------------------------------------------------------------===//
@@ -1354,15 +1307,14 @@ SDValue Z80TargetLowering::LowerCallResult(
 bool Z80TargetLowering::CanLowerReturn(
     CallingConv::ID CallConv, MachineFunction &MF, bool isVarArg,
     const SmallVectorImpl<ISD::OutputArg> &Outs, LLVMContext &Context) const {
-  llvm_unreachable("Z80TargetLowering::CanLowerReturn");
   /*if (CallConv == CallingConv::Z80_BUILTIN) {
     SmallVector<CCValAssign, 16> RVLocs;
     CCState CCInfo(CallConv, isVarArg, MF, RVLocs, Context);
     return CCInfo.CheckReturn(Outs, RetCC_Z80_BUILTIN);
-  }
+  }*/
 
   unsigned TotalBytes = getTotalArgumentsSizeInBytes(Outs);
-  return TotalBytes <= 8;*/
+  return TotalBytes <= 2;
 }
 
 SDValue
@@ -1371,8 +1323,7 @@ Z80TargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
                                const SmallVectorImpl<ISD::OutputArg> &Outs,
                                const SmallVectorImpl<SDValue> &OutVals,
                                const SDLoc &dl, SelectionDAG &DAG) const {
-  llvm_unreachable("Z80TargetLowering::LowerReturn");
-  /*// CCValAssign - represent the assignment of the return value to locations.
+  // CCValAssign - represent the assignment of the return value to locations.
   SmallVector<CCValAssign, 16> RVLocs;
 
   // CCState - Info about the registers and stack slot.
@@ -1382,11 +1333,11 @@ Z80TargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
   MachineFunction &MF = DAG.getMachineFunction();
 
   // Analyze return values.
-  if (CallConv == CallingConv::Z80_BUILTIN) {
+  /*if (CallConv == CallingConv::Z80_BUILTIN) {
     CCInfo.AnalyzeReturn(Outs, RetCC_Z80_BUILTIN);
-  } else {
+  } else {*/
     analyzeReturnValues(Outs, CCInfo);
-  }
+  //}
 
   SDValue Flag;
   SmallVector<SDValue, 4> RetOps(1, Chain);
@@ -1412,9 +1363,9 @@ Z80TargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
   const Z80MachineFunctionInfo *AFI = MF.getInfo<Z80MachineFunctionInfo>();
 
   unsigned RetOpc =
-    AFI->isInterruptOrSignalHandler()
+    /*AFI->isInterruptOrSignalHandler()
         ? Z80ISD::RETI_FLAG
-        : Z80ISD::RET_FLAG;
+        :*/ Z80ISD::RET_FLAG;
 
   RetOps[0] = Chain; // Update chain.
 
@@ -1422,7 +1373,7 @@ Z80TargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
     RetOps.push_back(Flag);
   }
 
-  return DAG.getNode(RetOpc, dl, MVT::Other, RetOps);*/
+  return DAG.getNode(RetOpc, dl, MVT::Other, RetOps);
 }
 
 //===----------------------------------------------------------------------===//

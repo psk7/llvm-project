@@ -210,7 +210,7 @@ def HLREG : RegisterClass<"Z80", [i16], 8, (add HL)>;
 def GPRSP: RegisterClass<"Z80", [i16], 8, (add SP)>;
 
 // Status register.
-//def SREG : Z80Reg<14, "FLAGS">, DwarfRegNum<[88]>;
+def SREG : Z80Reg<14, "FLAGS">, DwarfRegNum<[88]>;
 
 //def CCR : RegisterClass<"Z80", [i8], 8, (add SREG)>
 //{

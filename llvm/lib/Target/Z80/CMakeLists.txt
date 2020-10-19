@@ -24,7 +24,7 @@ add_llvm_target(Z80CodeGen
   Z80RegisterInfo.cpp
   Z80Subtarget.cpp
   Z80TargetMachine.cpp
-# Z80TargetObjectFile.cpp
+  Z80TargetObjectFile.cpp
 
   DEPENDS
   intrinsics_gen
