@@ -67,10 +67,10 @@ Z80TargetLowering::Z80TargetLowering(const Z80TargetMachine &TM,
   setTruncStoreAction(MVT::i16, MVT::i8, Expand);
 
   for (MVT VT : MVT::integer_valuetypes()) {
-//    setOperationAction(ISD::ADDC, VT, Legal);
-//    setOperationAction(ISD::SUBC, VT, Legal);
-//    setOperationAction(ISD::ADDE, VT, Legal);
-//    setOperationAction(ISD::SUBE, VT, Legal);
+    setOperationAction(ISD::ADDC, VT, Legal);
+    setOperationAction(ISD::SUBC, VT, Legal);
+    setOperationAction(ISD::ADDE, VT, Legal);
+    setOperationAction(ISD::SUBE, VT, Legal);
   }
 
   // sub (x, imm) gets canonicalized to add (x, -imm), so for illegal types
@@ -401,9 +401,7 @@ SDValue Z80TargetLowering::LowerDivRem(SDValue Op, SelectionDAG &DAG) const {
 
 SDValue Z80TargetLowering::LowerGlobalAddress(SDValue Op,
                                               SelectionDAG &DAG) const {
-  llvm_unreachable("Z80TargetLowering::LowerGlobalAddress");
-
-  /*auto DL = DAG.getDataLayout();
+  auto DL = DAG.getDataLayout();
 
   const GlobalValue *GV = cast<GlobalAddressSDNode>(Op)->getGlobal();
   int64_t Offset = cast<GlobalAddressSDNode>(Op)->getOffset();
@@ -411,7 +409,7 @@ SDValue Z80TargetLowering::LowerGlobalAddress(SDValue Op,
   // Create the TargetGlobalAddress node, folding in the constant offset.
   SDValue Result =
       DAG.getTargetGlobalAddress(GV, SDLoc(Op), getPointerTy(DL), Offset);
-  return DAG.getNode(Z80ISD::WRAPPER, SDLoc(Op), getPointerTy(DL), Result);*/
+  return DAG.getNode(Z80ISD::WRAPPER, SDLoc(Op), getPointerTy(DL), Result);
 }
 
 SDValue Z80TargetLowering::LowerBlockAddress(SDValue Op,
@@ -698,34 +696,33 @@ SDValue Z80TargetLowering::LowerVASTART(SDValue Op, SelectionDAG &DAG) const {
 }
 
 SDValue Z80TargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const {
-  llvm_unreachable("Z80TargetLowering::LowerOperation");
- /* switch (Op.getOpcode()) {
+  switch (Op.getOpcode()) {
   default:
     llvm_unreachable("Don't know how to custom lower this!");
-  case ISD::SHL:
-  case ISD::SRA:
-  case ISD::SRL:
-  case ISD::ROTL:
-  case ISD::ROTR:
-    return LowerShifts(Op, DAG);
+//  case ISD::SHL:
+//  case ISD::SRA:
+//  case ISD::SRL:
+//  case ISD::ROTL:
+//  case ISD::ROTR:
+//    return LowerShifts(Op, DAG);
   case ISD::GlobalAddress:
     return LowerGlobalAddress(Op, DAG);
-  case ISD::BlockAddress:
-    return LowerBlockAddress(Op, DAG);
-  case ISD::BR_CC:
-    return LowerBR_CC(Op, DAG);
-  case ISD::SELECT_CC:
-    return LowerSELECT_CC(Op, DAG);
-  case ISD::SETCC:
-    return LowerSETCC(Op, DAG);
-  case ISD::VASTART:
-    return LowerVASTART(Op, DAG);
-  case ISD::SDIVREM:
-  case ISD::UDIVREM:
-    return LowerDivRem(Op, DAG);
+//  case ISD::BlockAddress:
+//    return LowerBlockAddress(Op, DAG);
+//  case ISD::BR_CC:
+//    return LowerBR_CC(Op, DAG);
+//  case ISD::SELECT_CC:
+//    return LowerSELECT_CC(Op, DAG);
+//  case ISD::SETCC:
+//    return LowerSETCC(Op, DAG);
+//  case ISD::VASTART:
+//    return LowerVASTART(Op, DAG);
+//  case ISD::SDIVREM:
+//  case ISD::UDIVREM:
+//    return LowerDivRem(Op, DAG);
   }
 
-  return SDValue();*/
+  return SDValue();
 }
 
 /// Replace a node with an illegal result type
@@ -763,18 +760,17 @@ void Z80TargetLowering::ReplaceNodeResults(SDNode *N,
 bool Z80TargetLowering::isLegalAddressingMode(const DataLayout &DL,
                                               const AddrMode &AM, Type *Ty,
                                               unsigned AS, Instruction *I) const {
-  llvm_unreachable("Z80TargetLowering::isLegalAddressingMode");
-  /*int64_t Offs = AM.BaseOffs;
+  int64_t Offs = AM.BaseOffs;
 
   // Allow absolute addresses.
   if (AM.BaseGV && !AM.HasBaseReg && AM.Scale == 0 && Offs == 0) {
     return true;
   }
 
-  // Flash memory instructions only allow zero offsets.
+  /*// Flash memory instructions only allow zero offsets.
   if (isa<PointerType>(Ty) && AS == Z80::ProgramMemory) {
     return false;
-  }
+  }*/
 
   // Allow reg+<6bit> offset.
   if (Offs < 0)
@@ -783,7 +779,7 @@ bool Z80TargetLowering::isLegalAddressingMode(const DataLayout &DL,
     return true;
   }
 
-  return false;*/
+  return false;
 }
 
 /// Returns true by value, base pointer and
@@ -896,8 +892,7 @@ bool Z80TargetLowering::getPostIndexedAddressParts(SDNode *N, SDNode *Op,
 
 bool Z80TargetLowering::isOffsetFoldingLegal(
     const GlobalAddressSDNode *GA) const {
-  llvm_unreachable("Z80TargetLowering::isOffsetFoldingLegal");
-  //return true;
+  return true;
 }
 
 EVT Z80TargetLowering::getTypeForExtReturn(LLVMContext &Context, EVT VT,
@@ -973,7 +968,7 @@ static void analyzeReturnValues(const SmallVectorImpl<ArgT> &Args,
   unsigned NumArgs = Args.size();
   unsigned TotalBytes = getTotalArgumentsSizeInBytes(Args);
   // CanLowerReturn() guarantees this assertion.
-  assert(TotalBytes <= 2 && "return values greater than 2 bytes cannot be lowered");
+  assert(TotalBytes <= 4 && "return values greater than 4 bytes cannot be lowered");
 
   // GCC-ABI says that the size is rounded up to the next even number,
   // but actually once it is more than 4 it will always round up to 8.
@@ -983,20 +978,30 @@ static void analyzeReturnValues(const SmallVectorImpl<ArgT> &Args,
     TotalBytes = alignTo(TotalBytes, 2);
   }
 
-  assert(NumArgs == 1 && "Too much return values");
-
-  MVT VT = Args[0].VT;
   unsigned Reg;
-  if (VT == MVT::i8) {
-    Reg = CCInfo.AllocateReg(Z80::L);
-  } else if (VT == MVT::i16) {
-    Reg = CCInfo.AllocateReg(Z80::HL);
-  } else {
-    llvm_unreachable("calling convention can only manage i8 and i16 types");
-  }
 
-  assert(Reg && "register not available in calling convention");
-  CCInfo.addLoc(CCValAssign::getReg(0, VT, Reg, VT, CCValAssign::Full));
+  if (NumArgs == 1) {
+    MVT VT = Args[0].VT;
+    if (VT == MVT::i8) {
+      Reg = CCInfo.AllocateReg(Z80::L);
+    } else if (VT == MVT::i16) {
+      Reg = CCInfo.AllocateReg(Z80::HL);
+    } else {
+      llvm_unreachable("calling convention can only manage i8 and i16 types");
+    }
+
+    assert(Reg && "register not available in calling convention");
+    CCInfo.addLoc(CCValAssign::getReg(0, VT, Reg, VT, CCValAssign::Full));
+  } else {
+    assert(NumArgs == 2 && "Too much return values");
+    assert(Args[0].VT == MVT::i16 && Args[1].VT == MVT::i16 && "i32 return as two i16 only");
+    Reg = CCInfo.AllocateReg(Z80::HL);
+    assert(Reg && "register not available in calling convention");
+    CCInfo.addLoc(CCValAssign::getReg(0, Args[0].VT, Reg, Args[0].VT, CCValAssign::Full));
+    Reg = CCInfo.AllocateReg(Z80::DE);
+    assert(Reg && "register not available in calling convention");
+    CCInfo.addLoc(CCValAssign::getReg(1, Args[1].VT, Reg, Args[1].VT, CCValAssign::Full));
+  }
 }
 
 SDValue Z80TargetLowering::LowerFormalArguments(
@@ -1314,7 +1319,7 @@ bool Z80TargetLowering::CanLowerReturn(
   }*/
 
   unsigned TotalBytes = getTotalArgumentsSizeInBytes(Outs);
-  return TotalBytes <= 2;
+  return TotalBytes <= 4;
 }
 
 SDValue
@@ -1325,6 +1330,8 @@ Z80TargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
                                const SDLoc &dl, SelectionDAG &DAG) const {
   // CCValAssign - represent the assignment of the return value to locations.
   SmallVector<CCValAssign, 16> RVLocs;
+
+  Chain.dumpr(&DAG);
 
   // CCState - Info about the registers and stack slot.
   CCState CCInfo(CallConv, isVarArg, DAG.getMachineFunction(), RVLocs,

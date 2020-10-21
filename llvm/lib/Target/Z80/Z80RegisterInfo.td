@@ -41,31 +41,31 @@ let Namespace = "Z80" in {
 //  8-bit general purpose registers
 //===----------------------------------------------------------------------===//
 
-def A  : Z80Reg<0,  "A">,  DwarfRegNum<[0]>;
-def B  : Z80Reg<1,  "B">,  DwarfRegNum<[1]>;
-def C  : Z80Reg<2,  "C">,  DwarfRegNum<[2]>;
-def D  : Z80Reg<3,  "D">,  DwarfRegNum<[3]>;
-def E  : Z80Reg<3,  "D">,  DwarfRegNum<[3]>;
-def H  : Z80Reg<4,  "H">,  DwarfRegNum<[4]>;
-def L  : Z80Reg<5,  "L">,  DwarfRegNum<[5]>;
-def XL  : Z80Reg<5,  "XL">,  DwarfRegNum<[5]>;
-def XH  : Z80Reg<5,  "XH">,  DwarfRegNum<[6]>;
-def YL  : Z80Reg<5,  "YL">,  DwarfRegNum<[7]>;
-def YH  : Z80Reg<5,  "YH">,  DwarfRegNum<[8]>;
+def A  : Z80Reg<7,  "a">,  DwarfRegNum<[0]>;
+def B  : Z80Reg<0,  "b">,  DwarfRegNum<[1]>;
+def C  : Z80Reg<1,  "c">,  DwarfRegNum<[2]>;
+def D  : Z80Reg<2,  "d">,  DwarfRegNum<[3]>;
+def E  : Z80Reg<3,  "e">,  DwarfRegNum<[3]>;
+def H  : Z80Reg<4,  "h">,  DwarfRegNum<[4]>;
+def L  : Z80Reg<5,  "l">,  DwarfRegNum<[5]>;
+def XH  : Z80Reg<4,  "xh">,  DwarfRegNum<[5]>;
+def XL  : Z80Reg<5,  "xl">,  DwarfRegNum<[6]>;
+def YH  : Z80Reg<4,  "yh">,  DwarfRegNum<[7]>;
+def YL  : Z80Reg<5,  "yl">,  DwarfRegNum<[8]>;
 
 let SubRegIndices = [sub_lo, sub_hi],
 CoveredBySubRegs = 1 in
 {
   // 16 bit GPR pairs.
-  def HL     : Z80Reg<0, "HL",      [L, H]>, DwarfRegNum<[5]>;
-  def DE     : Z80Reg<0, "HL",      [E, D]>, DwarfRegNum<[3]>;
-  def BC     : Z80Reg<0, "BC",      [C, B]>, DwarfRegNum<[1]>;
+  def HL     : Z80Reg<2, "hl",      [L, H]>, DwarfRegNum<[5]>;
+  def DE     : Z80Reg<1, "de",      [E, D]>, DwarfRegNum<[3]>;
+  def BC     : Z80Reg<0, "bc",      [C, B]>, DwarfRegNum<[1]>;
 
-  def IX     : Z80Reg<0, "IX",      [XL, XH]>, DwarfRegNum<[5]>;
-  def IY     : Z80Reg<0, "IY",      [YL, YH]>, DwarfRegNum<[7]>;
+  def IX     : Z80Reg<2, "ix",      [XL, XH]>, DwarfRegNum<[5]>;
+  def IY     : Z80Reg<2, "iy",      [YL, YH]>, DwarfRegNum<[7]>;
 }
 
-def SP     : Z80Reg<0, "SP">, DwarfRegNum<[88]>;
+def SP     : Z80Reg<3, "sp">, DwarfRegNum<[88]>;
 
 
 //===----------------------------------------------------------------------===//
@@ -85,6 +85,8 @@ def GPR8 : RegisterClass<"Z80", [i8], 8,
     // R28, R29, R17, R16, R15, R14, R13, R12, R11, R10,
     // R9, R8, R7, R6, R5, R4, R3, R2, R0, R1
   )>;
+
+def ACC : RegisterClass<"Z80", [i8], 8, (add A)>;
 
 // Simple lower registers r0..r15
 //def GPR8lo : RegisterClass<"Z80", [i8], 8,
@@ -205,6 +207,8 @@ def XDREGS : RegisterClass<"Z80", [i16], 8,
 // model this using a register class containing only the Z register.
 //def ZREG : RegisterClass<"Z80", [i16], 8, (add R31R30)>;
 def HLREG : RegisterClass<"Z80", [i16], 8, (add HL)>;
+def IXREG : RegisterClass<"Z80", [i16], 8, (add IX)>;
+def IYREG : RegisterClass<"Z80", [i16], 8, (add IY)>;
 
 // Register class used for the stack read pseudo instruction.
 def GPRSP: RegisterClass<"Z80", [i16], 8, (add SP)>;
@@ -212,8 +216,8 @@ def GPRSP: RegisterClass<"Z80", [i16], 8, (add SP)>;
 // Status register.
 def SREG : Z80Reg<14, "FLAGS">, DwarfRegNum<[88]>;
 
-//def CCR : RegisterClass<"Z80", [i8], 8, (add SREG)>
-//{
-//  let CopyCost = -1;      // Don't allow copying of status registers
-//}
+def CCR : RegisterClass<"Z80", [i8], 8, (add SREG)>
+{
+  let CopyCost = -1;      // Don't allow copying of status registers
+}
 

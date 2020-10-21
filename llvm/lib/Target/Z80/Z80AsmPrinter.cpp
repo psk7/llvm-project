@@ -39,7 +39,7 @@ class Z80AsmPrinter : public AsmPrinter {
 public:
   Z80AsmPrinter(TargetMachine &TM,
                 std::unique_ptr<MCStreamer> Streamer)
-      : AsmPrinter(TM, std::move(Streamer)), MRI(*TM.getMCRegisterInfo()) { }
+      : AsmPrinter(TM, std::move(Streamer)), MRI(*TM.getMCRegisterInfo()) {  }
 
   StringRef getPassName() const override { return "Z80 Assembly Printer"; }
 
@@ -50,6 +50,7 @@ public:
 
   bool PrintAsmMemoryOperand(const MachineInstr *MI, unsigned OpNum,
                              const char *ExtraCode, raw_ostream &O) override;
+  void emitLinkage(const GlobalValue *GV, MCSymbol *GVSym) const override;
 
   void emitInstruction(const MachineInstr *MI) override;
 
@@ -174,6 +175,10 @@ void Z80AsmPrinter::emitInstruction(const MachineInstr *MI) {
   MCInst I;
   MCInstLowering.lowerInstruction(*MI, I);
   EmitToStreamer(*OutStreamer, I);
+}
+
+void Z80AsmPrinter::emitLinkage(const GlobalValue *GV, MCSymbol *GVSym) const {
+//  AsmPrinter::emitLinkage(GV, GVSym);
 }
 
 } // end of namespace llvm

@@ -12,6 +12,7 @@
 
 #include "Z80MCCodeEmitter.h"
 
+#include "Z80InstrInfo.h"
 //#include "MCTargetDesc/Z80MCExpr.h"
 #include "MCTargetDesc/Z80MCTargetDesc.h"
 
@@ -221,12 +222,13 @@ unsigned Z80MCCodeEmitter::encodeCallTarget(const MCInst &MI, unsigned OpNo,
   Z80::fixups::adjustBranchTarget(Target);
   return Target;
 }
-
+*/
 unsigned Z80MCCodeEmitter::getExprOpValue(const MCExpr *Expr,
                                           SmallVectorImpl<MCFixup> &Fixups,
                                           const MCSubtargetInfo &STI) const {
+  llvm_unreachable("Z80MCCodeEmitter::getExprOpValue");
 
-  MCExpr::ExprKind Kind = Expr->getKind();
+  /*MCExpr::ExprKind Kind = Expr->getKind();
 
   if (Kind == MCExpr::Binary) {
     Expr = static_cast<const MCBinaryExpr *>(Expr)->getLHS();
@@ -246,7 +248,7 @@ unsigned Z80MCCodeEmitter::getExprOpValue(const MCExpr *Expr,
   }
 
   assert(Kind == MCExpr::SymbolRef);
-  return 0;
+  return 0;*/
 }
 
 unsigned Z80MCCodeEmitter::getMachineOpValue(const MCInst &MI,
@@ -268,29 +270,46 @@ unsigned Z80MCCodeEmitter::getMachineOpValue(const MCInst &MI,
   return getExprOpValue(MO.getExpr(), Fixups, STI);
 }
 
-void Z80MCCodeEmitter::emitInstruction(uint64_t Val, unsigned Size,
+/*void Z80MCCodeEmitter::emitInstruction(uint64_t Val, unsigned Size,
                                        const MCSubtargetInfo &STI,
                                        raw_ostream &OS) const {
-  size_t WordCount = Size / 2;
 
-  for (int64_t i = WordCount - 1; i >= 0; --i) {
-    uint16_t Word = (Val >> (i * 16)) & 0xFFFF;
-    support::endian::write(OS, Word, support::endianness::little);
+
+
+  for (int64_t i = 0; i < Size; ++i) {
+    uint8_t Word = (Val >> (i * 8)) & 0xFF;
+    OS << Word;
   }
-}
-*/
+}*/
+
 void Z80MCCodeEmitter::encodeInstruction(const MCInst &MI, raw_ostream &OS,
                                          SmallVectorImpl<MCFixup> &Fixups,
                                          const MCSubtargetInfo &STI) const {
-/*  const MCInstrDesc &Desc = MCII.get(MI.getOpcode());
+  const MCInstrDesc &Desc = MCII.get(MI.getOpcode());
 
   // Get byte count of instruction
-  unsigned Size = Desc.getSize();
+  unsigned Size = Desc.Size;
 
   assert(Size > 0 && "Instruction size cannot be zero");
 
+  if (Z80II::hasFDPrefix(Desc))
+    OS << (unsigned char)0xFD;
+
+  if (Z80II::hasDDPrefix(Desc))
+    OS << (unsigned char)0xDD;
+
+  if (Z80II::hasCBPrefix(Desc))
+    OS << (unsigned char)0xCB;
+
+  if (Z80II::hasEDPrefix(Desc))
+    OS << (unsigned char)0xED;
+
   uint64_t BinaryOpCode = getBinaryCodeForInstr(MI, Fixups, STI);
-  emitInstruction(BinaryOpCode, Size, STI, OS);*/
+
+  for (int64_t i = 0; i < Size; ++i) {
+    uint8_t Word = (BinaryOpCode >> (i * 8)) & 0xFF;
+    OS << Word;
+  }
 }
 
 MCCodeEmitter *createZ80MCCodeEmitter(const MCInstrInfo &MCII,

@@ -23,6 +23,7 @@ class Triple;
 class Z80MCAsmInfo : public MCAsmInfo {
 public:
   explicit Z80MCAsmInfo(const Triple &TT, const MCTargetOptions &Options);
+  bool shouldOmitSectionDirective(StringRef SectionName) const override;
 };
 
 } // end namespace llvm

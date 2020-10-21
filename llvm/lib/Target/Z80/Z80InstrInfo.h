@@ -58,6 +58,23 @@ enum TOF {
   MO_NEG = (1 << 3)
 };
 
+enum Prefix {
+  NoPrfx = 0,
+  CB = 1,
+  ED = 2,
+  DD = 3,
+  FD = 4,
+  DDCB = 5,
+  FDCB = 6
+};
+
+unsigned getPrefixLength(const MCInstrDesc &MI);
+
+bool hasCBPrefix(const MCInstrDesc &MI);
+bool hasEDPrefix(const MCInstrDesc &MI);
+bool hasDDPrefix(const MCInstrDesc &MI);
+bool hasFDPrefix(const MCInstrDesc &MI);
+
 } // end of namespace Z80II
 
 /// Utilities related to the Z80 instruction set.

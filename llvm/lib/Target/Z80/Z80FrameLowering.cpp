@@ -51,6 +51,9 @@ bool Z80FrameLowering::hasReservedCallFrame(const MachineFunction &MF) const {
 
 void Z80FrameLowering::emitPrologue(MachineFunction &MF,
                                     MachineBasicBlock &MBB) const {
+
+  llvm_unreachable("Z80FrameLowering::emitPrologue");
+
   MachineBasicBlock::iterator MBBI = MBB.begin();
   DebugLoc DL = (MBBI != MBB.end()) ? MBBI->getDebugLoc() : DebugLoc();
   const Z80Subtarget &STI = MF.getSubtarget<Z80Subtarget>();
@@ -133,6 +136,9 @@ void Z80FrameLowering::emitPrologue(MachineFunction &MF,
 
 void Z80FrameLowering::emitEpilogue(MachineFunction &MF,
                                     MachineBasicBlock &MBB) const {
+
+  llvm_unreachable("Z80FrameLowering::emitEpilogue");
+
   const Z80MachineFunctionInfo *AFI = MF.getInfo<Z80MachineFunctionInfo>();
 
   // Early exit if the frame pointer is not needed in this function except for
@@ -219,6 +225,9 @@ bool Z80FrameLowering::hasFP(const MachineFunction &MF) const {
 bool Z80FrameLowering::spillCalleeSavedRegisters(
     MachineBasicBlock &MBB, MachineBasicBlock::iterator MI,
     ArrayRef<CalleeSavedInfo> CSI, const TargetRegisterInfo *TRI) const {
+
+  llvm_unreachable("Z80FrameLowering::spillCalleeSavedRegisters");
+
   if (CSI.empty()) {
     return false;
   }
@@ -259,6 +268,9 @@ bool Z80FrameLowering::spillCalleeSavedRegisters(
 bool Z80FrameLowering::restoreCalleeSavedRegisters(
     MachineBasicBlock &MBB, MachineBasicBlock::iterator MI,
     MutableArrayRef<CalleeSavedInfo> CSI, const TargetRegisterInfo *TRI) const {
+
+  llvm_unreachable("Z80FrameLowering::restoreCalleeSavedRegister");
+
   if (CSI.empty()) {
     return false;
   }
@@ -285,6 +297,9 @@ bool Z80FrameLowering::restoreCalleeSavedRegisters(
 static void fixStackStores(MachineBasicBlock &MBB,
                            MachineBasicBlock::iterator MI,
                            const TargetInstrInfo &TII, Register FP) {
+
+  llvm_unreachable("fixStackStores");
+
   // Iterate through the BB until we hit a call instruction or we reach the end.
 /*  for (auto I = MI, E = MBB.end(); I != E && !I->isCall();) {
     MachineBasicBlock::iterator NextMI = std::next(I);
@@ -315,6 +330,9 @@ static void fixStackStores(MachineBasicBlock &MBB,
 MachineBasicBlock::iterator Z80FrameLowering::eliminateCallFramePseudoInstr(
     MachineFunction &MF, MachineBasicBlock &MBB,
     MachineBasicBlock::iterator MI) const {
+
+  llvm_unreachable("Z80FrameLowering::eliminateCallFramePseudoInstr");
+
   const Z80Subtarget &STI = MF.getSubtarget<Z80Subtarget>();
   const Z80InstrInfo &TII = *STI.getInstrInfo();
 
@@ -389,6 +407,9 @@ MachineBasicBlock::iterator Z80FrameLowering::eliminateCallFramePseudoInstr(
 void Z80FrameLowering::determineCalleeSaves(MachineFunction &MF,
                                             BitVector &SavedRegs,
                                             RegScavenger *RS) const {
+
+  llvm_unreachable("Z80FrameLowering::determineCalleeSaves");
+
   TargetFrameLowering::determineCalleeSaves(MF, SavedRegs, RS);
 
   // If we have a frame pointer, the Y register needs to be saved as well.
@@ -406,6 +427,9 @@ struct Z80FrameAnalyzer : public MachineFunctionPass {
   Z80FrameAnalyzer() : MachineFunctionPass(ID) {}
 
   bool runOnMachineFunction(MachineFunction &MF) override {
+
+    llvm_unreachable("Z80FrameAnalyzer::runOnMachineFunction");
+
     const MachineFrameInfo &MFI = MF.getFrameInfo();
     Z80MachineFunctionInfo *FuncInfo = MF.getInfo<Z80MachineFunctionInfo>();
 
@@ -474,6 +498,9 @@ struct Z80DynAllocaSR : public MachineFunctionPass {
   Z80DynAllocaSR() : MachineFunctionPass(ID) {}
 
   bool runOnMachineFunction(MachineFunction &MF) override {
+
+    llvm_unreachable("Z80DynAllocaSR::runOnMachineFunction");
+
     // Early exit when there are no variable sized objects in the function.
     if (!MF.getFrameInfo().hasVarSizedObjects()) {
       return false;

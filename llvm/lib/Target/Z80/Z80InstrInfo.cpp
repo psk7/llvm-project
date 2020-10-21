@@ -35,6 +35,43 @@
 
 namespace llvm {
 
+namespace Z80II{
+
+unsigned getPrefixLength(const MCInstrDesc &MI) {
+  switch (static_cast<Z80II::Prefix>(MI.TSFlags & 7)) {
+  case Z80II::NoPrfx:   return 0;
+  case Z80II::CB:       return 1;
+  case Z80II::ED:       return 1;
+  case Z80II::DD:       return 1;
+  case Z80II::FD:       return 1;
+  case Z80II::DDCB:     return 2;
+  case Z80II::FDCB:     return 2;
+  default:              return 0;
+  }
+}
+
+bool hasCBPrefix(const MCInstrDesc &MI) {
+  Z80II::Prefix prefixes = static_cast<Z80II::Prefix>(MI.TSFlags & 7);
+  return prefixes == CB || prefixes == DDCB || prefixes == FDCB;
+}
+
+bool hasEDPrefix(const MCInstrDesc &MI) {
+  Z80II::Prefix prefixes = static_cast<Z80II::Prefix>(MI.TSFlags & 7);
+  return prefixes == ED;
+}
+
+bool hasDDPrefix(const MCInstrDesc &MI) {
+  Z80II::Prefix prefixes = static_cast<Z80II::Prefix>(MI.TSFlags & 7);
+  return prefixes == DD || prefixes == DDCB;
+}
+
+bool hasFDPrefix(const MCInstrDesc &MI) {
+  Z80II::Prefix prefixes = static_cast<Z80II::Prefix>(MI.TSFlags & 7);
+  return prefixes == FD || prefixes == FDCB;
+}
+
+}
+
 Z80InstrInfo::Z80InstrInfo()
     : Z80GenInstrInfo(/*Z80::ADJCALLSTACKDOWN, Z80::ADJCALLSTACKUP*/), RI() {}
 
@@ -42,14 +79,12 @@ void Z80InstrInfo::copyPhysReg(MachineBasicBlock &MBB,
                                MachineBasicBlock::iterator MI,
                                const DebugLoc &DL, MCRegister DestReg,
                                MCRegister SrcReg, bool KillSrc) const {
-  llvm_unreachable("Z80InstrInfo::copyPhysReg");
-
-  /*const Z80Subtarget &STI = MBB.getParent()->getSubtarget<Z80Subtarget>();
+  const Z80Subtarget &STI = MBB.getParent()->getSubtarget<Z80Subtarget>();
   const Z80RegisterInfo &TRI = *STI.getRegisterInfo();
   unsigned Opc;
 
   // Not all Z80 devices support the 16-bit `MOVW` instruction.
-  if (Z80::DREGSRegClass.contains(DestReg, SrcReg)) {
+  /*if (Z80::DREGSRegClass.contains(DestReg, SrcReg)) {
     if (STI.hasMOVW() && Z80::DREGSMOVWRegClass.contains(DestReg, SrcReg)) {
       BuildMI(MBB, MI, DL, get(Z80::MOVWRdRr), DestReg)
           .addReg(SrcReg, getKillRegState(KillSrc));
@@ -65,25 +100,24 @@ void Z80InstrInfo::copyPhysReg(MachineBasicBlock &MBB,
       BuildMI(MBB, MI, DL, get(Z80::MOVRdRr), DestHi)
         .addReg(SrcHi, getKillRegState(KillSrc));
     }
-  } else {
+  } else*/ {
     if (Z80::GPR8RegClass.contains(DestReg, SrcReg)) {
-      Opc = Z80::MOVRdRr;
-    } else if (SrcReg == Z80::SP && Z80::DREGSRegClass.contains(DestReg)) {
+      Opc = Z80::LDRdRr;
+    } /*else if (SrcReg == Z80::SP && Z80::DREGSRegClass.contains(DestReg)) {
       Opc = Z80::SPREAD;
     } else if (DestReg == Z80::SP && Z80::DREGSRegClass.contains(SrcReg)) {
       Opc = Z80::SPWRITE;
-    } else {
+    }*/ else {
       llvm_unreachable("Impossible reg-to-reg copy");
     }
 
     BuildMI(MBB, MI, DL, get(Opc), DestReg)
         .addReg(SrcReg, getKillRegState(KillSrc));
-  }*/
+  }
 }
 
 unsigned Z80InstrInfo::isLoadFromStackSlot(const MachineInstr &MI,
                                            int &FrameIndex) const {
-  llvm_unreachable("Z80InstrInfo::isLoadFromStackSlot");
   /*switch (MI.getOpcode()) {
   case Z80::LDDRdPtrQ:
   case Z80::LDDWRdYQ: { //:FIXME: remove this once PR13375 gets fixed
@@ -96,9 +130,9 @@ unsigned Z80InstrInfo::isLoadFromStackSlot(const MachineInstr &MI,
   }
   default:
     break;
-  }
+  }*/
 
-  return 0;*/
+  return 0;
 }
 
 unsigned Z80InstrInfo::isStoreToStackSlot(const MachineInstr &MI,
@@ -489,11 +523,13 @@ bool Z80InstrInfo::reverseBranchCondition(
 unsigned Z80InstrInfo::getInstSizeInBytes(const MachineInstr &MI) const {
   unsigned Opcode = MI.getOpcode();
 
+  unsigned prefixSize = Z80II::getPrefixLength(MI.getDesc());
+
   switch (Opcode) {
   // A regular instruction
   default: {
     const MCInstrDesc &Desc = get(Opcode);
-    return Desc.getSize();
+    return Desc.getSize() + prefixSize;
   }
   case TargetOpcode::EH_LABEL:
   case TargetOpcode::IMPLICIT_DEF:

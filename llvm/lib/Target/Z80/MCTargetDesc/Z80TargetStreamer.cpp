@@ -39,5 +39,12 @@ void Z80TargetStreamer::finish() {
   OS.emitSymbolAttribute(DoClearBss, MCSA_Global);*/
 }
 
+void Z80TargetStreamer::changeSection(const MCSection *CurSection,
+                                      MCSection *Section,
+                                      const MCExpr *SubSection,
+                                      raw_ostream &OS) {
+  /*MCTargetStreamer::changeSection(CurSection, Section, SubSection, OS);*/
+}
+
 } // end namespace llvm
 

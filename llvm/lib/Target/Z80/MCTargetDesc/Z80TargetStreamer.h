@@ -20,6 +20,8 @@ public:
   explicit Z80TargetStreamer(MCStreamer &S);
 
   void finish() override;
+  void changeSection(const MCSection *CurSection, MCSection *Section,
+                     const MCExpr *SubSection, raw_ostream &OS) override;
 };
 
 /// A target streamer for textual Z80 assembly code.

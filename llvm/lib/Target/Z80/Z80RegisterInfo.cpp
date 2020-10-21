@@ -295,7 +295,9 @@ bool Z80RegisterInfo::shouldCoalesce(MachineInstr *MI,
     return false;
   }*/
 
-  llvm_unreachable("Z80RegisterInfo::shouldCoalesce");
+  return false;
+
+  /*llvm_unreachable("Z80RegisterInfo::shouldCoalesce");*/
 
   return TargetRegisterInfo::shouldCoalesce(MI, SrcRC, SubReg, DstRC, DstSubReg, NewRC, LIS);
 }

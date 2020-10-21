@@ -10,6 +10,26 @@
 //
 //===----------------------------------------------------------------------===//
 
+// Class specifying the prefix used an opcode extension.
+class Prefix<bits<3> val> {
+  bits<3> Value = val;
+}
+
+def NoPrfx : Prefix<0>;
+def CB     : Prefix<1>;
+def ED     : Prefix<2>;
+def DD     : Prefix<3>;
+def FD     : Prefix<4>;
+def DDCB   : Prefix<5>;
+def FDCB   : Prefix<6>;
+
+class CB   { Prefix OpPrefix = CB; }
+class ED   { Prefix OpPrefix = ED; }
+class DD   { Prefix OpPrefix = DD; }
+class FD   { Prefix OpPrefix = FD; }
+class DDCB { Prefix OpPrefix = DDCB; }
+class FDCB { Prefix OpPrefix = FDCB; }
+
 // A generic Z80 instruction.
 class Z80Inst<dag outs, dag ins, string asmstr, list<dag> pattern> : Instruction
 {
@@ -20,24 +40,108 @@ class Z80Inst<dag outs, dag ins, string asmstr, list<dag> pattern> : Instruction
   let AsmString = asmstr;
   let Pattern = pattern;
 
+  Prefix OpPrefix = NoPrfx;
+  bits<3> OpPrefixBits = OpPrefix.Value;
+
+  let TSFlags{2-0} = OpPrefixBits;
+
+  field bits<64> Inst;
+
   field bits<32> SoftFail = 0;
+}
+
+/// A 8-bit Z80 instruction.
+class Z80Inst8<dag outs, dag ins, string asmstr, list<dag> pattern>
+  : Z80Inst<outs, ins, asmstr, pattern>
+{
+  let Size = 1;
 }
 
 /// A 16-bit Z80 instruction.
 class Z80Inst16<dag outs, dag ins, string asmstr, list<dag> pattern>
   : Z80Inst<outs, ins, asmstr, pattern>
 {
-  field bits<16> Inst;
-
   let Size = 2;
 }
-/*
+
+/// A 24-bit Z80 instruction.
+class Z80Inst24<dag outs, dag ins, string asmstr, list<dag> pattern>
+  : Z80Inst<outs, ins, asmstr, pattern>
+{
+  let Size = 3;
+}
+
+class FormA<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
+  : Z80Inst<outs, ins, asmstr, pattern>
+{
+  let Inst{7-0} = opcode;
+  let Size = 1;
+}
+
+class FormB<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
+  : FormA<opcode, outs, ins, asmstr, pattern>
+{
+  bits<3> rr;
+
+  let Inst{2-0} = rr;
+}
+
+class FormC<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
+  : FormA<opcode, outs, ins, asmstr, pattern>
+{
+  bits<2> rr;
+
+  let Inst{5-4} = rr;
+}
+
+class FormD<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
+  : FormA<opcode, outs, ins, asmstr, pattern>
+{
+  bits<3> rd;
+  bits<8> d8;
+
+  let Inst{15-8} = d8;
+  let Inst{5-3} = rd;
+  let Size = 2;
+}
+
+class FormE<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
+  : FormA<opcode, outs, ins, asmstr, pattern>
+{
+  bits<2> rd;
+  bits<16> d16;
+
+  let Inst{23-16} = d16{15-8};
+  let Inst{15-8} = d16{7-0};
+  let Inst{5-4} = rd;
+  let Size = 3;
+}
+
+class FormF<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
+  : FormA<opcode, outs, ins, asmstr, pattern>
+{
+  bits<16> d16;
+
+  let Inst{23-16} = d16{15-8};
+  let Inst{15-8} = d16{7-0};
+  let Size = 3;
+}
+
+class FormG<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
+  : FormA<opcode, outs, ins, asmstr, pattern>
+{
+  bits<3> rd;
+  bits<3> rr;
+
+  let Inst{5-3} = rd;
+  let Inst{2-0} = rr;
+  let Size = 1;
+}
+
 /// a 32-bit Z80 instruction.
 class Z80Inst32<dag outs, dag ins, string asmstr, list<dag> pattern>
   : Z80Inst<outs, ins, asmstr, pattern>
 {
-  field bits<32> Inst;
-
   let Size = 4;
 }
 
@@ -459,17 +563,17 @@ class FBRsk<bit f, bits<3> s, dag outs, dag ins, string asmstr, list<dag> patter
 // Special, opcode only instructions: <|opcode|>
 //===----------------------------------------------------------------------===//
 
-class F16<bits<16> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
+/*class F16<bits<16> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
   : Z80Inst16<outs, ins, asmstr, pattern>
 {
   let Inst = opcode;
-}
+}*/
 
-class F32<bits<32> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
+/*class F32<bits<32> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
   : Z80Inst32<outs, ins, asmstr, pattern>
 {
   let Inst = opcode;
-}
+}*/
 
 //===----------------------------------------------------------------------===//
 // Branching instructions with immediate12: <|110f|kkkk|kkkk|kkkk|>
@@ -593,4 +697,3 @@ class ShiftPseudo<dag outs, dag ins, string asmstr, list<dag> pattern>
 
   let Defs = [SREG];
 }
-*/

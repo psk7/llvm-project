@@ -23,7 +23,14 @@ Z80MCAsmInfo::Z80MCAsmInfo(const Triple &TT, const MCTargetOptions &Options) {
   PrivateGlobalPrefix = ".L";
   PrivateLabelPrefix = ".L";
   UsesELFSectionDirectiveForBSS = true;
-  SupportsDebugInformation = true;
+  SupportsDebugInformation = false;
+  DollarIsPC = true;
+  HasSingleParameterDotFile = false;
+  HasDotTypeDotSizeDirective = false;
+}
+
+bool Z80MCAsmInfo::shouldOmitSectionDirective(StringRef SectionName) const {
+  return true;
 }
 
 } // end of namespace llvm

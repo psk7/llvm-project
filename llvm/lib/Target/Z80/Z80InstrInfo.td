@@ -19,7 +19,7 @@ include "Z80InstrFormats.td"
 //def SDT_Z80CallSeqStart : SDCallSeqStart<[SDTCisVT<0, i16>, SDTCisVT<1, i16>]>;
 //def SDT_Z80CallSeqEnd : SDCallSeqEnd<[SDTCisVT<0, i16>, SDTCisVT<1, i16>]>;
 //def SDT_Z80Call : SDTypeProfile<0, -1, [SDTCisVT<0, iPTR>]>;
-//def SDT_Z80Wrapper : SDTypeProfile<1, 1, [SDTCisSameAs<0, 1>, SDTCisPtrTy<0>]>;
+def SDT_Z80Wrapper : SDTypeProfile<1, 1, [SDTCisSameAs<0, 1>, SDTCisPtrTy<0>]>;
 //def SDT_Z80Brcond : SDTypeProfile<0, 2,
 //                                  [SDTCisVT<0, OtherVT>, SDTCisVT<1, i8>]>;
 //def SDT_Z80Cmp : SDTypeProfile<0, 2, [SDTCisSameAs<0, 1>]>;
@@ -43,9 +43,9 @@ def Z80retflag : SDNode<"Z80ISD::RET_FLAG", SDTNone,
 //
 //def Z80call : SDNode<"Z80ISD::CALL", SDT_Z80Call,
 //                     [SDNPHasChain, SDNPOutGlue, SDNPOptInGlue, SDNPVariadic]>;
-//
-//def Z80Wrapper : SDNode<"Z80ISD::WRAPPER", SDT_Z80Wrapper>;
-//
+
+def Z80Wrapper : SDNode<"Z80ISD::WRAPPER", SDT_Z80Wrapper>;
+
 //def Z80brcond : SDNode<"Z80ISD::BRCOND", SDT_Z80Brcond,
 //                       [SDNPHasChain, SDNPInGlue]>;
 //def Z80cmp : SDNode<"Z80ISD::CMP", SDT_Z80Cmp, [SDNPOutGlue]>;
@@ -195,13 +195,13 @@ def Z80retflag : SDNode<"Z80ISD::RET_FLAG", SDTNone,
 //    let EncoderMethod = "encodeCallTarget";
 //    let DecoderMethod = "decodeCallTarget";
 //}
-//
-//// A 16-bit address (which can lead to an R_Z80_16 relocation).
-//def imm16 : Operand<i16>
-//{
+
+// A 16-bit address (which can lead to an R_Z80_16 relocation).
+def imm16 : Operand<i16>
+{
 //    let EncoderMethod = "encodeImm<Z80::fixup_16, 2>";
-//}
-//
+}
+
 ///// A 6-bit immediate used in the ADIW/SBIW instructions.
 //def imm_arith6 : Operand<i16>
 //{
@@ -319,19 +319,19 @@ def imm_ldi8 : Operand<i8>
 //def HasTinyEncoding : Predicate<"Subtarget->hasTinyEncoding()">,
 //                        AssemblerPredicate<(all_of FeatureTinyEncoding)>;
 //
-//
-//// Z80 specific condition code. These correspond to Z80_*_COND in
-//// Z80InstrInfo.td. They must be kept in synch.
-//def Z80_COND_EQ : PatLeaf<(i8 0)>;
-//def Z80_COND_NE : PatLeaf<(i8 1)>;
-//def Z80_COND_GE : PatLeaf<(i8 2)>;
-//def Z80_COND_LT : PatLeaf<(i8 3)>;
-//def Z80_COND_SH : PatLeaf<(i8 4)>;
-//def Z80_COND_LO : PatLeaf<(i8 5)>;
-//def Z80_COND_MI : PatLeaf<(i8 6)>;
-//def Z80_COND_PL : PatLeaf<(i8 7)>;
-//
-//
+
+// Z80 specific condition code. These correspond to Z80_*_COND in
+// Z80InstrInfo.td. They must be kept in synch.
+def Z80_COND_EQ : PatLeaf<(i8 0)>;
+def Z80_COND_NE : PatLeaf<(i8 1)>;
+def Z80_COND_GE : PatLeaf<(i8 2)>;
+def Z80_COND_LT : PatLeaf<(i8 3)>;
+def Z80_COND_SH : PatLeaf<(i8 4)>;
+def Z80_COND_LO : PatLeaf<(i8 5)>;
+def Z80_COND_MI : PatLeaf<(i8 6)>;
+def Z80_COND_PL : PatLeaf<(i8 7)>;
+
+
 ////===----------------------------------------------------------------------===//
 ////===----------------------------------------------------------------------===//
 //// Z80 Instruction list
@@ -361,14 +361,22 @@ def imm_ldi8 : Operand<i8>
 //                              "#ADJCALLSTACKUP",
 //                              [(Z80callseq_end timm:$amt1, timm:$amt2)]>;
 //}
-//
-////===----------------------------------------------------------------------===//
-//// Addition
-////===----------------------------------------------------------------------===//
-//let isCommutable = 1,
-//Constraints = "$src = $rd",
-//Defs = [SREG] in
-//{
+
+//===----------------------------------------------------------------------===//
+// Addition
+//===----------------------------------------------------------------------===//
+let isCommutable = 1,
+Constraints = "$src = $rd",
+Defs = [SREG] in
+{
+    def ADDRdRr8 : FormB<0b10000000,
+                         (outs ACC:$rd), (ins GPR8:$src, GPR8:$rr), "add\t$rr",
+                         [(set i8:$rd, (add i8:$src, i8:$rr)), (implicit SREG)]>;
+
+    def ADDRdRr16 : FormC<0b00001001,
+                         (outs HLREG:$rd), (ins DREGS:$src, DREGS:$rr), "add\t$rd, $rr",
+                         [(set i16:$rd, (add i16:$src, i16:$rr)), (implicit SREG)]>;
+
 //  // ADD Rd, Rr
 //  // Adds two 8-bit registers.
 //  def ADDRdRr : FRdRr<0b0000,
@@ -390,7 +398,17 @@ def imm_ldi8 : Operand<i8>
 //                        "addw\t$rd, $rr",
 //                        [(set i16:$rd, (add i16:$src, i16:$rr)),
 //                         (implicit SREG)]>;
-//
+
+
+    def ADCRdRr8 : FormB<0xc6,
+                         (outs ACC:$rd), (ins GPR8:$src, GPR8:$rr), "adc\t$rr",
+                         [(set i8:$rd, (adde i8:$src, i8:$rr)), (implicit SREG)]>;
+
+    let Uses = [SREG] in
+    def ADCRdRr16 : FormC<0b01001010,
+                          (outs HLREG:$rd), (ins DREGS:$src, DREGS:$rr), "adc\t$rd, $rr",
+                          [(set i16:$rd, (adde i16:$src, i16:$rr)), (implicit SREG)]>, ED;
+
 //  // ADC Rd, Rr
 //  // Adds two 8-bit registers with carry.
 //  let Uses = [SREG] in
@@ -425,14 +443,18 @@ def imm_ldi8 : Operand<i8>
 //                      [(set i16:$rd, (add i16:$src, uimm6:$k)),
 //                       (implicit SREG)]>,
 //                Requires<[HasADDSUBIW]>;
-//}
-//
-////===----------------------------------------------------------------------===//
-//// Subtraction
-////===----------------------------------------------------------------------===//
-//let Constraints = "$src = $rd",
-//Defs = [SREG] in
-//{
+}
+
+//===----------------------------------------------------------------------===//
+// Subtraction
+//===----------------------------------------------------------------------===//
+let Constraints = "$src = $rd",
+Defs = [SREG] in
+{
+   def SUBRdRr8 : FormB<0xd6,
+                         (outs ACC:$rd), (ins GPR8:$src, GPR8:$rr), "sub\t$rr",
+                         [(set i8:$rd, (sub i8:$src, i8:$rr)), (implicit SREG)]>;
+
 //  // SUB Rd, Rr
 //  // Subtracts the 8-bit value of Rr from Rd and places the value in Rd.
 //  def SUBRdRr : FRdRr<0b0001,
@@ -519,8 +541,8 @@ def imm_ldi8 : Operand<i8>
 //                          [(set i16:$rd, (sube i16:$src, imm:$rr)),
 //                           (implicit SREG)]>;
 //  }
-//}
-//
+}
+
 ////===----------------------------------------------------------------------===//
 //// Increment and Decrement
 ////===----------------------------------------------------------------------===//
@@ -848,7 +870,7 @@ let isTerminator = 1,
 isReturn = 1,
 isBarrier = 1 in
 {
-    def RET : Z80Inst16< (outs), (ins), "ret", [(Z80retflag)]>;
+    def RET : FormA<0xc9, (outs), (ins), "ret", [(Z80retflag)]>;
 
 //  def RET : F16<0b1001010100001000,
 //                (outs),
@@ -1088,13 +1110,15 @@ isBarrier = 1 in
 //                    "brlt\t$target",
 //                    [(Z80brcond bb:$target, Z80_COND_LT)]>;
 //}
-//
-////===----------------------------------------------------------------------===//
-//// Data transfer instructions
-////===----------------------------------------------------------------------===//
-//// 8 and 16-bit register move instructions.
-//let hasSideEffects = 0 in
-//{
+
+//===----------------------------------------------------------------------===//
+// Data transfer instructions
+//===----------------------------------------------------------------------===//
+// 8 and 16-bit register move instructions.
+let hasSideEffects = 0 in
+{
+    def LDRdRr : FormG<0x40, (outs GPR8:$rd), (ins GPR8:$rr), "ld\t$rd, $rr", []>;
+
 //  def MOVRdRr : FRdRr<0b0010,
 //                      0b11,
 //                      (outs GPR8:$rd),
@@ -1107,12 +1131,15 @@ isBarrier = 1 in
 //                           "movw\t$dst, $src",
 //                           []>,
 //                 Requires<[HasMOVW]>;
-//}
+}
 
 // Load immediate values into registers.
 let isReMaterializable = 1 in
 {
-    def LDI8 : Z80Inst16<(outs GPR8:$rd), (ins imm_ldi8:$k), "ld\t$rd, $k", [(set i8:$rd, imm:$k)]>;
+    def LDI8 : FormD<0b00000110,
+                     (outs GPR8:$rd), (ins imm_ldi8:$d8), "ld\t$rd, $d8", [(set i8:$rd, imm:$d8)]>;
+    def LDI16: FormE<0b00000001,
+                     (outs DREGS:$rd), (ins i16imm:$d16), "ld\t$rd, $d16", [(set i16:$rd, imm:$d16)]>;
 
 //  def LDIRdK : FRdK<0b1110,
 //                    (outs LD8:$rd),
@@ -1132,9 +1159,13 @@ let isReMaterializable = 1 in
 }
 
 //// Load from data space into register.
-//let canFoldAsLoad = 1,
-//isReMaterializable = 1 in
-//{
+let canFoldAsLoad = 1,
+mayLoad = 1,
+isReMaterializable = 1 in
+{
+    def LD8MEMPTR : FormF<0x3a, (outs ACC:$rd), (ins imm16:$ptr), "ld\t$rd, ($ptr)", []>;
+    def LD16MEMPTR : FormE<0b01001011, (outs DREGS:$rd), (ins imm16:$ptr), "ld\t$rd, ($ptr)", []>, ED;
+
 //  def LDSRdK : F32DM<0b0,
 //                     (outs GPR8:$rd),
 //                     (ins imm16:$k),
@@ -1152,9 +1183,9 @@ let isReMaterializable = 1 in
 //                       "ldsw\t$dst, $src",
 //                       [(set i16:$dst, (load imm:$src))]>,
 //                Requires<[HasSRAM]>;
-//}
-//
-//// Indirect loads.
+}
+
+// Indirect loads.
 //let canFoldAsLoad = 1,
 //isReMaterializable = 1 in
 //{
@@ -1570,49 +1601,29 @@ let isReMaterializable = 1 in
 //                     (ins imm_port6:$dst, DREGS:$src),
 //                     "outw\t$dst, $src",
 //                     [(store i16:$src, ioaddr16:$dst)]>;
-//
-//// Stack push/pop operations.
-//let Defs = [SP],
-//Uses = [SP],
-//hasSideEffects = 0 in
-//{
-//  // Stack push operations.
-//  let mayStore = 1 in
-//  {
-//    def PUSHRr : FRd<0b1001,
-//                     0b0011111,
-//                     (outs),
-//                     (ins GPR8:$reg),
-//                     "push\t$reg",
-//                     []>,
-//                 Requires<[HasSRAM]>;
-//
-//    def PUSHWRr : Pseudo<(outs),
-//                         (ins DREGS:$reg),
-//                         "pushw\t$reg",
-//                         []>,
-//                  Requires<[HasSRAM]>;
-//  }
-//
-//  // Stack pop operations.
-//  let mayLoad = 1 in
-//  {
-//    def POPRd : FRd<0b1001,
-//                    0b0001111,
-//                    (outs GPR8:$reg),
-//                    (ins),
-//                    "pop\t$reg",
-//                    []>,
-//                Requires<[HasSRAM]>;
-//
-//    def POPWRd : Pseudo<(outs DREGS:$reg),
-//                        (ins),
-//                        "popw\t$reg",
-//                        []>,
-//                 Requires<[HasSRAM]>;
-//  }
-//}
-//
+
+// Stack push/pop operations.
+let Defs = [SP],
+Uses = [SP],
+hasSideEffects = 0 in
+{
+  // Stack push operations.
+  let mayStore = 1 in
+  {
+    def PUSHRr : FormC<0b11000101, (outs), (ins DREGS:$rr), "push\t$rr", []>;
+    def PUSHIX : FormC<0b11000101, (outs), (ins IXREG:$rr), "push\t$rr", []>, DD;
+    def PUSHIY : FormC<0b11000101, (outs), (ins IYREG:$rr), "push\t$rr", []>, FD;
+  }
+
+  // Stack pop operations.
+  let mayLoad = 1 in
+  {
+    def POPRd : FormC<0b11000001, (outs DREGS:$rr), (ins), "pop\t$rr", []>;
+    def POPIX : FormC<0b11000001, (outs IXREG:$rr), (ins), "pop\t$rr", []>, DD;
+    def POPIY : FormC<0b11000001, (outs IYREG:$rr), (ins), "pop\t$rr", []>, FD;
+  }
+}
+
 //// Read-Write-Modify (RMW) instructions.
 //def XCHZRd : FZRd<0b100,
 //                  (outs GPR8:$rd),
@@ -1845,7 +1856,7 @@ let isReMaterializable = 1 in
 // NOP
 // No-operation instruction
 // ---------
-def NOP : Z80Inst16< (outs), (ins), "nop", []>;
+def NOP : FormA<0, (outs), (ins), "nop", []>;
 
 //// <|0000|0000|0000|0000>
 //def NOP : F16<0b0000000000000000,
@@ -1873,28 +1884,28 @@ def NOP : Z80Inst16< (outs), (ins), "nop", []>;
 //              (ins),
 //              "wdr",
 //              []>;
-//
-////===----------------------------------------------------------------------===//
-//// Pseudo instructions for later expansion
-////===----------------------------------------------------------------------===//
-//
-////:TODO: Optimize this for wider types AND optimize the following code
-////       compile int foo(char a, char b, char c, char d) {return d+b;}
-////       looks like a missed sext_inreg opportunity.
-//def SEXT : ExtensionPseudo<
-//  (outs DREGS:$dst),
-//  (ins GPR8:$src),
-//  "sext\t$dst, $src",
-//  [(set i16:$dst, (sext i8:$src)), (implicit SREG)]
-//>;
-//
-//def ZEXT : ExtensionPseudo<
-//  (outs DREGS:$dst),
-//  (ins GPR8:$src),
-//  "zext\t$dst, $src",
-//  [(set i16:$dst, (zext i8:$src)), (implicit SREG)]
-//>;
-//
+
+//===----------------------------------------------------------------------===//
+// Pseudo instructions for later expansion
+//===----------------------------------------------------------------------===//
+
+//:TODO: Optimize this for wider types AND optimize the following code
+//       compile int foo(char a, char b, char c, char d) {return d+b;}
+//       looks like a missed sext_inreg opportunity.
+def SEXT : ExtensionPseudo<
+  (outs DREGS:$dst),
+  (ins GPR8:$src),
+  "sext\t$dst, $src",
+  [(set i16:$dst, (sext i8:$src)), (implicit SREG)]
+>;
+
+def ZEXT : ExtensionPseudo<
+  (outs DREGS:$dst),
+  (ins GPR8:$src),
+  "zext\t$dst, $src",
+  [(set i16:$dst, (zext i8:$src)), (implicit SREG)]
+>;
+
 //// This pseudo gets expanded into a movw+adiw thus it clobbers SREG.
 //let Defs = [SREG],
 //    hasSideEffects = 0 in
@@ -2028,16 +2039,16 @@ def NOP : Z80Inst16< (outs), (ins), "nop", []>;
 ////===----------------------------------------------------------------------===//
 //// Non-Instruction Patterns
 ////===----------------------------------------------------------------------===//
-//
-////:TODO: look in x86InstrCompiler.td for odd encoding trick related to
-//// add x, 128 -> sub x, -128. Clang is emitting an eor for this (ldi+eor)
-//
-//// the add instruction always writes the carry flag
-//def : Pat<(addc i8:$src, i8:$src2),
-//          (ADDRdRr i8:$src, i8:$src2)>;
-//def : Pat<(addc DREGS:$src, DREGS:$src2),
-//          (ADDWRdRr DREGS:$src, DREGS:$src2)>;
-//
+
+//:TODO: look in x86InstrCompiler.td for odd encoding trick related to
+// add x, 128 -> sub x, -128. Clang is emitting an eor for this (ldi+eor)
+
+// the add instruction always writes the carry flag
+def : Pat<(addc i8:$src, i8:$src2),
+          (ADDRdRr8 i8:$src, i8:$src2)>;
+def : Pat<(addc DREGS:$src, DREGS:$src2),
+          (ADDRdRr16 DREGS:$src, DREGS:$src2)>;
+
 //// all sub instruction variants always writes the carry flag
 //def : Pat<(subc i8:$src, i8:$src2),
 //          (SUBRdRr i8:$src, i8:$src2)>;
@@ -2056,7 +2067,7 @@ def NOP : Z80Inst16< (outs), (ins), "nop", []>;
 //          (SUBIWRdK i16:$src1, (imm16_neg_XFORM imm:$src2))>;
 //def : Pat<(addc i16:$src1, imm:$src2),
 //          (SUBIWRdK i16:$src1, (imm16_neg_XFORM imm:$src2))>;
-//
+
 //def : Pat<(add i8:$src1, imm:$src2),
 //          (SUBIRdK i8:$src1, (imm8_neg_XFORM imm:$src2))>;
 //def : Pat<(addc i8:$src1, imm:$src2),
@@ -2069,26 +2080,28 @@ def NOP : Z80Inst16< (outs), (ins), "nop", []>;
 //          (CALLk tglobaladdr:$dst)>;
 //def : Pat<(Z80call (i16 texternalsym:$dst)),
 //          (CALLk texternalsym:$dst)>;
-//
-//// `anyext`
-//def : Pat<(i16 (anyext i8:$src)),
-//          (INSERT_SUBREG (i16 (IMPLICIT_DEF)), i8:$src, sub_lo)>;
-//
-//// `trunc`
-//def : Pat<(i8 (trunc i16:$src)),
-//          (EXTRACT_SUBREG i16:$src, sub_lo)>;
-//
-//// sext_inreg
-//def : Pat<(sext_inreg i16:$src, i8),
-//          (SEXT (i8 (EXTRACT_SUBREG i16:$src, sub_lo)))>;
-//
-//// GlobalAddress
+
+// `anyext`
+def : Pat<(i16 (anyext i8:$src)),
+          (INSERT_SUBREG (i16 (IMPLICIT_DEF)), i8:$src, sub_lo)>;
+
+// `trunc`
+def : Pat<(i8 (trunc i16:$src)),
+          (EXTRACT_SUBREG i16:$src, sub_lo)>;
+
+// sext_inreg
+def : Pat<(sext_inreg i16:$src, i8),
+          (SEXT (i8 (EXTRACT_SUBREG i16:$src, sub_lo)))>;
+
+// GlobalAddress
 //def : Pat<(i16 (Z80Wrapper tglobaladdr:$dst)),
 //          (LDIWRdK tglobaladdr:$dst)>;
 //def : Pat<(add i16:$src, (Z80Wrapper tglobaladdr:$src2)),
 //          (SUBIWRdK i16:$src, tglobaladdr:$src2)>;
-//def : Pat<(i8 (load (Z80Wrapper tglobaladdr:$dst))),
-//          (LDSRdK tglobaladdr:$dst)>;
+def : Pat<(i8 (load (Z80Wrapper tglobaladdr:$dst))),
+          (LD8MEMPTR tglobaladdr:$dst)>;
+def : Pat<(i16 (load (Z80Wrapper tglobaladdr:$dst))),
+          (LD16MEMPTR tglobaladdr:$dst)>;
 //def : Pat<(i16 (load (Z80Wrapper tglobaladdr:$dst))),
 //          (LDSWRdK tglobaladdr:$dst)>;
 //def : Pat<(store i8:$src, (i16 (Z80Wrapper tglobaladdr:$dst))),

@@ -375,7 +375,7 @@ template <> bool Z80DAGToDAGISel::select<ISD::STORE>(SDNode *N) {
 }
 
 template <> bool Z80DAGToDAGISel::select<ISD::LOAD>(SDNode *N) {
-
+  return false;
   llvm_unreachable("Z80DAGToDAGISel::select<ISD::LOAD>");
 
   /*
@@ -563,6 +563,8 @@ void Z80DAGToDAGISel::Select(SDNode *N) {
 
   // Select the default instruction
   SelectCode(N);
+
+  N->dumpr(CurDAG);
 }
 
 bool Z80DAGToDAGISel::trySelect(SDNode *N) {
