@@ -374,8 +374,16 @@ Defs = [SREG] in
                          [(set i8:$rd, (add i8:$src, i8:$rr)), (implicit SREG)]>;
 
     def ADDRdRr16 : FormC<0b00001001,
-                         (outs HLREG:$rd), (ins DREGS:$src, DREGS:$rr), "add\t$rd, $rr",
+                         (outs HLREG:$rd), (ins REGS16:$src, DREGS:$rr), "add\t$rd, $rr",
                          [(set i16:$rd, (add i16:$src, i16:$rr)), (implicit SREG)]>;
+
+    def ADDRdRr16IX : FormC<0b00001001,
+                         (outs IXREG:$rd), (ins REGS16:$src, DREGS:$rr), "add\t$rd, $rr",
+                         [(set i16:$rd, (add i16:$src, i16:$rr)), (implicit SREG)]>, DD;
+
+    def ADDRdRr16IY : FormC<0b00001001,
+                         (outs IYREG:$rd), (ins REGS16:$src, DREGS:$rr), "add\t$rd, $rr",
+                         [(set i16:$rd, (add i16:$src, i16:$rr)), (implicit SREG)]>, FD;
 
 //  // ADD Rd, Rr
 //  // Adds two 8-bit registers.
@@ -1117,7 +1125,11 @@ isBarrier = 1 in
 // 8 and 16-bit register move instructions.
 let hasSideEffects = 0 in
 {
-    def LDRdRr : FormG<0x40, (outs GPR8:$rd), (ins GPR8:$rr), "ld\t$rd, $rr", []>;
+    def LDRdRr8 : FormG<0x40, (outs GPR8:$rd), (ins GPR8:$rr), "ld\t$rd, $rr", []>;
+
+    def LDSPHL : FormA<0xf9, (outs SPREG:$rd), (ins HLREG:$rr), "ld\tsp, $rr", []>;
+    def LDSPIX : FormA<0xf9, (outs SPREG:$rd), (ins IXREG:$rr), "ld\tsp, $rr", []>, DD;
+    def LDSPIY : FormA<0xf9, (outs SPREG:$rd), (ins IYREG:$rr), "ld\tsp, $rr", []>, FD;
 
 //  def MOVRdRr : FRdRr<0b0010,
 //                      0b11,
@@ -1136,10 +1148,11 @@ let hasSideEffects = 0 in
 // Load immediate values into registers.
 let isReMaterializable = 1 in
 {
-    def LDI8 : FormD<0b00000110,
-                     (outs GPR8:$rd), (ins imm_ldi8:$d8), "ld\t$rd, $d8", [(set i8:$rd, imm:$d8)]>;
-    def LDI16: FormE<0b00000001,
-                     (outs DREGS:$rd), (ins i16imm:$d16), "ld\t$rd, $d16", [(set i16:$rd, imm:$d16)]>;
+    def LDI8 : FormD<0b00000110, (outs GPR8:$rd), (ins imm_ldi8:$d8), "ld\t$rd, $d8", [(set i8:$rd, imm:$d8)]>;
+    def LDI16: FormE<0b00000001, (outs DREGS:$rd), (ins i16imm:$d16), "ld\t$rd, $d16", [(set i16:$rd, imm:$d16)]>;
+
+    def LDI16IX: FormE<0b00000001, (outs IXREG:$rd), (ins i16imm:$d16), "ld\t$rd, $d16", []>, DD;
+    def LDI16IY: FormE<0b00000001, (outs IXREG:$rd), (ins i16imm:$d16), "ld\t$rd, $d16", []>, FD;
 
 //  def LDIRdK : FRdK<0b1110,
 //                    (outs LD8:$rd),

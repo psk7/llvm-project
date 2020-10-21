@@ -102,7 +102,7 @@ void Z80InstrInfo::copyPhysReg(MachineBasicBlock &MBB,
     }
   } else*/ {
     if (Z80::GPR8RegClass.contains(DestReg, SrcReg)) {
-      Opc = Z80::LDRdRr;
+      Opc = Z80::LDRdRr8;
     } /*else if (SrcReg == Z80::SP && Z80::DREGSRegClass.contains(DestReg)) {
       Opc = Z80::SPREAD;
     } else if (DestReg == Z80::SP && Z80::DREGSRegClass.contains(SrcReg)) {

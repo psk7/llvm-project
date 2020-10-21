@@ -51,9 +51,6 @@ bool Z80FrameLowering::hasReservedCallFrame(const MachineFunction &MF) const {
 
 void Z80FrameLowering::emitPrologue(MachineFunction &MF,
                                     MachineBasicBlock &MBB) const {
-
-  llvm_unreachable("Z80FrameLowering::emitPrologue");
-
   MachineBasicBlock::iterator MBBI = MBB.begin();
   DebugLoc DL = (MBBI != MBB.end()) ? MBBI->getDebugLoc() : DebugLoc();
   const Z80Subtarget &STI = MF.getSubtarget<Z80Subtarget>();
@@ -97,48 +94,61 @@ void Z80FrameLowering::emitPrologue(MachineFunction &MF,
   unsigned FrameSize = MFI.getStackSize() - AFI->getCalleeSavedFrameSize();
 
   // Skip the callee-saved push instructions.
-/*  while (
+  while (
       (MBBI != MBB.end()) && MBBI->getFlag(MachineInstr::FrameSetup) &&
-      (MBBI->getOpcode() == Z80::PUSHRr || MBBI->getOpcode() == Z80::PUSHWRr)) {
+      (MBBI->getOpcode() == Z80::PUSHRr)) {
     ++MBBI;
-  }*/
+  }
 
-  // Update Y with the new base value.
-/*  BuildMI(MBB, MBBI, DL, TII.get(Z80::SPREAD), Z80::R29R28)
+  /*// Update Y with the new base value.
+  BuildMI(MBB, MBBI, DL, TII.get(Z80::SPREAD), Z80::R29R28)
       .addReg(Z80::SP)
       .setMIFlag(MachineInstr::FrameSetup);*/
 
   // Mark the FramePtr as live-in in every block except the entry.
-/*  for (MachineFunction::iterator I = std::next(MF.begin()), E = MF.end();
+  for (MachineFunction::iterator I = std::next(MF.begin()), E = MF.end();
        I != E; ++I) {
-    I->addLiveIn(Z80::R29R28);
-  }*/
+    I->addLiveIn(Z80::IY);
+  }
 
   if (!FrameSize) {
     return;
   }
 
   // Reserve the necessary frame memory by doing FP -= <size>.
-/*  unsigned Opcode = (isUInt<6>(FrameSize)) ? Z80::SBIWRdK : Z80::SUBIWRdK;
+  /*unsigned Opcode = (isUInt<6>(FrameSize)) ? Z80::SBIWRdK : Z80::SUBIWRdK;*/
 
-  MachineInstr *MI = BuildMI(MBB, MBBI, DL, TII.get(Opcode), Z80::R29R28)
-                         .addReg(Z80::R29R28, RegState::Kill)
-                         .addImm(FrameSize)
-                         .setMIFlag(MachineInstr::FrameSetup);
+  BuildMI(MBB, MBBI, DL, TII.get(Z80::LDI16IY), Z80::IY)
+      //.addReg(Z80::R29R28, RegState::Kill)
+      .addImm((-FrameSize) & 0xffff)
+      .setMIFlag(MachineInstr::FrameSetup);
+
+  BuildMI(MBB, MBBI, DL, TII.get(Z80::ADDRdRr16IY), Z80::IY)
+      .addReg(Z80::IY)
+      .addReg(Z80::SP)
+      .setMIFlag(MachineInstr::FrameSetup);
+
+  BuildMI(MBB, MBBI, DL, TII.get(Z80::LDSPIY), Z80::SP)
+      .addReg(Z80::IY)
+      .setMIFlag(MachineInstr::FrameSetup);
+
+  /*MachineInstr *MI = BuildMI(MBB, MBBI, DL, TII.get(Z80::LDI16), Z80::HL)
+      //.addReg(Z80::R29R28, RegState::Kill)
+      .addImm(-FrameSize)
+      .setMIFlag(MachineInstr::FrameSetup);*/
+
+
   // The SREG implicit def is dead.
-  MI->getOperand(3).setIsDead();
+  //MI->getOperand(3).setIsDead();
 
   // Write back R29R28 to SP and temporarily disable interrupts.
-  BuildMI(MBB, MBBI, DL, TII.get(Z80::SPWRITE), Z80::SP)
-      .addReg(Z80::R29R28)
-      .setMIFlag(MachineInstr::FrameSetup);*/
+  //BuildMI(MBB, MBBI, DL, TII.get(Z80::SPWRITE), Z80::SP)
+  //    .addReg(Z80::R29R28)
+  //    .setMIFlag(MachineInstr::FrameSetup);
 }
 
 void Z80FrameLowering::emitEpilogue(MachineFunction &MF,
                                     MachineBasicBlock &MBB) const {
-
-  llvm_unreachable("Z80FrameLowering::emitEpilogue");
-
   const Z80MachineFunctionInfo *AFI = MF.getInfo<Z80MachineFunctionInfo>();
 
   // Early exit if the frame pointer is not needed in this function except for
@@ -171,6 +181,20 @@ void Z80FrameLowering::emitEpilogue(MachineFunction &MF,
   if (!FrameSize) {
     return;
   }
+
+  BuildMI(MBB, MBBI, DL, TII.get(Z80::LDI16IY), Z80::IY)
+      //.addReg(Z80::R29R28, RegState::Kill)
+      .addImm(FrameSize)
+      .setMIFlag(MachineInstr::FrameDestroy);
+
+  BuildMI(MBB, MBBI, DL, TII.get(Z80::ADDRdRr16IY), Z80::IY)
+      .addReg(Z80::IY)
+      .addReg(Z80::SP)
+      .setMIFlag(MachineInstr::FrameDestroy);
+
+  BuildMI(MBB, MBBI, DL, TII.get(Z80::LDSPIY), Z80::SP)
+      .addReg(Z80::IY)
+      .setMIFlag(MachineInstr::FrameDestroy);
 
   // Skip the callee-saved pop instructions.
 /*  while (MBBI != MBB.begin()) {
@@ -407,16 +431,12 @@ MachineBasicBlock::iterator Z80FrameLowering::eliminateCallFramePseudoInstr(
 void Z80FrameLowering::determineCalleeSaves(MachineFunction &MF,
                                             BitVector &SavedRegs,
                                             RegScavenger *RS) const {
-
-  llvm_unreachable("Z80FrameLowering::determineCalleeSaves");
-
   TargetFrameLowering::determineCalleeSaves(MF, SavedRegs, RS);
 
-  // If we have a frame pointer, the Y register needs to be saved as well.
-/*  if (hasFP(MF)) {
-    SavedRegs.set(Z80::R29);
-    SavedRegs.set(Z80::R28);
-  }*/
+  // If we have a frame pointer, the IY register needs to be saved as well.
+  if (hasFP(MF)) {
+    SavedRegs.set(Z80::IY);
+  }
 }
 /// The frame analyzer pass.
 ///
@@ -427,9 +447,6 @@ struct Z80FrameAnalyzer : public MachineFunctionPass {
   Z80FrameAnalyzer() : MachineFunctionPass(ID) {}
 
   bool runOnMachineFunction(MachineFunction &MF) override {
-
-    llvm_unreachable("Z80FrameAnalyzer::runOnMachineFunction");
-
     const MachineFrameInfo &MFI = MF.getFrameInfo();
     Z80MachineFunctionInfo *FuncInfo = MF.getInfo<Z80MachineFunctionInfo>();
 
@@ -498,9 +515,6 @@ struct Z80DynAllocaSR : public MachineFunctionPass {
   Z80DynAllocaSR() : MachineFunctionPass(ID) {}
 
   bool runOnMachineFunction(MachineFunction &MF) override {
-
-    llvm_unreachable("Z80DynAllocaSR::runOnMachineFunction");
-
     // Early exit when there are no variable sized objects in the function.
     if (!MF.getFrameInfo().hasVarSizedObjects()) {
       return false;

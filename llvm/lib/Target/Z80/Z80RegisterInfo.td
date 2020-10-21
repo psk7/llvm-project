@@ -128,6 +128,8 @@ def DREGS : RegisterClass<"Z80", [i16], 8,
     //R14R13, R12R11, R10R9
   )>;
 
+def REGS16 : RegisterClass<"Z80", [i16], 8, (add BC, DE, HL, SP)>;
+
 def XDREGS : RegisterClass<"Z80", [i16], 8,
   (
     add IX, IY
@@ -209,6 +211,7 @@ def XDREGS : RegisterClass<"Z80", [i16], 8,
 def HLREG : RegisterClass<"Z80", [i16], 8, (add HL)>;
 def IXREG : RegisterClass<"Z80", [i16], 8, (add IX)>;
 def IYREG : RegisterClass<"Z80", [i16], 8, (add IY)>;
+def SPREG : RegisterClass<"Z80", [i16], 8, (add SP)>;
 
 // Register class used for the stack read pseudo instruction.
 def GPRSP: RegisterClass<"Z80", [i16], 8, (add SP)>;
