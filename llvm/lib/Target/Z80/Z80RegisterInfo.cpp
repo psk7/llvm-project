@@ -59,29 +59,15 @@ Z80RegisterInfo::getCallPreservedMask(const MachineFunction &MF,
 BitVector Z80RegisterInfo::getReservedRegs(const MachineFunction &MF) const {
   BitVector Reserved(getNumRegs());
 
-  /*// Reserve the intermediate result registers r1 and r2
-  // The result of instructions like 'mul' is always stored here.
-  Reserved.set(Z80::R0);
-  Reserved.set(Z80::R1);
-  Reserved.set(Z80::R1R0);
+  Reserved.set(Z80::IX);
+  Reserved.set(Z80::IY);
 
-  //  Reserve the stack pointer.
-  Reserved.set(Z80::SPL);
-  Reserved.set(Z80::SPH);
-  Reserved.set(Z80::SP);*/
+  Reserved.set(Z80::XL);
+  Reserved.set(Z80::XH);
+  Reserved.set(Z80::YL);
+  Reserved.set(Z80::YH);
 
-  // We tenatively reserve the frame pointer register r29:r28 because the
-  // function may require one, but we cannot tell until register allocation
-  // is complete, which can be too late.
-  //
-  // Instead we just unconditionally reserve the Y register.
-  //
-  // TODO: Write a pass to enumerate functions which reserved the Y register
-  //       but didn't end up needing a frame pointer. In these, we can
-  //       convert one or two of the spills inside to use the Y register.
-  /*Reserved.set(Z80::R28);
-  Reserved.set(Z80::R29);
-  Reserved.set(Z80::R29R28);*/
+  Reserved.set(Z80::SP);
 
   return Reserved;
 }
@@ -269,16 +255,12 @@ Register Z80RegisterInfo::getFrameRegister(const MachineFunction &MF) const {
 const TargetRegisterClass *
 Z80RegisterInfo::getPointerRegClass(const MachineFunction &MF,
                                     unsigned Kind) const {
-/*  // FIXME: Currently we're using avr-gcc as reference, so we restrict
-  // ptrs to Y and Z regs. Though avr-gcc has buggy implementation
-  // of memory constraint, so we can fix it and bit avr-gcc here ;-)
-  return &Z80::PTRDISPREGSRegClass;*/
-  return &Z80::DREGSRegClass;
+  return &Z80::PTRDISPREGSRegClass;
 }
 
 void Z80RegisterInfo::splitReg(Register Reg, Register &LoReg,
                                Register &HiReg) const {
-  assert(Z80::REGS16RegClass.contains(Reg) && "can only split 16-bit registers");
+  assert(Z80::DREGSRegClass.contains(Reg) && "can only split 16-bit registers");
 
   LoReg = getSubReg(Reg, Z80::sub_lo);
   HiReg = getSubReg(Reg, Z80::sub_hi);

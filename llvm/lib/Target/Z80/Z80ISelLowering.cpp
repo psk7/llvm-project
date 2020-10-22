@@ -344,61 +344,6 @@ SDValue Z80TargetLowering::LowerShifts(SDValue Op, SelectionDAG &DAG) const {
   return Victim;*/
 }
 
-SDValue Z80TargetLowering::LowerDivRem(SDValue Op, SelectionDAG &DAG) const {
-  llvm_unreachable("Z80TargetLowering::LowerDivRem");
-
-  /*unsigned Opcode = Op->getOpcode();
-  assert((Opcode == ISD::SDIVREM || Opcode == ISD::UDIVREM) &&
-         "Invalid opcode for Div/Rem lowering");
-  bool IsSigned = (Opcode == ISD::SDIVREM);
-  EVT VT = Op->getValueType(0);
-  Type *Ty = VT.getTypeForEVT(*DAG.getContext());
-
-  RTLIB::Libcall LC;
-  switch (VT.getSimpleVT().SimpleTy) {
-  default:
-    llvm_unreachable("Unexpected request for libcall!");
-  case MVT::i8:
-    LC = IsSigned ? RTLIB::SDIVREM_I8 : RTLIB::UDIVREM_I8;
-    break;
-  case MVT::i16:
-    LC = IsSigned ? RTLIB::SDIVREM_I16 : RTLIB::UDIVREM_I16;
-    break;
-  case MVT::i32:
-    LC = IsSigned ? RTLIB::SDIVREM_I32 : RTLIB::UDIVREM_I32;
-    break;
-  }
-
-  SDValue InChain = DAG.getEntryNode();
-
-  TargetLowering::ArgListTy Args;
-  TargetLowering::ArgListEntry Entry;
-  for (SDValue const &Value : Op->op_values()) {
-    Entry.Node = Value;
-    Entry.Ty = Value.getValueType().getTypeForEVT(*DAG.getContext());
-    Entry.IsSExt = IsSigned;
-    Entry.IsZExt = !IsSigned;
-    Args.push_back(Entry);
-  }
-
-  SDValue Callee = DAG.getExternalSymbol(getLibcallName(LC),
-                                         getPointerTy(DAG.getDataLayout()));
-
-  Type *RetTy = (Type *)StructType::get(Ty, Ty);
-
-  SDLoc dl(Op);
-  TargetLowering::CallLoweringInfo CLI(DAG);
-  CLI.setDebugLoc(dl)
-      .setChain(InChain)
-      .setLibCallee(getLibcallCallingConv(LC), RetTy, Callee, std::move(Args))
-      .setInRegister()
-      .setSExtResult(IsSigned)
-      .setZExtResult(!IsSigned);
-
-  std::pair<SDValue, SDValue> CallInfo = LowerCallTo(CLI);
-  return CallInfo.first;*/
-}
-
 SDValue Z80TargetLowering::LowerGlobalAddress(SDValue Op,
                                               SelectionDAG &DAG) const {
   auto DL = DAG.getDataLayout();
@@ -717,9 +662,6 @@ SDValue Z80TargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const {
 //    return LowerSETCC(Op, DAG);
 //  case ISD::VASTART:
 //    return LowerVASTART(Op, DAG);
-//  case ISD::SDIVREM:
-//  case ISD::UDIVREM:
-//    return LowerDivRem(Op, DAG);
   }
 
   return SDValue();
@@ -1518,35 +1460,6 @@ MachineBasicBlock *Z80TargetLowering::insertShift(MachineInstr &MI,
   return RemBB;*/
 }
 
-static bool isCopyMulResult(MachineBasicBlock::iterator const &I) {
-  llvm_unreachable("isCopyMulResult");
-  /*if (I->getOpcode() == Z80::COPY) {
-    Register SrcReg = I->getOperand(1).getReg();
-    return (SrcReg == Z80::R0 || SrcReg == Z80::R1);
-  }
-
-  return false;*/
-}
-
-// The mul instructions wreak havock on our zero_reg R1. We need to clear it
-// after the result has been evacuated. This is probably not the best way to do
-// it, but it works for now.
-MachineBasicBlock *Z80TargetLowering::insertMul(MachineInstr &MI,
-                                                MachineBasicBlock *BB) const {
-  llvm_unreachable("Z80TargetLowering::insertMul");
-  /*const TargetInstrInfo &TII = *Subtarget.getInstrInfo();
-  MachineBasicBlock::iterator I(MI);
-  ++I; // in any case insert *after* the mul instruction
-  if (isCopyMulResult(I))
-    ++I;
-  if (isCopyMulResult(I))
-    ++I;
-  BuildMI(*BB, I, MI.getDebugLoc(), TII.get(Z80::EORRdRr), Z80::R1)
-      .addReg(Z80::R1)
-      .addReg(Z80::R1);
-  return BB;*/
-}
-
 MachineBasicBlock *
 Z80TargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
                                                MachineBasicBlock *MBB) const {
@@ -1567,9 +1480,6 @@ Z80TargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
   case Z80::Asr8:
   case Z80::Asr16:
     return insertShift(MI, MBB);
-  case Z80::MULRdRr:
-  case Z80::MULSRdRr:
-    return insertMul(MI, MBB);
   }
 
   assert((Opc == Z80::Select16 || Opc == Z80::Select8) &&
@@ -1829,7 +1739,7 @@ Z80TargetLowering::getRegForInlineAsmConstraint(const TargetRegisterInfo *TRI,
     case 'e': // Pointer register pairs: x, y, z.
       return std::make_pair(0U, &Z80::PTRREGSRegClass);
     case 'q': // Stack pointer register: SPH:SPL.
-      return std::make_pair(0U, &Z80::GPRSPRegClass);
+      return std::make_pair(0U, &Z80::SPREGRegClass);
     case 'r': // Any register: r0..r31.
       if (VT == MVT::i8)
         return std::make_pair(0U, &Z80::GPR8RegClass);

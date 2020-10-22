@@ -112,28 +112,9 @@ def ACC : RegisterClass<"Z80", [i8], 8, (add A)>;
 //  )>;
 
 // Main 16-bit pair register class.
-def DREGS : RegisterClass<"Z80", [i16], 8,
-  (
-    add BC, DE, HL
-    // Return value and arguments.
-    //add R25R24, R19R18, R21R20, R23R22,
-    // Scratch registers.
-    //R31R30, R27R26,
-    // Callee saved registers.
-    //R29R28, R17R16, R15R14, R13R12, R11R10,
-    //R9R8, R7R6, R5R4, R3R2, R1R0,
-    // Pseudo regs for unaligned 16-bits
-    //R26R25, R24R23, R22R21,
-    //R20R19, R18R17, R16R15,
-    //R14R13, R12R11, R10R9
-  )>;
+def DREGS : RegisterClass<"Z80", [i16], 8, ( add BC, DE, HL, SP, IX, IY )>;
 
-def REGS16 : RegisterClass<"Z80", [i16], 8, (add BC, DE, HL, SP, IX, IY)>;
-
-def XDREGS : RegisterClass<"Z80", [i16], 8,
-  (
-    add IX, IY
-  )>;
+def XDREGS : RegisterClass<"Z80", [i16], 8, ( add IX, IY )>;
 
 // 16-bit pair register class for movw
 //def DREGSMOVW : RegisterClass<"Z80", [i16], 8,
@@ -200,23 +181,12 @@ def XDREGS : RegisterClass<"Z80", [i16], 8,
 
 // 16-bit register class for the ldd and std instructions.
 // AKA Y and Z.
-def PTRDISPREGS : RegisterClass<"Z80", [i16], 8,
-  (
-    add IX, IY
-  ), ptr>;
+def PTRDISPREGS : RegisterClass<"Z80", [i16], 8, ( add HL, IX, IY ), ptr>;
 
-// We have a bunch of instructions with an explicit Z register argument. We
-// model this using a register class containing only the Z register.
-//def ZREG : RegisterClass<"Z80", [i16], 8, (add R31R30)>;
 def HLREG : RegisterClass<"Z80", [i16], 8, (add HL)>;
-def IXREG : RegisterClass<"Z80", [i16], 8, (add IX)>;
-def IYREG : RegisterClass<"Z80", [i16], 8, (add IY)>;
 def SPREG : RegisterClass<"Z80", [i16], 8, (add SP)>;
 
 def HLIXIYREGS : RegisterClass<"Z80", [i16], 8, (add HL, IX, IY)>;
-
-// Register class used for the stack read pseudo instruction.
-def GPRSP: RegisterClass<"Z80", [i16], 8, (add SP)>;
 
 // Status register.
 def SREG : Z80Reg<14, "FLAGS">, DwarfRegNum<[88]>;

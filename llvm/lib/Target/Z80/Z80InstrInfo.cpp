@@ -83,8 +83,7 @@ void Z80InstrInfo::copyPhysReg(MachineBasicBlock &MBB,
   const Z80RegisterInfo &TRI = *STI.getRegisterInfo();
   unsigned Opc;
 
-  // Not all Z80 devices support the 16-bit `MOVW` instruction.
-  if (Z80::REGS16RegClass.contains(DestReg, SrcReg)) {
+  if (Z80::DREGSRegClass.contains(DestReg, SrcReg)) {
     Register DestLo, DestHi, SrcLo, SrcHi;
 
     TRI.splitReg(DestReg, DestLo, DestHi);

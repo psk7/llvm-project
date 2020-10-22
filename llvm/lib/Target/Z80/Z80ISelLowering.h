@@ -140,7 +140,6 @@ private:
   SDValue getZ80Cmp(SDValue LHS, SDValue RHS, ISD::CondCode CC, SDValue &Z80cc,
                     SelectionDAG &DAG, SDLoc dl) const;
   SDValue LowerShifts(SDValue Op, SelectionDAG &DAG) const;
-  SDValue LowerDivRem(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerGlobalAddress(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerBlockAddress(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerBR_CC(SDValue Op, SelectionDAG &DAG) const;
@@ -179,7 +178,6 @@ protected:
 
 private:
   MachineBasicBlock *insertShift(MachineInstr &MI, MachineBasicBlock *BB) const;
-  MachineBasicBlock *insertMul(MachineInstr &MI, MachineBasicBlock *BB) const;
 };
 
 } // end namespace llvm

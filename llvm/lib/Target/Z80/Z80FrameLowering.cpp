@@ -111,10 +111,6 @@ void Z80FrameLowering::emitPrologue(MachineFunction &MF,
     I->addLiveIn(Z80::IY);
   }
 
-  if (!FrameSize) {
-    return;
-  }
-
   // Reserve the necessary frame memory by doing FP -= <size>.
   /*unsigned Opcode = (isUInt<6>(FrameSize)) ? Z80::SBIWRdK : Z80::SUBIWRdK;*/
 
@@ -127,6 +123,10 @@ void Z80FrameLowering::emitPrologue(MachineFunction &MF,
       .addReg(Z80::IY)
       .addReg(Z80::SP)
       .setMIFlag(MachineInstr::FrameSetup);
+
+  if (!FrameSize) {
+    return;
+  }
 
   BuildMI(MBB, MBBI, DL, TII.get(Z80::LDSP), Z80::SP)
       .addReg(Z80::IY)

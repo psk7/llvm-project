@@ -174,7 +174,7 @@ def memri : Operand<iPTR>
 //// Address operand for `SP+imm` used by STD{W}SPQRr
 //def memspi : Operand<iPTR>
 //{
-//  let MIOperandInfo = (ops GPRSP, i16imm);
+//  let MIOperandInfo = (ops SPREG, i16imm);
 //}
 //
 //def relbrtarget_7 : Operand<OtherVT>
@@ -310,9 +310,6 @@ def addr : ComplexPattern<iPTR, 2, "SelectAddr", [], [SDNPWantRoot]>;
 //def SupportsRMW   :    Predicate<"Subtarget->supportsRMW()">,
 //                         AssemblerPredicate<(all_of FeatureRMW)>;
 //
-//def SupportsMultiplication : Predicate<"Subtarget->supportsMultiplication()">,
-//                               AssemblerPredicate<(all_of FeatureMultiplication)>;
-//
 //def HasBREAK      :    Predicate<"Subtarget->hasBREAK()">,
 //                         AssemblerPredicate<(all_of FeatureBREAK)>;
 //
@@ -370,11 +367,11 @@ Constraints = "$src = $rd",
 Defs = [SREG] in
 {
     def ADDRdRr8 : FormB<0b10000000,
-                         (outs ACC:$rd), (ins GPR8:$src, GPR8:$rr), "add\t$rd, $rr",
+                         (outs ACC:$rd), (ins GPR8:$src, GPR8:$rr), "add  $rd, $rr",
                          [(set i8:$rd, (add i8:$src, i8:$rr)), (implicit SREG)]>;
 
     def ADDRdRr16 : FormC<0b00001001,
-                         (outs HLREG:$rd), (ins HLREG:$src, REGS16:$rr), "add\t$rd, $rr",
+                         (outs HLREG:$rd), (ins HLREG:$src, DREGS:$rr), "add  $rd, $rr",
                          [(set i16:$rd, (add i16:$src, i16:$rr)), (implicit SREG)]>;
 
 //  // ADD Rd, Rr
@@ -402,12 +399,12 @@ Defs = [SREG] in
 
     let Uses = [SREG] in
     def ADCRdRr8 : FormB<0xc6,
-                         (outs ACC:$rd), (ins GPR8:$src, GPR8:$rr), "adc\t$rr",
+                         (outs ACC:$rd), (ins GPR8:$src, GPR8:$rr), "adc  $rr",
                          [(set i8:$rd, (adde i8:$src, i8:$rr)), (implicit SREG)]>;
 
     let Uses = [SREG] in
     def ADCRdRr16 : FormC<0b01001010,
-                          (outs HLREG:$rd), (ins DREGS:$src, DREGS:$rr), "adc\t$rd, $rr",
+                          (outs HLREG:$rd), (ins DREGS:$src, DREGS:$rr), "adc  $rd, $rr",
                           [(set i16:$rd, (adde i16:$src, i16:$rr)), (implicit SREG)]>, ED;
 
 //  // ADC Rd, Rr
@@ -453,7 +450,7 @@ let Constraints = "$src = $rd",
 Defs = [SREG] in
 {
    def SUBRdRr8 : FormB<0xd6,
-                         (outs ACC:$rd), (ins GPR8:$src, GPR8:$rr), "sub\t$rd, $rr",
+                         (outs ACC:$rd), (ins GPR8:$src, GPR8:$rr), "sub  $rd, $rr",
                          [(set i8:$rd, (sub i8:$src, i8:$rr)), (implicit SREG)]>;
 
 //  // SUB Rd, Rr
@@ -508,7 +505,7 @@ Defs = [SREG] in
   let Uses = [SREG] in
   {
       def SBCRdRr8 : FormB<0x98,
-                           (outs ACC:$rd), (ins GPR8:$src, GPR8:$rr), "sbc\t$rd, $rr",
+                           (outs ACC:$rd), (ins GPR8:$src, GPR8:$rr), "sbc  $rd, $rr",
                            [(set i8:$rd, (sube i8:$src, i8:$rr)), (implicit SREG)]>;
 
 //    def SBCRdRr : FRdRr<0b0000,
@@ -568,69 +565,7 @@ Defs = [SREG] in
 //                  "dec\t$rd",
 //                  [(set i8:$rd, (add i8:$src, -1)), (implicit SREG)]>;
 //}
-//
-////===----------------------------------------------------------------------===//
-//// Multiplication
-////===----------------------------------------------------------------------===//
-//
-//let isCommutable = 1,
-//Defs = [R1, R0, SREG] in
-//{
-//  // MUL Rd, Rr
-//  // Multiplies Rd by Rr and places the result into R1:R0.
-//  let usesCustomInserter = 1 in {
-//    def MULRdRr : FRdRr<0b1001, 0b11,
-//                        (outs),
-//                        (ins GPR8:$lhs, GPR8:$rhs),
-//                        "mul\t$lhs, $rhs",
-//                        [/*(set R1, R0, (smullohi i8:$lhs, i8:$rhs))*/]>,
-//                    Requires<[SupportsMultiplication]>;
-//
-//    def MULSRdRr : FMUL2RdRr<0,
-//                             (outs),
-//                             (ins LD8:$lhs, LD8:$rhs),
-//                             "muls\t$lhs, $rhs",
-//                             []>,
-//                   Requires<[SupportsMultiplication]>;
-//  }
-//
-//  def MULSURdRr : FMUL2RdRr<1,
-//                            (outs),
-//                            (ins LD8lo:$lhs, LD8lo:$rhs),
-//                            "mulsu\t$lhs, $rhs",
-//                            []>,
-//                  Requires<[SupportsMultiplication]>;
-//
-//  def FMUL : FFMULRdRr<0b01,
-//                       (outs),
-//                       (ins LD8lo:$lhs, LD8lo:$rhs),
-//                       "fmul\t$lhs, $rhs",
-//                       []>,
-//             Requires<[SupportsMultiplication]>;
-//
-//  def FMULS : FFMULRdRr<0b10,
-//                        (outs),
-//                        (ins LD8lo:$lhs, LD8lo:$rhs),
-//                        "fmuls\t$lhs, $rhs",
-//                        []>,
-//              Requires<[SupportsMultiplication]>;
-//
-//  def FMULSU : FFMULRdRr<0b11,
-//                         (outs),
-//                         (ins LD8lo:$lhs, LD8lo:$rhs),
-//                         "fmulsu\t$lhs, $rhs",
-//                         []>,
-//               Requires<[SupportsMultiplication]>;
-//}
-//
-//let Defs = [R15, R14, R13, R12, R11, R10, R9,
-//            R8, R7, R6, R5, R4, R3, R2, R1, R0] in
-//def DESK : FDES<(outs),
-//                (ins i8imm:$k),
-//                "des\t$k",
-//                []>,
-//           Requires<[HasDES]>;
-//
+
 ////===----------------------------------------------------------------------===//
 //// Logic
 ////===----------------------------------------------------------------------===//
@@ -1122,9 +1057,9 @@ isBarrier = 1 in
 // 8 and 16-bit register move instructions.
 let hasSideEffects = 0 in
 {
-    def LDRdRr8 : FormG<0x40, (outs GPR8:$rd), (ins GPR8:$rr), "ld\t$rd, $rr", []>;
+    def LDRdRr8 : FormG<0x40, (outs GPR8:$rd), (ins GPR8:$rr), "ld   $rd, $rr", []>;
 
-    def LDSP : FormA<0xf9, (outs SPREG:$rd), (ins HLIXIYREGS:$rr), "ld\tsp, $rr", []>;
+    def LDSP : FormA<0xf9, (outs SPREG:$rd), (ins HLIXIYREGS:$rr), "ld   sp, $rr", []>;
 
 //  def MOVRdRr : FRdRr<0b0010,
 //                      0b11,
@@ -1143,10 +1078,10 @@ let hasSideEffects = 0 in
 // Load immediate values into registers.
 let isReMaterializable = 1 in
 {
-    def LDI8 : FormD<0b00000110, (outs GPR8:$rd), (ins imm_ldi8:$d8), "ld\t$rd, $d8", [(set i8:$rd, imm:$d8)]>;
-    def LDI16: FormE<0b00000001, (outs DREGS:$rd), (ins i16imm:$d16), "ld\t$rd, $d16", [(set i16:$rd, imm:$d16)]>;
+    def LDI8 : FormD<0b00000110, (outs GPR8:$rd), (ins imm_ldi8:$d8), "ld   $rd, $d8", [(set i8:$rd, imm:$d8)]>;
+    def LDI16: FormE<0b00000001, (outs DREGS:$rd), (ins i16imm:$d16), "ld   $rd, $d16", [(set i16:$rd, imm:$d16)]>;
 
-    def LDI16IXY: FormE<0b00000001, (outs XDREGS:$rd), (ins i16imm:$d16), "ld\t$rd, $d16", []>;
+    def LDI16IXY: FormE<0b00000001, (outs XDREGS:$rd), (ins i16imm:$d16), "ld   $rd, $d16", []>;
 
 //  def LDIRdK : FRdK<0b1110,
 //                    (outs LD8:$rd),
@@ -1170,8 +1105,8 @@ let canFoldAsLoad = 1,
 mayLoad = 1,
 isReMaterializable = 1 in
 {
-    def LD8MEMPTR : FormF<0x3a, (outs ACC:$rd), (ins imm16:$ptr), "ld\t$rd, ($ptr)", []>;
-    def LD16MEMPTR : FormE<0b01001011, (outs DREGS:$rd), (ins imm16:$ptr), "ld\t$rd, ($ptr)", []>, ED;
+    def LD8MEMPTR : FormF<0x3a, (outs ACC:$rd), (ins imm16:$ptr), "ld   $rd, ($ptr)", []>;
+    def LD16MEMPTR : FormE<0b01001011, (outs DREGS:$rd), (ins imm16:$ptr), "ld   $rd, ($ptr)", []>, ED;
 
 //  def LDSRdK : F32DM<0b0,
 //                     (outs GPR8:$rd),
@@ -1266,7 +1201,7 @@ isReMaterializable = 1 in
 {
 
   let Constraints = "@earlyclobber $rd" in
-  def LDRdIXoffs : FormD<0x46, (outs GPR8:$rd), (ins memri:$d8), "ld\t$rd, ($d8)",
+  def LDRdIXoffs : FormD<0x46, (outs GPR8:$rd), (ins memri:$d8), "ld   $rd, ($d8)",
                          [(set i8:$rd, (load addr:$d8))]>;
 
 //  let Constraints = "@earlyclobber $reg" in
@@ -1489,130 +1424,6 @@ isReMaterializable = 1 in
 //                 Requires<[HasSRAM]>;
 //
 //
-//// Load program memory operations.
-//let canFoldAsLoad = 1,
-//isReMaterializable = 1,
-//mayLoad = 1,
-//hasSideEffects = 0 in
-//{
-//  let Defs = [R0],
-//      Uses = [R31R30] in
-//  def LPM : F16<0b1001010111001000,
-//                (outs),
-//                (ins),
-//                "lpm",
-//                []>,
-//            Requires<[HasLPM]>;
-//
-//  def LPMRdZ : FLPMX<0,
-//                     0,
-//                     (outs GPR8:$dst),
-//                     (ins ZREG:$z),
-//                     "lpm\t$dst, $z",
-//                     []>,
-//               Requires<[HasLPMX]>;
-//
-//  // Load program memory, while postincrementing the Z register.
-//  let Defs = [R31R30] in
-//  {
-//    def LPMRdZPi : FLPMX<0,
-//                         1,
-//                         (outs GPR8:$dst),
-//                         (ins ZREG:$z),
-//                         "lpm\t$dst, $z+",
-//                         []>,
-//                   Requires<[HasLPMX]>;
-//
-//    def LPMWRdZ : Pseudo<(outs DREGS:$dst),
-//                         (ins ZREG:$z),
-//                         "lpmw\t$dst, $z",
-//                         []>,
-//                  Requires<[HasLPMX]>;
-//
-//    def LPMWRdZPi : Pseudo<(outs DREGS:$dst),
-//                           (ins ZREG:$z),
-//                           "lpmw\t$dst, $z+",
-//                           []>,
-//                    Requires<[HasLPMX]>;
-//  }
-//}
-//
-//// Extended load program memory operations.
-//let mayLoad = 1,
-//hasSideEffects = 0 in
-//{
-//  let Defs = [R0],
-//      Uses = [R31R30] in
-//  def ELPM : F16<0b1001010111011000,
-//                 (outs),
-//                 (ins),
-//                 "elpm",
-//                 []>,
-//             Requires<[HasELPM]>;
-//
-//  def ELPMRdZ : FLPMX<1,
-//                      0,
-//                      (outs GPR8:$dst),
-//                      (ins ZREG:$z),
-//                      "elpm\t$dst, $z",
-//                      []>,
-//                Requires<[HasELPMX]>;
-//
-//  let Defs = [R31R30] in
-//  def ELPMRdZPi : FLPMX<1,
-//                        1,
-//                        (outs GPR8:$dst),
-//                        (ins ZREG: $z),
-//                        "elpm\t$dst, $z+",
-//                        []>,
-//                  Requires<[HasELPMX]>;
-//}
-//
-//// Store program memory operations.
-//let Uses = [R1, R0] in
-//{
-//  let Uses = [R31R30, R1, R0] in
-//  def SPM : F16<0b1001010111101000,
-//                (outs),
-//                (ins),
-//                "spm",
-//                []>,
-//            Requires<[HasSPM]>;
-//
-//  let Defs = [R31R30] in
-//  def SPMZPi : F16<0b1001010111111000,
-//                   (outs),
-//                   (ins ZREG:$z),
-//                   "spm $z+",
-//                   []>,
-//               Requires<[HasSPMX]>;
-//}
-//
-//// Read data from IO location operations.
-//let canFoldAsLoad = 1,
-//isReMaterializable = 1 in
-//{
-//  def INRdA : FIORdA<(outs GPR8:$dst),
-//                     (ins imm_port6:$src),
-//                     "in\t$dst, $src",
-//                     [(set i8:$dst, (load ioaddr8:$src))]>;
-//
-//  def INWRdA : Pseudo<(outs DREGS:$dst),
-//                      (ins imm_port6:$src),
-//                      "inw\t$dst, $src",
-//                      [(set i16:$dst, (load ioaddr16:$src))]>;
-//}
-//
-//// Write data to IO location operations.
-//def OUTARr : FIOARr<(outs),
-//                    (ins imm_port6:$dst, GPR8:$src),
-//                    "out\t$dst, $src",
-//                    [(store i8:$src, ioaddr8:$dst)]>;
-//
-//def OUTWARr : Pseudo<(outs),
-//                     (ins imm_port6:$dst, DREGS:$src),
-//                     "outw\t$dst, $src",
-//                     [(store i16:$src, ioaddr16:$dst)]>;
 
 // Stack push/pop operations.
 let Defs = [SP],
@@ -1622,13 +1433,13 @@ hasSideEffects = 0 in
   // Stack push operations.
   let mayStore = 1 in
   {
-    def PUSHRr : FormC<0b11000101, (outs), (ins REGS16:$rr), "push\t$rr", []>;
+    def PUSHRr : FormC<0b11000101, (outs), (ins DREGS:$rr), "push $rr", []>;
   }
 
   // Stack pop operations.
   let mayLoad = 1 in
   {
-    def POPRd : FormC<0b11000001, (outs REGS16:$rr), (ins), "pop\t$rr", []>;
+    def POPRd : FormC<0b11000001, (outs DREGS:$rr), (ins), "pop  $rr", []>;
   }
 }
 
@@ -1946,14 +1757,14 @@ def ZEXT : ExtensionPseudo<
 //  let Uses = [SP] in
 //  def SPREAD : Pseudo<
 //    (outs DREGS:$dst),
-//    (ins GPRSP:$src),
+//    (ins SPREG:$src),
 //    "spread\t$dst, $src",
 //    []
 //  >;
 //
 //  let Defs = [SP] in
 //  def SPWRITE : Pseudo<
-//    (outs GPRSP:$dst),
+//    (outs SPREG:$dst),
 //    (ins DREGS:$src),
 //    "spwrite\t$dst, $src",
 //    []>;

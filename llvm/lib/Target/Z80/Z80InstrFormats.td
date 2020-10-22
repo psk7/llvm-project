@@ -375,52 +375,6 @@ class FMOVWRdRr<dag outs, dag ins, string asmstr, list<dag> pattern>
 }
 
 //===----------------------------------------------------------------------===//
-// MULSrr special encoding: <|0000|0010|dddd|rrrr|>
-// d = multiplicand = 4 bits
-// r = multiplier = 4 bits
-// (Only accepts r16-r31)
-//===----------------------------------------------------------------------===//
-class FMUL2RdRr<bit f, dag outs, dag ins, string asmstr, list<dag> pattern>
-  : Z80Inst16<outs, ins, asmstr, pattern>
-{
-  bits<5> rd;              // accept 5 bits but only encode the lower 4
-  bits<5> rr;              // accept 5 bits but only encode the lower 4
-
-  let Inst{15-9} = 0b0000001;
-  let Inst{8} = f;
-  let Inst{7-4} = rd{3-0};
-  let Inst{3-0} = rr{3-0};
-
-  let DecoderMethod = "decodeFMUL2RdRr";
-}
-
-// Special encoding for the FMUL family of instructions.
-//
-// <0000|0011|fddd|frrr|>
-//
-// ff = 0b01 for FMUL
-//      0b10 for FMULS
-//      0b11 for FMULSU
-//
-// ddd = destination register
-// rrr = source register
-class FFMULRdRr<bits<2> f, dag outs, dag ins, string asmstr, list<dag> pattern>
-  : Z80Inst16<outs, ins, asmstr, pattern>
-{
-  bits<3> rd;
-  bits<3> rr;
-
-  let Inst{15-8} = 0b00000011;
-  let Inst{7} = f{1};
-  let Inst{6-4} = rd;
-  let Inst{3} = f{0};
-  let Inst{2-0} = rr;
-
-  let DecoderMethod = "decodeFFMULRdRr";
-}
-
-
-//===----------------------------------------------------------------------===//
 // Arithmetic word instructions (ADIW / SBIW): <|1001|011f|kkdd|kkkk|>
 // f = secondary opcode = 1 bit
 // k = constant data = 6 bits
