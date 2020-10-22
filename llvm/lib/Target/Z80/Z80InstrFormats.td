@@ -138,6 +138,16 @@ class FormG<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
   let Size = 1;
 }
 
+class FormH<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
+  : FormA<opcode, outs, ins, asmstr, pattern>
+{
+  bits<3> rd;
+  bits<3> rr;
+
+  let Inst{5-3} = rd;
+  let Size = 1;
+}
+
 /// a 32-bit Z80 instruction.
 class Z80Inst32<dag outs, dag ins, string asmstr, list<dag> pattern>
   : Z80Inst<outs, ins, asmstr, pattern>
@@ -158,8 +168,8 @@ class Pseudo<dag outs, dag ins, string asmstr, list<dag> pattern>
 {
   let Pattern = pattern;
 
-  //let isPseudo = 1;
-  //let isCodeGenOnly = 1;
+  let isPseudo = 1;
+  let isCodeGenOnly = 1;
 }
 
 //===----------------------------------------------------------------------===//

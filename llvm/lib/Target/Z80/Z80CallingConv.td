@@ -37,5 +37,5 @@ def ArgCC_Z80_Vararg : CallingConv
 // Callee-saved register lists.
 //===----------------------------------------------------------------------===//
 
-def CSR_Normal : CalleeSavedRegs<(add BC, IX)>;
+def CSR_Normal : CalleeSavedRegs<(add BC, IX, IY)>;
 

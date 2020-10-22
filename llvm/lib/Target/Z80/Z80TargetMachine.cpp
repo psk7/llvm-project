@@ -83,7 +83,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeZ80Target() {
   RegisterTargetMachine<Z80TargetMachine> X(getTheZ80Target());
 
   auto &PR = *PassRegistry::getPassRegistry();
-  //initializeZ80ExpandPseudoPass(PR);
+  initializeZ80ExpandPseudoPass(PR);
   //initializeZ80RelaxMemPass(PR);
 }
 
@@ -115,7 +115,7 @@ void Z80PassConfig::addPreRegAlloc() {
 
 void Z80PassConfig::addPreSched2() {
   //addPass(createZ80RelaxMemPass());
-  //addPass(createZ80ExpandPseudoPass());
+  addPass(createZ80ExpandPseudoPass());
 }
 
 void Z80PassConfig::addPreEmitPass() {

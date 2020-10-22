@@ -154,23 +154,23 @@ def Z80Wrapper : SDNode<"Z80ISD::WRAPPER", SDT_Z80Wrapper>;
 //[{
 //  return isPowerOf2_32(uint8_t(~N->getZExtValue()));
 //}], iobitposn8_XFORM>;
-//
-//def MemriAsmOperand : AsmOperandClass {
-//  let Name = "Memri";
-//  let ParserMethod = "parseMemriOperand";
-//}
-//
-///// Address operand for `reg+imm` used by STD and LDD.
-//def memri : Operand<iPTR>
-//{
-//  let MIOperandInfo = (ops PTRDISPREGS, i16imm);
-//
-//  let PrintMethod = "printMemri";
-//  let EncoderMethod = "encodeMemri";
-//
-//  let ParserMatchClass = MemriAsmOperand;
-//}
-//
+
+def MemriAsmOperand : AsmOperandClass {
+  let Name = "Memri";
+  let ParserMethod = "parseMemriOperand";
+}
+
+/// Address operand for `reg+imm` used by STD and LDD.
+def memri : Operand<iPTR>
+{
+  let MIOperandInfo = (ops PTRDISPREGS, i16imm);
+
+  let PrintMethod = "printMemri";
+  let EncoderMethod = "encodeMemri";
+
+  let ParserMatchClass = MemriAsmOperand;
+}
+
 //// Address operand for `SP+imm` used by STD{W}SPQRr
 //def memspi : Operand<iPTR>
 //{
@@ -227,10 +227,10 @@ def imm_ldi8 : Operand<i8>
 //{
 //    let EncoderMethod = "encodeImm<Z80::fixup_port6, 0>";
 //}
-//
-//// Addressing mode pattern reg+imm6
-//def addr : ComplexPattern<iPTR, 2, "SelectAddr", [], [SDNPWantRoot]>;
-//
+
+// Addressing mode pattern reg+imm8
+def addr : ComplexPattern<iPTR, 2, "SelectAddr", [], [SDNPWantRoot]>;
+
 //// AsmOperand class for a pointer register.
 //// Used with the LD/ST family of instructions.
 //// See FSTLD in Z80InstrFormats.td
@@ -370,20 +370,12 @@ Constraints = "$src = $rd",
 Defs = [SREG] in
 {
     def ADDRdRr8 : FormB<0b10000000,
-                         (outs ACC:$rd), (ins GPR8:$src, GPR8:$rr), "add\t$rr",
+                         (outs ACC:$rd), (ins GPR8:$src, GPR8:$rr), "add\t$rd, $rr",
                          [(set i8:$rd, (add i8:$src, i8:$rr)), (implicit SREG)]>;
 
     def ADDRdRr16 : FormC<0b00001001,
-                         (outs HLREG:$rd), (ins REGS16:$src, DREGS:$rr), "add\t$rd, $rr",
+                         (outs HLREG:$rd), (ins HLREG:$src, REGS16:$rr), "add\t$rd, $rr",
                          [(set i16:$rd, (add i16:$src, i16:$rr)), (implicit SREG)]>;
-
-    def ADDRdRr16IX : FormC<0b00001001,
-                         (outs IXREG:$rd), (ins REGS16:$src, DREGS:$rr), "add\t$rd, $rr",
-                         [(set i16:$rd, (add i16:$src, i16:$rr)), (implicit SREG)]>, DD;
-
-    def ADDRdRr16IY : FormC<0b00001001,
-                         (outs IYREG:$rd), (ins REGS16:$src, DREGS:$rr), "add\t$rd, $rr",
-                         [(set i16:$rd, (add i16:$src, i16:$rr)), (implicit SREG)]>, FD;
 
 //  // ADD Rd, Rr
 //  // Adds two 8-bit registers.
@@ -408,6 +400,7 @@ Defs = [SREG] in
 //                         (implicit SREG)]>;
 
 
+    let Uses = [SREG] in
     def ADCRdRr8 : FormB<0xc6,
                          (outs ACC:$rd), (ins GPR8:$src, GPR8:$rr), "adc\t$rr",
                          [(set i8:$rd, (adde i8:$src, i8:$rr)), (implicit SREG)]>;
@@ -460,7 +453,7 @@ let Constraints = "$src = $rd",
 Defs = [SREG] in
 {
    def SUBRdRr8 : FormB<0xd6,
-                         (outs ACC:$rd), (ins GPR8:$src, GPR8:$rr), "sub\t$rr",
+                         (outs ACC:$rd), (ins GPR8:$src, GPR8:$rr), "sub\t$rd, $rr",
                          [(set i8:$rd, (sub i8:$src, i8:$rr)), (implicit SREG)]>;
 
 //  // SUB Rd, Rr
@@ -510,10 +503,14 @@ Defs = [SREG] in
 //                      [(set i16:$rd, (sub i16:$src, uimm6:$k)),
 //                       (implicit SREG)]>,
 //                Requires<[HasADDSUBIW]>;
-//
-//  // Subtract with carry operations which must read the carry flag in SREG.
-//  let Uses = [SREG] in
-//  {
+
+  // Subtract with carry operations which must read the carry flag in SREG.
+  let Uses = [SREG] in
+  {
+      def SBCRdRr8 : FormB<0x98,
+                           (outs ACC:$rd), (ins GPR8:$src, GPR8:$rr), "sbc\t$rd, $rr",
+                           [(set i8:$rd, (sube i8:$src, i8:$rr)), (implicit SREG)]>;
+
 //    def SBCRdRr : FRdRr<0b0000,
 //                        0b10,
 //                        (outs GPR8:$rd),
@@ -548,7 +545,7 @@ Defs = [SREG] in
 //                          "sbciw\t$rd, $rr",
 //                          [(set i16:$rd, (sube i16:$src, imm:$rr)),
 //                           (implicit SREG)]>;
-//  }
+  }
 }
 
 ////===----------------------------------------------------------------------===//
@@ -1127,9 +1124,7 @@ let hasSideEffects = 0 in
 {
     def LDRdRr8 : FormG<0x40, (outs GPR8:$rd), (ins GPR8:$rr), "ld\t$rd, $rr", []>;
 
-    def LDSPHL : FormA<0xf9, (outs SPREG:$rd), (ins HLREG:$rr), "ld\tsp, $rr", []>;
-    def LDSPIX : FormA<0xf9, (outs SPREG:$rd), (ins IXREG:$rr), "ld\tsp, $rr", []>, DD;
-    def LDSPIY : FormA<0xf9, (outs SPREG:$rd), (ins IYREG:$rr), "ld\tsp, $rr", []>, FD;
+    def LDSP : FormA<0xf9, (outs SPREG:$rd), (ins HLIXIYREGS:$rr), "ld\tsp, $rr", []>;
 
 //  def MOVRdRr : FRdRr<0b0010,
 //                      0b11,
@@ -1151,8 +1146,7 @@ let isReMaterializable = 1 in
     def LDI8 : FormD<0b00000110, (outs GPR8:$rd), (ins imm_ldi8:$d8), "ld\t$rd, $d8", [(set i8:$rd, imm:$d8)]>;
     def LDI16: FormE<0b00000001, (outs DREGS:$rd), (ins i16imm:$d16), "ld\t$rd, $d16", [(set i16:$rd, imm:$d16)]>;
 
-    def LDI16IX: FormE<0b00000001, (outs IXREG:$rd), (ins i16imm:$d16), "ld\t$rd, $d16", []>, DD;
-    def LDI16IY: FormE<0b00000001, (outs IXREG:$rd), (ins i16imm:$d16), "ld\t$rd, $d16", []>, FD;
+    def LDI16IXY: FormE<0b00000001, (outs XDREGS:$rd), (ins i16imm:$d16), "ld\t$rd, $d16", []>;
 
 //  def LDIRdK : FRdK<0b1110,
 //                    (outs LD8:$rd),
@@ -1199,9 +1193,9 @@ isReMaterializable = 1 in
 }
 
 // Indirect loads.
-//let canFoldAsLoad = 1,
-//isReMaterializable = 1 in
-//{
+let canFoldAsLoad = 1,
+isReMaterializable = 1 in
+{
 //  def LDRdPtr : FSTLD<0,
 //                      0b00,
 //                      (outs GPR8:$reg),
@@ -1264,12 +1258,17 @@ isReMaterializable = 1 in
 //                          "ldw\t$reg, -$ptrreg",
 //                          []>,
 //                   Requires<[HasSRAM]>;
-//}
-//
-//// Load indirect with displacement operations.
-//let canFoldAsLoad = 1,
-//isReMaterializable = 1 in
-//{
+}
+
+// Load indirect with displacement operations.
+let canFoldAsLoad = 1,
+isReMaterializable = 1 in
+{
+
+  let Constraints = "@earlyclobber $rd" in
+  def LDRdIXoffs : FormD<0x46, (outs GPR8:$rd), (ins memri:$d8), "ld\t$rd, ($d8)",
+                         [(set i8:$rd, (load addr:$d8))]>;
+
 //  let Constraints = "@earlyclobber $reg" in
 //  def LDDRdPtrQ : FSTDLDD<0,
 //                          (outs GPR8:$reg),
@@ -1312,8 +1311,8 @@ isReMaterializable = 1 in
 //                        "lddw\t$dst, $memri",
 //                        []>,
 //                 Requires<[HasSRAM]>;
-//}
-//
+}
+
 //class AtomicLoad<PatFrag Op, RegisterClass DRC,
 //                 RegisterClass PTRRC> :
 //  Pseudo<(outs DRC:$rd), (ins PTRRC:$rr), "atomic_op",
@@ -1623,17 +1622,13 @@ hasSideEffects = 0 in
   // Stack push operations.
   let mayStore = 1 in
   {
-    def PUSHRr : FormC<0b11000101, (outs), (ins DREGS:$rr), "push\t$rr", []>;
-    def PUSHIX : FormC<0b11000101, (outs), (ins IXREG:$rr), "push\t$rr", []>, DD;
-    def PUSHIY : FormC<0b11000101, (outs), (ins IYREG:$rr), "push\t$rr", []>, FD;
+    def PUSHRr : FormC<0b11000101, (outs), (ins REGS16:$rr), "push\t$rr", []>;
   }
 
   // Stack pop operations.
   let mayLoad = 1 in
   {
-    def POPRd : FormC<0b11000001, (outs DREGS:$rr), (ins), "pop\t$rr", []>;
-    def POPIX : FormC<0b11000001, (outs IXREG:$rr), (ins), "pop\t$rr", []>, DD;
-    def POPIY : FormC<0b11000001, (outs IYREG:$rr), (ins), "pop\t$rr", []>, FD;
+    def POPRd : FormC<0b11000001, (outs REGS16:$rr), (ins), "pop\t$rr", []>;
   }
 }
 

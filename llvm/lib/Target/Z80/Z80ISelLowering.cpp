@@ -38,7 +38,7 @@ Z80TargetLowering::Z80TargetLowering(const Z80TargetMachine &TM,
   // Set up the register classes.
   addRegisterClass(MVT::i8, &Z80::GPR8RegClass);
   addRegisterClass(MVT::i16, &Z80::DREGSRegClass);
-  addRegisterClass(MVT::i16, &Z80::XDREGSRegClass);
+  //addRegisterClass(MVT::i16, &Z80::XDREGSRegClass);
 
   // Compute derived properties from the register classes.
   computeRegisterProperties(Subtarget.getRegisterInfo());
@@ -287,7 +287,7 @@ SDValue Z80TargetLowering::LowerShifts(SDValue Op, SelectionDAG &DAG) const {
     default:
       llvm_unreachable("Invalid shift opcode!");
     case ISD::SHL:
-      return DAG.getNode(Z80ISD::LSLLOOP, dl, VT, N->getOperand(0),
+      return DAG.getNode(Z80ISD::L, dl, VT, N->getOperand(0),
                          N->getOperand(1));
     case ISD::SRL:
       return DAG.getNode(Z80ISD::LSRLOOP, dl, VT, N->getOperand(0),
@@ -1330,8 +1330,6 @@ Z80TargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
                                const SDLoc &dl, SelectionDAG &DAG) const {
   // CCValAssign - represent the assignment of the return value to locations.
   SmallVector<CCValAssign, 16> RVLocs;
-
-  Chain.dumpr(&DAG);
 
   // CCState - Info about the registers and stack slot.
   CCState CCInfo(CallConv, isVarArg, DAG.getMachineFunction(), RVLocs,

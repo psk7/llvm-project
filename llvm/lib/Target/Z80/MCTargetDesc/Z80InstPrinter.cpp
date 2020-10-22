@@ -173,8 +173,7 @@ void Z80InstPrinter::printPCRelImm(const MCInst *MI, unsigned OpNo,
 
 void Z80InstPrinter::printMemri(const MCInst *MI, unsigned OpNo,
                                 raw_ostream &O) {
-  llvm_unreachable("Z80InstPrinter::printMemri");
-  /*assert(MI->getOperand(OpNo).isReg() && "Expected a register for the first operand");
+  assert(MI->getOperand(OpNo).isReg() && "Expected a register for the first operand");
 
   const MCOperand &OffsetOp = MI->getOperand(OpNo + 1);
 
@@ -193,7 +192,7 @@ void Z80InstPrinter::printMemri(const MCInst *MI, unsigned OpNo,
     O << *OffsetOp.getExpr();
   } else {
     llvm_unreachable("unknown type for offset");
-  }*/
+  }
 }
 
 } // end of namespace llvm

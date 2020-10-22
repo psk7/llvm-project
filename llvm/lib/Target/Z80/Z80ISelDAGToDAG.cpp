@@ -63,10 +63,7 @@ bool Z80DAGToDAGISel::runOnMachineFunction(MachineFunction &MF) {
 
 bool Z80DAGToDAGISel::SelectAddr(SDNode *Op, SDValue N, SDValue &Base,
                                  SDValue &Disp) {
-
-  llvm_unreachable("Z80DAGToDAGISel::SelectAddr");
-
-  /*SDLoc dl(Op);
+  SDLoc dl(Op);
   auto DL = CurDAG->getDataLayout();
   MVT PtrVT = getTargetLowering()->getPointerTy(DL);
 
@@ -78,14 +75,14 @@ bool Z80DAGToDAGISel::SelectAddr(SDNode *Op, SDValue N, SDValue &Base,
     return true;
   }
 
-  // Match simple Reg + uimm6 operands.
+  // Match simple Reg + imm8 operands.
   if (N.getOpcode() != ISD::ADD && N.getOpcode() != ISD::SUB &&
       !CurDAG->isBaseWithConstantOffset(N)) {
     return false;
   }
 
   if (const ConstantSDNode *RHS = dyn_cast<ConstantSDNode>(N.getOperand(1))) {
-    int RHSC = (int)RHS->getZExtValue();
+    int RHSC = (int)RHS->getSExtValue();
 
     // Convert negative offsets into positives ones.
     if (N.getOpcode() == ISD::SUB) {
@@ -109,8 +106,8 @@ bool Z80DAGToDAGISel::SelectAddr(SDNode *Op, SDValue N, SDValue &Base,
     // offset allowed.
     MVT VT = cast<MemSDNode>(Op)->getMemoryVT().getSimpleVT();
 
-    // We only accept offsets that fit in 6 bits (unsigned).
-    if (isUInt<6>(RHSC) && (VT == MVT::i8 || VT == MVT::i16)) {
+    // We only accept offsets that fit in 8 bits (signed).
+    if (isInt<8>(RHSC) && (VT == MVT::i8 || VT == MVT::i16)) {
       Base = N.getOperand(0);
       Disp = CurDAG->getTargetConstant(RHSC, dl, MVT::i8);
 
@@ -118,13 +115,11 @@ bool Z80DAGToDAGISel::SelectAddr(SDNode *Op, SDValue N, SDValue &Base,
     }
   }
 
-  return false;*/
+  return false;
 }
 
 bool Z80DAGToDAGISel::selectIndexedLoad(SDNode *N) {
-  llvm_unreachable("Z80DAGToDAGISel::selectIndexedLoad");
-
-  /*const LoadSDNode *LD = cast<LoadSDNode>(N);
+  const LoadSDNode *LD = cast<LoadSDNode>(N);
   ISD::MemIndexedMode AM = LD->getAddressingMode();
   MVT VT = LD->getMemoryVT().getSimpleVT();
   auto PtrVT = getTargetLowering()->getPointerTy(CurDAG->getDataLayout());
@@ -136,6 +131,8 @@ bool Z80DAGToDAGISel::selectIndexedLoad(SDNode *N) {
     return false;
   }
 
+  llvm_unreachable("Z80DAGToDAGISel::selectIndexedLoad");
+
   unsigned Opcode = 0;
   bool isPre = (AM == ISD::PRE_DEC);
   int Offs = cast<ConstantSDNode>(LD->getOffset())->getSExtValue();
@@ -146,7 +143,7 @@ bool Z80DAGToDAGISel::selectIndexedLoad(SDNode *N) {
       return false;
     }
 
-    Opcode = (isPre) ? Z80::LDRdPtrPd : Z80::LDRdPtrPi;
+    //Opcode = (isPre) ? Z80::LDRdPtrPd : Z80::LDRdPtrPi;
     break;
   }
   case MVT::i16: {
@@ -154,7 +151,7 @@ bool Z80DAGToDAGISel::selectIndexedLoad(SDNode *N) {
       return false;
     }
 
-    Opcode = (isPre) ? Z80::LDWRdPtrPd : Z80::LDWRdPtrPi;
+    //Opcode = (isPre) ? Z80::LDWRdPtrPd : Z80::LDWRdPtrPi;
     break;
   }
   default:
@@ -167,7 +164,7 @@ bool Z80DAGToDAGISel::selectIndexedLoad(SDNode *N) {
   ReplaceUses(N, ResNode);
   CurDAG->RemoveDeadNode(N);
 
-  return true;*/
+  return true;
 }
 
 unsigned Z80DAGToDAGISel::selectIndexedProgMemLoad(const LoadSDNode *LD,
@@ -375,17 +372,13 @@ template <> bool Z80DAGToDAGISel::select<ISD::STORE>(SDNode *N) {
 }
 
 template <> bool Z80DAGToDAGISel::select<ISD::LOAD>(SDNode *N) {
-  return false;
-  llvm_unreachable("Z80DAGToDAGISel::select<ISD::LOAD>");
-
-  /*
   const LoadSDNode *LD = cast<LoadSDNode>(N);
-  if (!Z80::isProgramMemoryAccess(LD)) {
+//  if (!Z80::isProgramMemoryAccess(LD)) {
     // Check if the opcode can be converted into an indexed load.
     return selectIndexedLoad(N);
-  }
+//  }
 
-  assert(Subtarget->hasLPM() && "cannot load from program memory on this mcu");
+  /*assert(Subtarget->hasLPM() && "cannot load from program memory on this mcu");
 
   // This is a flash memory load, move the pointer into R31R30 and emit
   // the lpm instruction.
@@ -431,8 +424,7 @@ template <> bool Z80DAGToDAGISel::select<ISD::LOAD>(SDNode *N) {
   ReplaceUses(SDValue(N, 1), SDValue(ResNode, 1));
   CurDAG->RemoveDeadNode(N);
 
-  return true;
-   */
+  return true;*/
 }
 
 template <> bool Z80DAGToDAGISel::select<Z80ISD::CALL>(SDNode *N) {
@@ -555,16 +547,12 @@ void Z80DAGToDAGISel::Select(SDNode *N) {
     return;
   }
 
-  N->dumpr(CurDAG);
-
   // See if subclasses can handle this node.
   if (trySelect(N))
     return;
 
   // Select the default instruction
   SelectCode(N);
-
-  N->dumpr(CurDAG);
 }
 
 bool Z80DAGToDAGISel::trySelect(SDNode *N) {

@@ -84,8 +84,20 @@ void Z80InstrInfo::copyPhysReg(MachineBasicBlock &MBB,
   unsigned Opc;
 
   // Not all Z80 devices support the 16-bit `MOVW` instruction.
-  /*if (Z80::DREGSRegClass.contains(DestReg, SrcReg)) {
-    if (STI.hasMOVW() && Z80::DREGSMOVWRegClass.contains(DestReg, SrcReg)) {
+  if (Z80::REGS16RegClass.contains(DestReg, SrcReg)) {
+    Register DestLo, DestHi, SrcLo, SrcHi;
+
+    TRI.splitReg(DestReg, DestLo, DestHi);
+    TRI.splitReg(SrcReg,  SrcLo,  SrcHi);
+
+    // Copy each individual register with the `LD` instruction.
+    BuildMI(MBB, MI, DL, get(Z80::LDRdRr8), DestLo)
+        .addReg(SrcLo, getKillRegState(KillSrc));
+    BuildMI(MBB, MI, DL, get(Z80::LDRdRr8), DestHi)
+        .addReg(SrcHi, getKillRegState(KillSrc));
+
+
+    /*if (STI.hasMOVW() && Z80::DREGSMOVWRegClass.contains(DestReg, SrcReg)) {
       BuildMI(MBB, MI, DL, get(Z80::MOVWRdRr), DestReg)
           .addReg(SrcReg, getKillRegState(KillSrc));
     } else {
@@ -99,8 +111,8 @@ void Z80InstrInfo::copyPhysReg(MachineBasicBlock &MBB,
         .addReg(SrcLo, getKillRegState(KillSrc));
       BuildMI(MBB, MI, DL, get(Z80::MOVRdRr), DestHi)
         .addReg(SrcHi, getKillRegState(KillSrc));
-    }
-  } else*/ {
+    }*/
+  } else {
     if (Z80::GPR8RegClass.contains(DestReg, SrcReg)) {
       Opc = Z80::LDRdRr8;
     } /*else if (SrcReg == Z80::SP && Z80::DREGSRegClass.contains(DestReg)) {
@@ -200,8 +212,7 @@ void Z80InstrInfo::loadRegFromStackSlot(MachineBasicBlock &MBB,
                                         Register DestReg, int FrameIndex,
                                         const TargetRegisterClass *RC,
                                         const TargetRegisterInfo *TRI) const {
-  llvm_unreachable("Z80InstrInfo::loadRegFromStackSlot");
-  /*DebugLoc DL;
+  DebugLoc DL;
   if (MI != MBB.end()) {
     DL = MI->getDebugLoc();
   }
@@ -214,7 +225,7 @@ void Z80InstrInfo::loadRegFromStackSlot(MachineBasicBlock &MBB,
       MachineMemOperand::MOLoad, MFI.getObjectSize(FrameIndex),
       MFI.getObjectAlign(FrameIndex));
 
-  unsigned Opcode = 0;
+  /*unsigned Opcode = 0;
   if (TRI->isTypeLegalForClass(*RC, MVT::i8)) {
     Opcode = Z80::LDDRdPtrQ;
   } else if (TRI->isTypeLegalForClass(*RC, MVT::i16)) {

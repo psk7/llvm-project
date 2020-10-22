@@ -118,17 +118,17 @@ void Z80FrameLowering::emitPrologue(MachineFunction &MF,
   // Reserve the necessary frame memory by doing FP -= <size>.
   /*unsigned Opcode = (isUInt<6>(FrameSize)) ? Z80::SBIWRdK : Z80::SUBIWRdK;*/
 
-  BuildMI(MBB, MBBI, DL, TII.get(Z80::LDI16IY), Z80::IY)
+  BuildMI(MBB, MBBI, DL, TII.get(Z80::LDI16IXY), Z80::IY)
       //.addReg(Z80::R29R28, RegState::Kill)
       .addImm((-FrameSize) & 0xffff)
       .setMIFlag(MachineInstr::FrameSetup);
 
-  BuildMI(MBB, MBBI, DL, TII.get(Z80::ADDRdRr16IY), Z80::IY)
+  BuildMI(MBB, MBBI, DL, TII.get(Z80::ADDRdRr16), Z80::IY)
       .addReg(Z80::IY)
       .addReg(Z80::SP)
       .setMIFlag(MachineInstr::FrameSetup);
 
-  BuildMI(MBB, MBBI, DL, TII.get(Z80::LDSPIY), Z80::SP)
+  BuildMI(MBB, MBBI, DL, TII.get(Z80::LDSP), Z80::SP)
       .addReg(Z80::IY)
       .setMIFlag(MachineInstr::FrameSetup);
 
@@ -182,31 +182,30 @@ void Z80FrameLowering::emitEpilogue(MachineFunction &MF,
     return;
   }
 
-  BuildMI(MBB, MBBI, DL, TII.get(Z80::LDI16IY), Z80::IY)
-      //.addReg(Z80::R29R28, RegState::Kill)
-      .addImm(FrameSize)
-      .setMIFlag(MachineInstr::FrameDestroy);
-
-  BuildMI(MBB, MBBI, DL, TII.get(Z80::ADDRdRr16IY), Z80::IY)
-      .addReg(Z80::IY)
-      .addReg(Z80::SP)
-      .setMIFlag(MachineInstr::FrameDestroy);
-
-  BuildMI(MBB, MBBI, DL, TII.get(Z80::LDSPIY), Z80::SP)
-      .addReg(Z80::IY)
-      .setMIFlag(MachineInstr::FrameDestroy);
-
   // Skip the callee-saved pop instructions.
-/*  while (MBBI != MBB.begin()) {
+  while (MBBI != MBB.begin()) {
     MachineBasicBlock::iterator PI = std::prev(MBBI);
     int Opc = PI->getOpcode();
 
-    if (Opc != Z80::POPRd && Opc != Z80::POPWRd && !PI->isTerminator()) {
+    if (Opc != Z80::POPRd && !PI->isTerminator()) {
       break;
     }
 
     --MBBI;
-  }*/
+  }
+
+  BuildMI(MBB, MBBI, DL, TII.get(Z80::LDI16IXY), Z80::IY)
+      .addImm(FrameSize)
+      .setMIFlag(MachineInstr::FrameDestroy);
+
+  BuildMI(MBB, MBBI, DL, TII.get(Z80::ADDRdRr16), Z80::IY)
+      .addReg(Z80::IY)
+      .addReg(Z80::SP)
+      .setMIFlag(MachineInstr::FrameDestroy);
+
+  BuildMI(MBB, MBBI, DL, TII.get(Z80::LDSP), Z80::SP)
+      .addReg(Z80::IY, RegState::Kill)
+      .setMIFlag(MachineInstr::FrameDestroy);
 
   unsigned Opcode;
 
@@ -249,9 +248,6 @@ bool Z80FrameLowering::hasFP(const MachineFunction &MF) const {
 bool Z80FrameLowering::spillCalleeSavedRegisters(
     MachineBasicBlock &MBB, MachineBasicBlock::iterator MI,
     ArrayRef<CalleeSavedInfo> CSI, const TargetRegisterInfo *TRI) const {
-
-  llvm_unreachable("Z80FrameLowering::spillCalleeSavedRegisters");
-
   if (CSI.empty()) {
     return false;
   }
@@ -263,12 +259,13 @@ bool Z80FrameLowering::spillCalleeSavedRegisters(
   const TargetInstrInfo &TII = *STI.getInstrInfo();
   Z80MachineFunctionInfo *Z80FI = MF.getInfo<Z80MachineFunctionInfo>();
 
-/*  for (unsigned i = CSI.size(); i != 0; --i) {
+  for (unsigned i = CSI.size(); i != 0; --i) {
     unsigned Reg = CSI[i - 1].getReg();
     bool IsNotLiveIn = !MBB.isLiveIn(Reg);
 
-    assert(TRI->getRegSizeInBits(*TRI->getMinimalPhysRegClass(Reg)) == 8 &&
-           "Invalid register size");
+    unsigned rs = TRI->getRegSizeInBits(*TRI->getMinimalPhysRegClass(Reg));
+
+    assert(rs == 16 && "Invalid register size");
 
     // Add the callee-saved register as live-in only if it is not already a
     // live-in register, this usually happens with arguments that are passed
@@ -281,8 +278,9 @@ bool Z80FrameLowering::spillCalleeSavedRegisters(
     BuildMI(MBB, MI, DL, TII.get(Z80::PUSHRr))
         .addReg(Reg, getKillRegState(IsNotLiveIn))
         .setMIFlag(MachineInstr::FrameSetup);
-    ++CalleeFrameSize;
-  }*/
+
+    CalleeFrameSize += rs / 8;
+  }
 
   Z80FI->setCalleeSavedFrameSize(CalleeFrameSize);
 
@@ -293,8 +291,6 @@ bool Z80FrameLowering::restoreCalleeSavedRegisters(
     MachineBasicBlock &MBB, MachineBasicBlock::iterator MI,
     MutableArrayRef<CalleeSavedInfo> CSI, const TargetRegisterInfo *TRI) const {
 
-  llvm_unreachable("Z80FrameLowering::restoreCalleeSavedRegister");
-
   if (CSI.empty()) {
     return false;
   }
@@ -304,14 +300,14 @@ bool Z80FrameLowering::restoreCalleeSavedRegisters(
   const Z80Subtarget &STI = MF.getSubtarget<Z80Subtarget>();
   const TargetInstrInfo &TII = *STI.getInstrInfo();
 
-/*  for (const CalleeSavedInfo &CCSI : CSI) {
+  for (const CalleeSavedInfo &CCSI : CSI) {
     unsigned Reg = CCSI.getReg();
 
-    assert(TRI->getRegSizeInBits(*TRI->getMinimalPhysRegClass(Reg)) == 8 &&
+    assert(TRI->getRegSizeInBits(*TRI->getMinimalPhysRegClass(Reg)) == 16 &&
            "Invalid register size");
 
     BuildMI(MBB, MI, DL, TII.get(Z80::POPRd), Reg);
-  }*/
+  }
 
   return true;
 }

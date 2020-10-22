@@ -129,11 +129,10 @@ unsigned Z80MCCodeEmitter::encodeLDSTPtrReg(const MCInst &MI, unsigned OpNo,
     llvm_unreachable("invalid pointer register");
   }
 }
+*/
 
 /// Encodes a `memri` operand.
-/// The operand is 7-bits.
-/// * The lower 6 bits is the immediate
-/// * The upper bit is the pointer register bit (Z=0,Y=1)
+/// The operand is 8-bits.
 unsigned Z80MCCodeEmitter::encodeMemri(const MCInst &MI, unsigned OpNo,
                                        SmallVectorImpl<MCFixup> &Fixups,
                                        const MCSubtargetInfo &STI) const {
@@ -142,7 +141,15 @@ unsigned Z80MCCodeEmitter::encodeMemri(const MCInst &MI, unsigned OpNo,
 
   assert(RegOp.isReg() && "Expected register operand");
 
-  uint8_t RegBit = 0;
+  if (OffsetOp.isImm()) {
+    return OffsetOp.getImm();
+  } else if (OffsetOp.isExpr()) {
+    return 0;
+  } else {
+    llvm_unreachable("invalid value for offset");
+  }
+
+/*  uint8_t RegBit = 0;
 
   switch (RegOp.getReg()) {
   default:
@@ -167,9 +174,10 @@ unsigned Z80MCCodeEmitter::encodeMemri(const MCInst &MI, unsigned OpNo,
     llvm_unreachable("invalid value for offset");
   }
 
-  return (RegBit << 6) | OffsetBits;
+  return (RegBit << 6) | OffsetBits;*/
 }
 
+/*
 unsigned Z80MCCodeEmitter::encodeComplement(const MCInst &MI, unsigned OpNo,
                                             SmallVectorImpl<MCFixup> &Fixups,
                                             const MCSubtargetInfo &STI) const {
@@ -290,12 +298,29 @@ void Z80MCCodeEmitter::encodeInstruction(const MCInst &MI, raw_ostream &OS,
   // Get byte count of instruction
   unsigned Size = Desc.Size;
 
+  bool HasIX = false;
+  bool HasIY = false;
+  bool HasHL = false;
+
   assert(Size > 0 && "Instruction size cannot be zero");
 
-  if (Z80II::hasFDPrefix(Desc))
+  for(unsigned i = 0; i < MI.getNumOperands(); ++i) {
+    MCOperand Op = MI.getOperand(i);
+    if (Op.isReg()) {
+      unsigned reg = Op.getReg();
+      HasIX |= (reg == Z80::IX);
+      HasIY |= (reg == Z80::IY);
+      HasHL |= (reg == Z80::HL);
+    }
+  }
+
+  if (HasHL && (HasIX || HasIY))
+    report_fatal_error("Unable to mix IX, IY and HL registers in single instruction");
+
+  if (Z80II::hasFDPrefix(Desc) || HasIY)
     OS << (unsigned char)0xFD;
 
-  if (Z80II::hasDDPrefix(Desc))
+  if (Z80II::hasDDPrefix(Desc) || HasIX)
     OS << (unsigned char)0xDD;
 
   if (Z80II::hasCBPrefix(Desc))

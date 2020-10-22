@@ -137,7 +137,7 @@ static void foldFrameOffset(MachineBasicBlock::iterator &II, int &Offset,
 void Z80RegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
                                           int SPAdj, unsigned FIOperandNum,
                                           RegScavenger *RS) const {
-  /*assert(SPAdj == 0 && "Unexpected SPAdj value");
+  assert(SPAdj == 0 && "Unexpected SPAdj value");
 
   MachineInstr &MI = *II;
   DebugLoc dl = MI.getDebugLoc();
@@ -151,14 +151,14 @@ void Z80RegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
   int Offset = MFI.getObjectOffset(FrameIndex);
 
   // Add one to the offset because SP points to an empty slot.
-  Offset += MFI.getStackSize() - TFI->getOffsetOfLocalArea() + 1;
+  Offset += MFI.getStackSize() - TFI->getOffsetOfLocalArea();
   // Fold incoming offset.
   Offset += MI.getOperand(FIOperandNum + 1).getImm();
 
   // This is actually "load effective address" of the stack slot
   // instruction. We have only two-address instructions, thus we need to
   // expand it into move + add.
-  if (MI.getOpcode() == Z80::FRMIDX) {
+  /*if (MI.getOpcode() == Z80::FRMIDX) {
     MI.setDesc(TII.get(Z80::MOVWRdRr));
     MI.getOperand(FIOperandNum).ChangeToRegister(Z80::R29R28, false);
     MI.RemoveOperand(2);
@@ -208,13 +208,14 @@ void Z80RegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
     New->getOperand(3).setIsDead();
 
     return;
-  }
+  }*/
 
   // If the offset is too big we have to adjust and restore the frame pointer
   // to materialize a valid load/store with displacement.
   //:TODO: consider using only one adiw/sbiw chain for more than one frame index
-  if (Offset > 62) {
-    unsigned AddOpc = Z80::ADIWRdK, SubOpc = Z80::SBIWRdK;
+  if (Offset > 126) {
+    llvm_unreachable("Z80RegisterInfo::eliminateFrameIndex Offset > 126");
+    /*unsigned AddOpc = Z80::ADIWRdK, SubOpc = Z80::SBIWRdK;
     int AddOffset = Offset - 63 + 1;
 
     // For huge offsets where adiw/sbiw cannot be used use a pair of subi/sbci.
@@ -246,13 +247,12 @@ void Z80RegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
         .addReg(Z80::R29R28, RegState::Kill)
         .addImm(Offset - 63 + 1);
 
-    Offset = 62;
+    Offset = 62;*/
   }
 
-  MI.getOperand(FIOperandNum).ChangeToRegister(Z80::R29R28, false);
-  assert(isUInt<6>(Offset) && "Offset is out of range");
-  MI.getOperand(FIOperandNum + 1).ChangeToImmediate(Offset);*/
-  llvm_unreachable("Z80RegisterInfo::eliminateFrameIndex");
+  MI.getOperand(FIOperandNum).ChangeToRegister(Z80::IY, false);
+  assert(isInt<8>(Offset) && "Offset is out of range");
+  MI.getOperand(FIOperandNum + 1).ChangeToImmediate(Offset);
 }
 
 Register Z80RegisterInfo::getFrameRegister(const MachineFunction &MF) const {
@@ -278,7 +278,7 @@ Z80RegisterInfo::getPointerRegClass(const MachineFunction &MF,
 
 void Z80RegisterInfo::splitReg(Register Reg, Register &LoReg,
                                Register &HiReg) const {
-  assert(Z80::DREGSRegClass.contains(Reg) && "can only split 16-bit registers");
+  assert(Z80::REGS16RegClass.contains(Reg) && "can only split 16-bit registers");
 
   LoReg = getSubReg(Reg, Z80::sub_lo);
   HiReg = getSubReg(Reg, Z80::sub_hi);
