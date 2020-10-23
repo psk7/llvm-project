@@ -40,6 +40,17 @@ enum CondCodes {
   COND_INVALID
 };
 
+enum TargetCondCode{
+  COND_NZ = 0,
+  COND_Z = 1,
+  COND_NC = 2,
+  COND_C = 3,
+  COND_PO = 4,
+  COND_PE = 5,
+  COND_P = 6,
+  COND_M = 7
+};
+
 } // end of namespace Z80CC
 
 namespace Z80II {
@@ -84,8 +95,10 @@ public:
 
   const Z80RegisterInfo &getRegisterInfo() const { return RI; }
   const MCInstrDesc &getBrCond(Z80CC::CondCodes CC) const;
+  Z80CC::TargetCondCode getTargetCondCode(Z80CC::CondCodes CC) const;
   Z80CC::CondCodes getCondFromBranchOpc(unsigned Opc) const;
   Z80CC::CondCodes getOppositeCondition(Z80CC::CondCodes CC) const;
+  Z80CC::TargetCondCode getOppositeCondition(Z80CC::TargetCondCode CC) const;
   unsigned getInstSizeInBytes(const MachineInstr &MI) const override;
 
   void copyPhysReg(MachineBasicBlock &MBB, MachineBasicBlock::iterator MI,

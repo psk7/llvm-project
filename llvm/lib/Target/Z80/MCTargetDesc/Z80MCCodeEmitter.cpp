@@ -234,9 +234,8 @@ unsigned Z80MCCodeEmitter::encodeCallTarget(const MCInst &MI, unsigned OpNo,
 unsigned Z80MCCodeEmitter::getExprOpValue(const MCExpr *Expr,
                                           SmallVectorImpl<MCFixup> &Fixups,
                                           const MCSubtargetInfo &STI) const {
-  llvm_unreachable("Z80MCCodeEmitter::getExprOpValue");
 
-  /*MCExpr::ExprKind Kind = Expr->getKind();
+  MCExpr::ExprKind Kind = Expr->getKind();
 
   if (Kind == MCExpr::Binary) {
     Expr = static_cast<const MCBinaryExpr *>(Expr)->getLHS();
@@ -244,7 +243,8 @@ unsigned Z80MCCodeEmitter::getExprOpValue(const MCExpr *Expr,
   }
 
   if (Kind == MCExpr::Target) {
-    Z80MCExpr const *Z80Expr = cast<Z80MCExpr>(Expr);
+    llvm_unreachable("Z80MCCodeEmitter::getExprOpValue Kind == MCExpr::Target");
+    /*Z80MCExpr const *Z80Expr = cast<Z80MCExpr>(Expr);
     int64_t Result;
     if (Z80Expr->evaluateAsConstant(Result)) {
       return Result;
@@ -252,11 +252,11 @@ unsigned Z80MCCodeEmitter::getExprOpValue(const MCExpr *Expr,
 
     MCFixupKind FixupKind = static_cast<MCFixupKind>(Z80Expr->getFixupKind());
     Fixups.push_back(MCFixup::create(0, Z80Expr, FixupKind));
-    return 0;
+    return 0;*/
   }
 
   assert(Kind == MCExpr::SymbolRef);
-  return 0;*/
+  return 0;
 }
 
 unsigned Z80MCCodeEmitter::getMachineOpValue(const MCInst &MI,

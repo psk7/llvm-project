@@ -101,14 +101,14 @@ Z80TargetLowering::Z80TargetLowering(const Z80TargetMachine &TM,
 //  setOperationAction(ISD::BR_CC, MVT::i64, Custom);
 //  setOperationAction(ISD::BRCOND, MVT::Other, Expand);
 
-//  setOperationAction(ISD::SELECT_CC, MVT::i8, Custom);
-//  setOperationAction(ISD::SELECT_CC, MVT::i16, Custom);
-//  setOperationAction(ISD::SELECT_CC, MVT::i32, Expand);
-//  setOperationAction(ISD::SELECT_CC, MVT::i64, Expand);
-//  setOperationAction(ISD::SETCC, MVT::i8, Custom);
-//  setOperationAction(ISD::SETCC, MVT::i16, Custom);
-//  setOperationAction(ISD::SETCC, MVT::i32, Custom);
-//  setOperationAction(ISD::SETCC, MVT::i64, Custom);
+  setOperationAction(ISD::SELECT_CC, MVT::i8, Custom);
+  setOperationAction(ISD::SELECT_CC, MVT::i16, Expand);
+  setOperationAction(ISD::SELECT_CC, MVT::i32, Expand);
+  setOperationAction(ISD::SELECT_CC, MVT::i64, Expand);
+  setOperationAction(ISD::SETCC, MVT::i8, Custom);
+  setOperationAction(ISD::SETCC, MVT::i16, Expand);
+  setOperationAction(ISD::SETCC, MVT::i32, Expand);
+  setOperationAction(ISD::SETCC, MVT::i64, Expand);
 //  setOperationAction(ISD::SELECT, MVT::i8, Expand);
 //  setOperationAction(ISD::SELECT, MVT::i16, Expand);
 
@@ -256,6 +256,7 @@ const char *Z80TargetLowering::getTargetNodeName(unsigned Opcode) const {
     NODE(ASRLOOP);
     NODE(BRCOND);
     NODE(CMP);
+    NODE(CP);
     NODE(CMPC);
     NODE(TST);
     NODE(SELECT_CC);
@@ -371,9 +372,7 @@ SDValue Z80TargetLowering::LowerBlockAddress(SDValue Op,
 
 /// IntCCToZ80CC - Convert a DAG integer condition code to an Z80 CC.
 static Z80CC::CondCodes intCCToZ80CC(ISD::CondCode CC) {
-  llvm_unreachable("Z80CC::CondCodes intCCToZ80CC");
-
-  /*switch (CC) {
+  switch (CC) {
   default:
     llvm_unreachable("Unknown condition code!");
   case ISD::SETEQ:
@@ -388,19 +387,19 @@ static Z80CC::CondCodes intCCToZ80CC(ISD::CondCode CC) {
     return Z80CC::COND_SH;
   case ISD::SETULT:
     return Z80CC::COND_LO;
-  }*/
+  }
 }
 
-/// Returns appropriate Z80 CMP/CMPC nodes and corresponding condition code for
+/// Returns appropriate Z80 CP nodes and corresponding condition code for
 /// the given operands.
 SDValue Z80TargetLowering::getZ80Cmp(SDValue LHS, SDValue RHS, ISD::CondCode CC,
                                      SDValue &Z80cc, SelectionDAG &DAG,
                                      SDLoc DL) const {
-  llvm_unreachable("Z80TargetLowering::getZ80Cmp");
-
-  /*SDValue Cmp;
+  SDValue Cmp;
   EVT VT = LHS.getValueType();
   bool UseTest = false;
+
+  assert(VT == MVT::i8 && "Unable to compare non i8 values");
 
   switch (CC) {
   default:
@@ -421,14 +420,14 @@ SDValue Z80TargetLowering::getZ80Cmp(SDValue LHS, SDValue RHS, ISD::CondCode CC,
         Z80cc = DAG.getConstant(Z80CC::COND_PL, DL, MVT::i8);
         break;
       }
-      case 0: {
+      /*case 0: {
         // Turn lhs > 0 into 0 < lhs since 0 can be materialized with
         // __zero_reg__ in lhs.
         RHS = LHS;
         LHS = DAG.getConstant(0, DL, VT);
         CC = ISD::SETLT;
         break;
-      }
+      }*/
       default: {
         // Turn lhs < rhs with lhs constant into rhs >= lhs+1, this allows
         // us to  fold the constant into the cmp instruction.
@@ -447,14 +446,14 @@ SDValue Z80TargetLowering::getZ80Cmp(SDValue LHS, SDValue RHS, ISD::CondCode CC,
   case ISD::SETLT: {
     if (const ConstantSDNode *C = dyn_cast<ConstantSDNode>(RHS)) {
       switch (C->getSExtValue()) {
-      case 1: {
+      /*case 1: {
         // Turn lhs < 1 into 0 >= lhs since 0 can be materialized with
         // __zero_reg__ in lhs.
         RHS = LHS;
         LHS = DAG.getConstant(0, DL, VT);
         CC = ISD::SETGE;
         break;
-      }
+      }*/
       case 0: {
         // When doing lhs < 0 use a tst instruction on the top part of lhs
         // and use brmi instead of using a chain of cp/cpc.
@@ -489,7 +488,7 @@ SDValue Z80TargetLowering::getZ80Cmp(SDValue LHS, SDValue RHS, ISD::CondCode CC,
 
   // Expand 32 and 64 bit comparisons with custom CMP and CMPC nodes instead of
   // using the default and/or/xor expansion code which is much longer.
-  if (VT == MVT::i32) {
+  /*if (VT == MVT::i32) {
     SDValue LHSlo = DAG.getNode(ISD::EXTRACT_ELEMENT, DL, MVT::i16, LHS,
                                 DAG.getIntPtrConstant(0, DL));
     SDValue LHShi = DAG.getNode(ISD::EXTRACT_ELEMENT, DL, MVT::i16, LHS,
@@ -548,7 +547,7 @@ SDValue Z80TargetLowering::getZ80Cmp(SDValue LHS, SDValue RHS, ISD::CondCode CC,
       Cmp = DAG.getNode(Z80ISD::CMPC, DL, MVT::Glue, LHS2, RHS2, Cmp);
       Cmp = DAG.getNode(Z80ISD::CMPC, DL, MVT::Glue, LHS3, RHS3, Cmp);
     }
-  } else if (VT == MVT::i8 || VT == MVT::i16) {
+  } else */if (VT == MVT::i8 || VT == MVT::i16) {
     if (UseTest) {
       // When using tst we only care about the highest part.
       Cmp = DAG.getNode(Z80ISD::TST, DL, MVT::Glue,
@@ -557,7 +556,7 @@ SDValue Z80TargetLowering::getZ80Cmp(SDValue LHS, SDValue RHS, ISD::CondCode CC,
                             : DAG.getNode(ISD::EXTRACT_ELEMENT, DL, MVT::i8,
                                           LHS, DAG.getIntPtrConstant(1, DL)));
     } else {
-      Cmp = DAG.getNode(Z80ISD::CMP, DL, MVT::Glue, LHS, RHS);
+      Cmp = DAG.getNode(Z80ISD::CP, DL, MVT::Glue, LHS, RHS);
     }
   } else {
     llvm_unreachable("Invalid comparison size");
@@ -568,7 +567,7 @@ SDValue Z80TargetLowering::getZ80Cmp(SDValue LHS, SDValue RHS, ISD::CondCode CC,
     Z80cc = DAG.getConstant(intCCToZ80CC(CC), DL, MVT::i8);
   }
 
-  return Cmp;*/
+  return Cmp;
 }
 
 SDValue Z80TargetLowering::LowerBR_CC(SDValue Op, SelectionDAG &DAG) const {
@@ -589,8 +588,7 @@ SDValue Z80TargetLowering::LowerBR_CC(SDValue Op, SelectionDAG &DAG) const {
 }
 
 SDValue Z80TargetLowering::LowerSELECT_CC(SDValue Op, SelectionDAG &DAG) const {
-  llvm_unreachable("Z80TargetLowering::LowerSELECT_CC");
-  /*SDValue LHS = Op.getOperand(0);
+  SDValue LHS = Op.getOperand(0);
   SDValue RHS = Op.getOperand(1);
   SDValue TrueV = Op.getOperand(2);
   SDValue FalseV = Op.getOperand(3);
@@ -603,12 +601,11 @@ SDValue Z80TargetLowering::LowerSELECT_CC(SDValue Op, SelectionDAG &DAG) const {
   SDVTList VTs = DAG.getVTList(Op.getValueType(), MVT::Glue);
   SDValue Ops[] = {TrueV, FalseV, TargetCC, Cmp};
 
-  return DAG.getNode(Z80ISD::SELECT_CC, dl, VTs, Ops);*/
+  return DAG.getNode(Z80ISD::SELECT_CC, dl, VTs, Ops);
 }
 
 SDValue Z80TargetLowering::LowerSETCC(SDValue Op, SelectionDAG &DAG) const {
-  llvm_unreachable("Z80TargetLowering::LowerSETCC");
-  /*SDValue LHS = Op.getOperand(0);
+  SDValue LHS = Op.getOperand(0);
   SDValue RHS = Op.getOperand(1);
   ISD::CondCode CC = cast<CondCodeSDNode>(Op.getOperand(2))->get();
   SDLoc DL(Op);
@@ -621,7 +618,7 @@ SDValue Z80TargetLowering::LowerSETCC(SDValue Op, SelectionDAG &DAG) const {
   SDVTList VTs = DAG.getVTList(Op.getValueType(), MVT::Glue);
   SDValue Ops[] = {TrueV, FalseV, TargetCC, Cmp};
 
-  return DAG.getNode(Z80ISD::SELECT_CC, DL, VTs, Ops);*/
+  return DAG.getNode(Z80ISD::SELECT_CC, DL, VTs, Ops);
 }
 
 SDValue Z80TargetLowering::LowerVASTART(SDValue Op, SelectionDAG &DAG) const {
@@ -656,10 +653,10 @@ SDValue Z80TargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const {
 //    return LowerBlockAddress(Op, DAG);
 //  case ISD::BR_CC:
 //    return LowerBR_CC(Op, DAG);
-//  case ISD::SELECT_CC:
-//    return LowerSELECT_CC(Op, DAG);
-//  case ISD::SETCC:
-//    return LowerSETCC(Op, DAG);
+  case ISD::SELECT_CC:
+    return LowerSELECT_CC(Op, DAG);
+  case ISD::SETCC:
+    return LowerSETCC(Op, DAG);
 //  case ISD::VASTART:
 //    return LowerVASTART(Op, DAG);
   }
@@ -1463,12 +1460,11 @@ MachineBasicBlock *Z80TargetLowering::insertShift(MachineInstr &MI,
 MachineBasicBlock *
 Z80TargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
                                                MachineBasicBlock *MBB) const {
-  llvm_unreachable("Z80TargetLowering::EmitInstrWithCustomInserter");
-  /*int Opc = MI.getOpcode();
+  int Opc = MI.getOpcode();
 
   // Pseudo shift instructions with a non constant shift amount are expanded
   // into a loop.
-  switch (Opc) {
+  /*switch (Opc) {
   case Z80::Lsl8:
   case Z80::Lsl16:
   case Z80::Lsr8:
@@ -1480,9 +1476,9 @@ Z80TargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
   case Z80::Asr8:
   case Z80::Asr16:
     return insertShift(MI, MBB);
-  }
+  }*/
 
-  assert((Opc == Z80::Select16 || Opc == Z80::Select8) &&
+  assert((/*Opc == Z80::Select16 || */Opc == Z80::Select8) &&
          "Unexpected instr type to insert");
 
   const Z80InstrInfo &TII = (const Z80InstrInfo &)*MI.getParent()
@@ -1505,7 +1501,7 @@ Z80TargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
   // we must insert an unconditional branch to the fallthrough destination
   // if we are to insert basic blocks at the prior fallthrough point.
   if (FallThrough != nullptr) {
-    BuildMI(MBB, dl, TII.get(Z80::RJMPk)).addMBB(FallThrough);
+    BuildMI(MBB, dl, TII.get(Z80::JRk)).addMBB(FallThrough);
   }
 
   MachineBasicBlock *trueMBB = MF->CreateMachineBasicBlock(LLVM_BB);
@@ -1525,13 +1521,14 @@ Z80TargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
   trueMBB->transferSuccessorsAndUpdatePHIs(MBB);
 
   Z80CC::CondCodes CC = (Z80CC::CondCodes)MI.getOperand(3).getImm();
-  BuildMI(MBB, dl, TII.getBrCond(CC)).addMBB(trueMBB);
-  BuildMI(MBB, dl, TII.get(Z80::RJMPk)).addMBB(falseMBB);
+  Z80CC::TargetCondCode TCC = TII.getTargetCondCode(CC);
+  BuildMI(MBB, dl, TII.get(Z80::JRCC)).addMBB(trueMBB).addImm(TCC);
+  BuildMI(MBB, dl, TII.get(Z80::JRk)).addMBB(falseMBB);
   MBB->addSuccessor(falseMBB);
   MBB->addSuccessor(trueMBB);
 
   // Unconditionally flow back to the true block
-  BuildMI(falseMBB, dl, TII.get(Z80::RJMPk)).addMBB(trueMBB);
+  BuildMI(falseMBB, dl, TII.get(Z80::JRk)).addMBB(trueMBB);
   falseMBB->addSuccessor(trueMBB);
 
   // Set up the Phi node to determine where we came from
@@ -1542,7 +1539,7 @@ Z80TargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
     .addMBB(falseMBB) ;
 
   MI.eraseFromParent(); // The pseudo instruction is gone now.
-  return trueMBB;*/
+  return trueMBB;
 }
 
 //===----------------------------------------------------------------------===//

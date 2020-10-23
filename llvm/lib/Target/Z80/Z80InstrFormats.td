@@ -148,6 +148,26 @@ class FormH<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
   let Size = 1;
 }
 
+class FormI<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
+  : FormA<opcode, outs, ins, asmstr, pattern>
+{
+  bits<8> d8;
+
+  let Inst{15-8} = d8;
+  let Size = 2;
+}
+
+class FormJ<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
+  : FormA<opcode, outs, ins, asmstr, pattern>
+{
+  bits<2> cc;
+  bits<8> d8;
+
+  let Inst{15-8} = d8;
+  let Inst{4-3} = cc;
+  let Size = 2;
+}
+
 /// a 32-bit Z80 instruction.
 class Z80Inst32<dag outs, dag ins, string asmstr, list<dag> pattern>
   : Z80Inst<outs, ins, asmstr, pattern>

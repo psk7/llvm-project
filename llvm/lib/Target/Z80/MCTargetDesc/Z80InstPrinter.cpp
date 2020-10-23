@@ -12,6 +12,7 @@
 
 #include "Z80InstPrinter.h"
 
+#include "Z80InstrInfo.h"
 #include "MCTargetDesc/Z80MCTargetDesc.h"
 
 #include "llvm/MC/MCExpr.h"
@@ -142,8 +143,7 @@ void Z80InstPrinter::printOperand(const MCInst *MI, unsigned OpNo,
 /// being encoded as a pc-relative value.
 void Z80InstPrinter::printPCRelImm(const MCInst *MI, unsigned OpNo,
                                    raw_ostream &O) {
-  llvm_unreachable("Z80InstPrinter::printPCRelImm");
-  /*if (OpNo >= MI->size()) {
+  if (OpNo >= MI->size()) {
     // Not all operands are correctly disassembled at the moment. This means
     // that some machine instructions won't have all the necessary operands
     // set.
@@ -168,7 +168,43 @@ void Z80InstPrinter::printPCRelImm(const MCInst *MI, unsigned OpNo,
   } else {
     assert(Op.isExpr() && "Unknown pcrel immediate operand");
     O << *Op.getExpr();
-  }*/
+  }
+}
+
+void Z80InstPrinter::printCondCode(const MCInst *MI, unsigned OpNo,
+                                   raw_ostream &O) {
+  assert(MI->getOpcode() == Z80::JRCC && "Opcode MUST BE JRCC");
+
+  auto cc = static_cast<Z80CC::TargetCondCode>(MI->getOperand(OpNo).getImm());
+
+  switch (cc) {
+  case Z80CC::COND_NZ:
+    O << "nz";
+    break;
+  case Z80CC::COND_Z:
+    O << "z";
+    break;
+  case Z80CC::COND_NC:
+    O << "nc";
+    break;
+  case Z80CC::COND_C:
+    O << "c";
+    break;
+  case Z80CC::COND_PO:
+    O << "po";
+    break;
+  case Z80CC::COND_PE:
+    O << "pe";
+    break;
+  case Z80CC::COND_P:
+    O << "p";
+    break;
+  case Z80CC::COND_M:
+    O << "m";
+    break;
+  default:
+    llvm_unreachable("wrong cond code");
+  }
 }
 
 void Z80InstPrinter::printMemri(const MCInst *MI, unsigned OpNo,

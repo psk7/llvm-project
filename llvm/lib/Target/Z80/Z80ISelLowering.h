@@ -51,7 +51,7 @@ enum NodeType {
   /// or TEST instruction.
   BRCOND,
   /// Compare instruction.
-  CMP,
+  CMP, CP,
   /// Compare with carry instruction.
   CMPC,
   /// Test for zero or minus instruction.

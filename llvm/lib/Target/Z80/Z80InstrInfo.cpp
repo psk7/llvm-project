@@ -265,6 +265,19 @@ const MCInstrDesc &Z80InstrInfo::getBrCond(Z80CC::CondCodes CC) const {
   }*/
 }
 
+Z80CC::TargetCondCode Z80InstrInfo::getTargetCondCode(Z80CC::CondCodes CC) const {
+  switch (CC) {
+  default:
+    llvm_unreachable("Unable to get target condition code");
+  case Z80CC::COND_EQ:
+    return Z80CC::COND_Z;
+  case Z80CC::COND_NE:
+    return Z80CC::COND_NZ;
+  case Z80CC::COND_LT:
+    return Z80CC::COND_C;
+  }
+}
+
 Z80CC::CondCodes Z80InstrInfo::getCondFromBranchOpc(unsigned Opc) const {
   llvm_unreachable("Z80InstrInfo::getCondFromBranchOpc");
   /*switch (Opc) {
@@ -313,6 +326,22 @@ Z80CC::CondCodes Z80InstrInfo::getOppositeCondition(Z80CC::CondCodes CC) const {
   }*/
 }
 
+Z80CC::TargetCondCode
+Z80InstrInfo::getOppositeCondition(Z80CC::TargetCondCode CC) const {
+  switch (CC) {
+  default:
+    llvm_unreachable("Unable to get opposite condition code");
+  case Z80CC::COND_Z:
+    return Z80CC::COND_NZ;
+  case Z80CC::COND_NZ:
+    return Z80CC::COND_Z;
+  case Z80CC::COND_C:
+    return Z80CC::COND_NC;
+  case Z80CC::COND_NC:
+    return Z80CC::COND_C;
+  }
+}
+
 bool Z80InstrInfo::analyzeBranch(MachineBasicBlock &MBB,
                                  MachineBasicBlock *&TBB,
                                  MachineBasicBlock *&FBB,
@@ -344,7 +373,7 @@ bool Z80InstrInfo::analyzeBranch(MachineBasicBlock &MBB,
 
     // Handle unconditional branches.
     //:TODO: add here jmp
-    /*if (I->getOpcode() == Z80::RJMPk) {
+    if (I->getOpcode() == Z80::JRk) {
       UnCondBrIter = I;
 
       if (!AllowModify) {
@@ -372,11 +401,14 @@ bool Z80InstrInfo::analyzeBranch(MachineBasicBlock &MBB,
       // TBB is used to indicate the unconditinal destination.
       TBB = I->getOperand(0).getMBB();
       continue;
-    }*/
+    }
 
     // Handle conditional branches.
-    Z80CC::CondCodes BranchCode = getCondFromBranchOpc(I->getOpcode());
-    if (BranchCode == Z80CC::COND_INVALID) {
+    //Z80CC::CondCodes BranchCode = getCondFromBranchOpc(I->getOpcode());
+    Z80CC::TargetCondCode BranchCode =
+        static_cast<Z80CC::TargetCondCode>(I->getOperand(1).getImm());
+
+    if (I->getOpcode() == Z80::JRk) {
       return true; // Can't handle indirect branch.
     }
 
@@ -387,15 +419,15 @@ bool Z80InstrInfo::analyzeBranch(MachineBasicBlock &MBB,
           MBB.isLayoutSuccessor(TargetBB)) {
         // If we can modify the code and it ends in something like:
         //
-        //     jCC L1
-        //     jmp L2
+        //     jrCC L1
+        //     jr L2
         //   L1:
         //     ...
         //   L2:
         //
         // Then we can change this to:
         //
-        //     jnCC L2
+        //     jrnCC L2
         //   L1:
         //     ...
         //   L2:
@@ -403,13 +435,12 @@ bool Z80InstrInfo::analyzeBranch(MachineBasicBlock &MBB,
         // Which is a bit more efficient.
         // We conditionally jump to the fall-through block.
         BranchCode = getOppositeCondition(BranchCode);
-        unsigned JNCC = getBrCond(BranchCode).getOpcode();
         MachineBasicBlock::iterator OldInst = I;
 
-        /*BuildMI(MBB, UnCondBrIter, MBB.findDebugLoc(I), get(JNCC))
-            .addMBB(UnCondBrIter->getOperand(0).getMBB());
-        BuildMI(MBB, UnCondBrIter, MBB.findDebugLoc(I), get(Z80::RJMPk))
-            .addMBB(TargetBB);*/
+        BuildMI(MBB, UnCondBrIter, MBB.findDebugLoc(I), get(Z80::JRCC))
+            .addMBB(UnCondBrIter->getOperand(0).getMBB()).addImm(BranchCode);
+        BuildMI(MBB, UnCondBrIter, MBB.findDebugLoc(I), get(Z80::JRk))
+            .addMBB(TargetBB);
 
         OldInst->eraseFromParent();
         UnCondBrIter->eraseFromParent();
@@ -455,8 +486,7 @@ unsigned Z80InstrInfo::insertBranch(MachineBasicBlock &MBB,
                                     ArrayRef<MachineOperand> Cond,
                                     const DebugLoc &DL,
                                     int *BytesAdded) const {
-  llvm_unreachable("Z80InstrInfo::insertBranch");
-  /*if (BytesAdded) *BytesAdded = 0;
+  if (BytesAdded) *BytesAdded = 0;
 
   // Shouldn't be a fall through.
   assert(TBB && "insertBranch must not be told to insert a fallthrough");
@@ -465,7 +495,7 @@ unsigned Z80InstrInfo::insertBranch(MachineBasicBlock &MBB,
 
   if (Cond.empty()) {
     assert(!FBB && "Unconditional branch with multiple successors!");
-    auto &MI = *BuildMI(&MBB, DL, get(Z80::RJMPk)).addMBB(TBB);
+    auto &MI = *BuildMI(&MBB, DL, get(Z80::JRk)).addMBB(TBB);
     if (BytesAdded)
       *BytesAdded += getInstSizeInBytes(MI);
     return 1;
@@ -473,26 +503,25 @@ unsigned Z80InstrInfo::insertBranch(MachineBasicBlock &MBB,
 
   // Conditional branch.
   unsigned Count = 0;
-  Z80CC::CondCodes CC = (Z80CC::CondCodes)Cond[0].getImm();
-  auto &CondMI = *BuildMI(&MBB, DL, getBrCond(CC)).addMBB(TBB);
+  Z80CC::TargetCondCode CC = (Z80CC::TargetCondCode)Cond[0].getImm();
+  auto &CondMI = *BuildMI(&MBB, DL, get(Z80::JRCC)).addMBB(TBB).addImm(CC);
 
   if (BytesAdded) *BytesAdded += getInstSizeInBytes(CondMI);
   ++Count;
 
   if (FBB) {
     // Two-way Conditional branch. Insert the second branch.
-    auto &MI = *BuildMI(&MBB, DL, get(Z80::RJMPk)).addMBB(FBB);
+    auto &MI = *BuildMI(&MBB, DL, get(Z80::JRk)).addMBB(FBB);
     if (BytesAdded) *BytesAdded += getInstSizeInBytes(MI);
     ++Count;
   }
 
-  return Count;*/
+  return Count;
 }
 
 unsigned Z80InstrInfo::removeBranch(MachineBasicBlock &MBB,
                                     int *BytesRemoved) const {
-  llvm_unreachable("Z80InstrInfo::removeBranch");
-  /*if (BytesRemoved) *BytesRemoved = 0;
+  if (BytesRemoved) *BytesRemoved = 0;
 
   MachineBasicBlock::iterator I = MBB.end();
   unsigned Count = 0;
@@ -504,8 +533,8 @@ unsigned Z80InstrInfo::removeBranch(MachineBasicBlock &MBB,
     }
     //:TODO: add here the missing jmp instructions once they are implemented
     // like jmp, {e}ijmp, and other cond branches, ...
-    if (I->getOpcode() != Z80::RJMPk &&
-        getCondFromBranchOpc(I->getOpcode()) == Z80CC::COND_INVALID) {
+    auto oc = I->getOpcode();
+    if (oc != Z80::JRk && oc != Z80::JRCC) {
       break;
     }
 
@@ -516,18 +545,20 @@ unsigned Z80InstrInfo::removeBranch(MachineBasicBlock &MBB,
     ++Count;
   }
 
-  return Count;*/
+  return Count;
 }
 
 bool Z80InstrInfo::reverseBranchCondition(
     SmallVectorImpl<MachineOperand> &Cond) const {
-  llvm_unreachable("Z80InstrInfo::reverseBranchCondition");
-  /*assert(Cond.size() == 1 && "Invalid Z80 branch condition!");
+  assert(Cond.size() == 1 && "Invalid Z80 branch condition!");
 
-  Z80CC::CondCodes CC = static_cast<Z80CC::CondCodes>(Cond[0].getImm());
+  /*Z80CC::CondCodes CC = static_cast<Z80CC::CondCodes>(Cond[0].getImm());
+  Cond[0].setImm(getOppositeCondition(CC));*/
+
+  Z80CC::TargetCondCode CC = static_cast<Z80CC::TargetCondCode>(Cond[0].getImm());
   Cond[0].setImm(getOppositeCondition(CC));
 
-  return false;*/
+  return false;
 }
 
 unsigned Z80InstrInfo::getInstSizeInBytes(const MachineInstr &MI) const {
@@ -561,11 +592,13 @@ unsigned Z80InstrInfo::getInstSizeInBytes(const MachineInstr &MI) const {
 
 MachineBasicBlock *
 Z80InstrInfo::getBranchDestBlock(const MachineInstr &MI) const {
-  llvm_unreachable("Z80InstrInfo::getBranchDestBlock");
-  /*switch (MI.getOpcode()) {
+  switch (MI.getOpcode()) {
   default:
     llvm_unreachable("unexpected opcode!");
-  case Z80::JMPk:
+  case Z80::JRCC:
+  case Z80::JRk:
+    return MI.getOperand(0).getMBB();
+  /*case Z80::JMPk:
   case Z80::CALLk:
   case Z80::RCALLk:
   case Z80::RJMPk:
@@ -584,19 +617,20 @@ Z80InstrInfo::getBranchDestBlock(const MachineInstr &MI) const {
   case Z80::SBRCRrB:
   case Z80::SBRSRrB:
   case Z80::SBICAb:
-  case Z80::SBISAb:
+  case Z80::SBISAb:*/
     llvm_unreachable("unimplemented branch instructions");
-  }*/
+  }
 }
 
 bool Z80InstrInfo::isBranchOffsetInRange(unsigned BranchOp,
                                          int64_t BrOffset) const {
-  llvm_unreachable("Z80InstrInfo::isBranchOffsetInRange");
-
-  /*switch (BranchOp) {
+  switch (BranchOp) {
   default:
     llvm_unreachable("unexpected opcode!");
-  case Z80::JMPk:
+  case Z80::JRk:
+  case Z80::JRCC:
+    return isIntN(8, BrOffset);
+  /*case Z80::JMPk:
   case Z80::CALLk:
     return true;
   case Z80::RCALLk:
@@ -612,8 +646,8 @@ bool Z80InstrInfo::isBranchOffsetInRange(unsigned BranchOp,
   case Z80::BRPLk:
   case Z80::BRGEk:
   case Z80::BRLTk:
-    return isIntN(7, BrOffset);
-  }*/
+    return isIntN(7, BrOffset);*/
+  }
 }
 
 unsigned Z80InstrInfo::insertIndirectBranch(MachineBasicBlock &MBB,

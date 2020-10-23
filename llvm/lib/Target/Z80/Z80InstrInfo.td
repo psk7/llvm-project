@@ -20,13 +20,14 @@ include "Z80InstrFormats.td"
 //def SDT_Z80CallSeqEnd : SDCallSeqEnd<[SDTCisVT<0, i16>, SDTCisVT<1, i16>]>;
 //def SDT_Z80Call : SDTypeProfile<0, -1, [SDTCisVT<0, iPTR>]>;
 def SDT_Z80Wrapper : SDTypeProfile<1, 1, [SDTCisSameAs<0, 1>, SDTCisPtrTy<0>]>;
-//def SDT_Z80Brcond : SDTypeProfile<0, 2,
-//                                  [SDTCisVT<0, OtherVT>, SDTCisVT<1, i8>]>;
+def SDT_Z80Brcond : SDTypeProfile<0, 2,
+                                  [SDTCisVT<0, OtherVT>, SDTCisVT<1, i8>]>;
 //def SDT_Z80Cmp : SDTypeProfile<0, 2, [SDTCisSameAs<0, 1>]>;
-//def SDT_Z80Tst : SDTypeProfile<0, 1, [SDTCisInt<0>]>;
-//def SDT_Z80SelectCC : SDTypeProfile<1, 3, [SDTCisSameAs<0, 1>,
-//                                    SDTCisSameAs<1, 2>, SDTCisVT<3, i8>]>;
-//
+def SDT_Z80Cp : SDTypeProfile<0, 2, [SDTCisSameAs<0, 1>]>;
+def SDT_Z80Tst : SDTypeProfile<0, 1, [SDTCisInt<0>]>;
+def SDT_Z80SelectCC : SDTypeProfile<1, 3, [SDTCisSameAs<0, 1>,
+                                    SDTCisSameAs<1, 2>, SDTCisVT<3, i8>]>;
+
 //===----------------------------------------------------------------------===//
 // Z80 Specific Node Definitions
 //===----------------------------------------------------------------------===//
@@ -46,13 +47,14 @@ def Z80retflag : SDNode<"Z80ISD::RET_FLAG", SDTNone,
 
 def Z80Wrapper : SDNode<"Z80ISD::WRAPPER", SDT_Z80Wrapper>;
 
-//def Z80brcond : SDNode<"Z80ISD::BRCOND", SDT_Z80Brcond,
-//                       [SDNPHasChain, SDNPInGlue]>;
+def Z80brcond : SDNode<"Z80ISD::BRCOND", SDT_Z80Brcond,
+                       [SDNPHasChain, SDNPInGlue]>;
 //def Z80cmp : SDNode<"Z80ISD::CMP", SDT_Z80Cmp, [SDNPOutGlue]>;
+def Z80cp : SDNode<"Z80ISD::CP", SDT_Z80Cp, [SDNPOutGlue]>;
 //def Z80cmpc : SDNode<"Z80ISD::CMPC", SDT_Z80Cmp, [SDNPInGlue, SDNPOutGlue]>;
-//def Z80tst : SDNode<"Z80ISD::TST", SDT_Z80Tst, [SDNPOutGlue]>;
-//def Z80selectcc: SDNode<"Z80ISD::SELECT_CC", SDT_Z80SelectCC, [SDNPInGlue]>;
-//
+def Z80tst : SDNode<"Z80ISD::TST", SDT_Z80Tst, [SDNPOutGlue]>;
+def Z80selectcc: SDNode<"Z80ISD::SELECT_CC", SDT_Z80SelectCC, [SDNPInGlue]>;
+
 //// Shift nodes.
 //def Z80lsl : SDNode<"Z80ISD::LSL", SDTIntUnaryOp>;
 //def Z80lsr : SDNode<"Z80ISD::LSR", SDTIntUnaryOp>;
@@ -176,19 +178,24 @@ def memri : Operand<iPTR>
 //{
 //  let MIOperandInfo = (ops SPREG, i16imm);
 //}
-//
-//def relbrtarget_7 : Operand<OtherVT>
-//{
-//    let PrintMethod   = "printPCRelImm";
-//    let EncoderMethod = "encodeRelCondBrTarget<Z80::fixup_7_pcrel>";
-//}
-//
-//def brtarget_13 : Operand<OtherVT>
-//{
-//    let PrintMethod   = "printPCRelImm";
-//    let EncoderMethod = "encodeRelCondBrTarget<Z80::fixup_13_pcrel>";
-//}
-//
+
+def relbrtarget_7 : Operand<OtherVT>
+{
+    let PrintMethod   = "printPCRelImm";
+    //let EncoderMethod = "encodeRelCondBrTarget<Z80::fixup_7_pcrel>";
+}
+
+def brtarget_13 : Operand<OtherVT>
+{
+    let PrintMethod   = "printPCRelImm";
+    //let EncoderMethod = "encodeRelCondBrTarget<Z80::fixup_13_pcrel>";
+}
+
+def condcode : Operand<i8>
+{
+    let PrintMethod   = "printCondCode";
+}
+
 //// The target of a 22 or 16-bit call/jmp instruction.
 //def call_target : Operand<iPTR>
 //{
@@ -566,16 +573,25 @@ Defs = [SREG] in
 //                  [(set i8:$rd, (add i8:$src, -1)), (implicit SREG)]>;
 //}
 
-////===----------------------------------------------------------------------===//
-//// Logic
-////===----------------------------------------------------------------------===//
-//let Constraints = "$src = $rd",
-//Defs = [SREG] in
-//{
-//  // Register-Register logic instructions (which have the
-//  // property of commutativity).
-//  let isCommutable = 1 in
-//  {
+//===----------------------------------------------------------------------===//
+// Logic
+//===----------------------------------------------------------------------===//
+let Constraints = "$src = $rd",
+Defs = [SREG] in
+{
+  // Register-Register logic instructions (which have the
+  // property of commutativity).
+  let isCommutable = 1 in
+  {
+      def ORrr8 : FormB<0xb0, (outs ACC:$rd), (ins GPR8:$src, GPR8:$rr), "or   $rd, $rr",
+                       [(set i8:$rd, (or i8:$src, i8:$rr)), (implicit SREG)]>;
+
+      def XORrr8 : FormB<0xA8, (outs ACC:$rd), (ins GPR8:$src, GPR8:$rr), "xor  $rd, $rr",
+                        [(set i8:$rd, (xor i8:$src, i8:$rr)), (implicit SREG)]>;
+
+      def ANDrr8 : FormB<0xa0, (outs ACC:$rd), (ins GPR8:$src, GPR8:$rr), "and  $rd, $rr",
+                        [(set i8:$rd, (and i8:$src, i8:$rr)), (implicit SREG)]>;
+
 //    def ANDRdRr : FRdRr<0b0010,
 //                        0b00,
 //                        (outs GPR8:$rd),
@@ -632,7 +648,7 @@ Defs = [SREG] in
 //                          "eorw\t$rd, $rr",
 //                          [(set i16:$rd, (xor i16:$src, i16:$rr)),
 //                           (implicit SREG)]>;
-//  }
+  }
 //
 //  def ANDIRdK : FRdK<0b0111,
 //                     (outs LD8:$rd),
@@ -669,8 +685,8 @@ Defs = [SREG] in
 //                       "oriw\t$rd, $rr",
 //                       [(set i16:$rd, (or i16:$src, imm:$rr)),
 //                        (implicit SREG)]>;
-//}
-//
+}
+
 ////===----------------------------------------------------------------------===//
 //// One's/Two's Complement
 ////===----------------------------------------------------------------------===//
@@ -715,14 +731,16 @@ Defs = [SREG] in
 //def : InstAlias<"sbr\t$rd, $k",
 //                (ORIRdK LD8:$rd, imm_ldi8:$k),
 //                /* Disable display, so we don't override ORI */ 0>;
-//
-////===----------------------------------------------------------------------===//
-//// Jump instructions
-////===----------------------------------------------------------------------===//
-//let isBarrier = 1,
-//isBranch = 1,
-//isTerminator = 1 in
-//{
+
+//===----------------------------------------------------------------------===//
+// Jump instructions
+//===----------------------------------------------------------------------===//
+let isBarrier = 1,
+isBranch = 1,
+isTerminator = 1 in
+{
+  def JRk : FormI<0x18, (outs), (ins brtarget_13:$d8), "jr  $d8", [(br bb:$d8)]>;
+
 //  def RJMPk : FBRk<0,
 //                   (outs),
 //                   (ins brtarget_13:$target),
@@ -753,8 +771,8 @@ Defs = [SREG] in
 //                    "jmp\t$k",
 //                    []>,
 //             Requires<[HasJMPCALL]>;
-//}
-//
+}
+
 ////===----------------------------------------------------------------------===//
 //// Call instructions
 ////===----------------------------------------------------------------------===//
@@ -825,11 +843,11 @@ isBarrier = 1 in
 //                 [(Z80retiflag)]>;
 }
 
-////===----------------------------------------------------------------------===//
-//// Compare operations.
-////===----------------------------------------------------------------------===//
-//let Defs = [SREG] in
-//{
+//===----------------------------------------------------------------------===//
+// Compare operations.
+//===----------------------------------------------------------------------===//
+let Defs = [SREG] in
+{
 //  // CPSE Rd, Rr
 //  // Compare Rd and Rr, skipping the next instruction if they are equal.
 //  let isBarrier = 1,
@@ -841,7 +859,13 @@ isBarrier = 1 in
 //                   (ins GPR8:$rd, GPR8:$rr),
 //                   "cpse\t$rd, $rr",
 //                   []>;
-//
+
+    def CPRr8 : FormB<0xb8, (outs), (ins ACC:$rd, GPR8:$rr), "cp   $rd, $rr",
+                      [(Z80cp i8:$rd, i8:$rr), (implicit SREG)]>;
+
+    def CPImm8 : FormI<0xfe, (outs), (ins ACC:$rd, imm_ldi8:$d8), "cp   $rd, $d8",
+                       [(Z80cp i8:$rd, imm:$d8), (implicit SREG)]>;
+
 //  def CPRdRr : FRdRr<0b0001,
 //                     0b01,
 //                     (outs),
@@ -885,8 +909,8 @@ isBarrier = 1 in
 //                    (ins LD8:$rd, imm_ldi8:$k),
 //                    "cpi\t$rd, $k",
 //                    [(Z80cmp i8:$rd, imm:$k), (implicit SREG)]>;
-//}
-//
+}
+
 ////===----------------------------------------------------------------------===//
 //// Register conditional skipping/branching operations.
 ////===----------------------------------------------------------------------===//
@@ -983,16 +1007,18 @@ isBarrier = 1 in
 //// BRID k
 //// Branch if the global interrupt flag is disabled
 //def : InstAlias<"brid\t$k", (BRBCsk 7, relbrtarget_7:$k)>;
-//
-////===----------------------------------------------------------------------===//
-//// PC-relative conditional branches
-////===----------------------------------------------------------------------===//
-//// Based on status register. We cannot simplify these into instruction aliases
-//// because we also need to be able to specify a pattern to match for ISel.
-//let isBranch = 1,
-//isTerminator = 1,
-//Uses = [SREG] in
-//{
+
+//===----------------------------------------------------------------------===//
+// PC-relative conditional branches
+//===----------------------------------------------------------------------===//
+// Based on status register. We cannot simplify these into instruction aliases
+// because we also need to be able to specify a pattern to match for ISel.
+let isBranch = 1,
+isTerminator = 1,
+Uses = [SREG] in
+{
+  def JRCC : FormJ<0x20, (outs), (ins relbrtarget_7:$d8, condcode:$cc), "jr$cc\t$d8", [(Z80brcond bb:$d8, i8:$cc)]>;
+
 //  def BREQk : FBRsk<0,
 //                    0b001,
 //                    (outs),
@@ -1049,7 +1075,7 @@ isBarrier = 1 in
 //                    (ins relbrtarget_7:$target),
 //                    "brlt\t$target",
 //                    [(Z80brcond bb:$target, Z80_COND_LT)]>;
-//}
+}
 
 //===----------------------------------------------------------------------===//
 // Data transfer instructions
@@ -1769,14 +1795,10 @@ def ZEXT : ExtensionPseudo<
 //    "spwrite\t$dst, $src",
 //    []>;
 //}
-//
-//def Select8 : SelectPseudo<
-//  (outs GPR8:$dst),
-//  (ins GPR8:$src, GPR8:$src2, i8imm:$cc),
-//  "# Select8 PSEUDO",
-//  [(set i8:$dst, (Z80selectcc i8:$src, i8:$src2, imm:$cc))]
-//>;
-//
+
+def Select8 : SelectPseudo< (outs GPR8:$dst), (ins GPR8:$src, GPR8:$src2, i8imm:$cc), "# Select8 PSEUDO",
+                            [(set i8:$dst, (Z80selectcc i8:$src, i8:$src2, imm:$cc))] >;
+
 //def Select16 : SelectPseudo<
 //  (outs DREGS:$dst),
 //  (ins DREGS:$src, DREGS:$src2, i8imm:$cc),
