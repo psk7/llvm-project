@@ -14,11 +14,11 @@
 //===----------------------------------------------------------------------===//
 
 // Special return value calling convention for runtime functions.
-//def RetCC_Z80_BUILTIN : CallingConv
-//<[
-//  CCIfType<[i8], CCAssignToReg<[R24,R25]>>,
-//  CCIfType<[i16], CCAssignToReg<[R23R22, R25R24]>>
-//]>;
+def RetCC_Z80_BUILTIN : CallingConv
+<[
+  CCIfType<[i8], CCAssignToReg<[A, B]>>,
+  CCIfType<[i16], CCAssignToReg<[DE, HL]>>
+]>;
 
 //===----------------------------------------------------------------------===//
 // Z80 Argument Calling Conventions

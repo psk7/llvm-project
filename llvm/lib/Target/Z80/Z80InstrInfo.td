@@ -16,9 +16,9 @@ include "Z80InstrFormats.td"
 // Z80 Type Profiles
 //===----------------------------------------------------------------------===//
 
-//def SDT_Z80CallSeqStart : SDCallSeqStart<[SDTCisVT<0, i16>, SDTCisVT<1, i16>]>;
-//def SDT_Z80CallSeqEnd : SDCallSeqEnd<[SDTCisVT<0, i16>, SDTCisVT<1, i16>]>;
-//def SDT_Z80Call : SDTypeProfile<0, -1, [SDTCisVT<0, iPTR>]>;
+def SDT_Z80CallSeqStart : SDCallSeqStart<[SDTCisVT<0, i16>, SDTCisVT<1, i16>]>;
+def SDT_Z80CallSeqEnd : SDCallSeqEnd<[SDTCisVT<0, i16>, SDTCisVT<1, i16>]>;
+def SDT_Z80Call : SDTypeProfile<0, -1, [SDTCisVT<0, iPTR>]>;
 def SDT_Z80Wrapper : SDTypeProfile<1, 1, [SDTCisSameAs<0, 1>, SDTCisPtrTy<0>]>;
 def SDT_Z80Brcond : SDTypeProfile<0, 2,
                                   [SDTCisVT<0, OtherVT>, SDTCisVT<1, i8>]>;
@@ -28,6 +28,9 @@ def SDT_Z80Tst : SDTypeProfile<0, 1, [SDTCisInt<0>]>;
 def SDT_Z80SelectCC : SDTypeProfile<1, 3, [SDTCisSameAs<0, 1>,
                                     SDTCisSameAs<1, 2>, SDTCisVT<3, i8>]>;
 
+def SDT_Z80RotShift : SDTypeProfile<1, 2, [
+  SDTCisInt<0>, SDTCisInt<1> ]>;
+
 //===----------------------------------------------------------------------===//
 // Z80 Specific Node Definitions
 //===----------------------------------------------------------------------===//
@@ -36,14 +39,14 @@ def Z80retflag : SDNode<"Z80ISD::RET_FLAG", SDTNone,
                         [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
 //def Z80retiflag : SDNode<"Z80ISD::RETI_FLAG", SDTNone,
 //                         [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
-//
-//def Z80callseq_start : SDNode<"ISD::CALLSEQ_START", SDT_Z80CallSeqStart,
-//                              [SDNPHasChain, SDNPOutGlue]>;
-//def Z80callseq_end : SDNode<"ISD::CALLSEQ_END", SDT_Z80CallSeqEnd,
-//                            [SDNPHasChain, SDNPOptInGlue, SDNPOutGlue]>;
-//
-//def Z80call : SDNode<"Z80ISD::CALL", SDT_Z80Call,
-//                     [SDNPHasChain, SDNPOutGlue, SDNPOptInGlue, SDNPVariadic]>;
+
+def Z80callseq_start : SDNode<"ISD::CALLSEQ_START", SDT_Z80CallSeqStart,
+                              [SDNPHasChain, SDNPOutGlue]>;
+def Z80callseq_end : SDNode<"ISD::CALLSEQ_END", SDT_Z80CallSeqEnd,
+                            [SDNPHasChain, SDNPOptInGlue, SDNPOutGlue]>;
+
+def Z80call : SDNode<"Z80ISD::CALL", SDT_Z80Call,
+                     [SDNPHasChain, SDNPOutGlue, SDNPOptInGlue, SDNPVariadic]>;
 
 def Z80Wrapper : SDNode<"Z80ISD::WRAPPER", SDT_Z80Wrapper>;
 
@@ -58,21 +61,43 @@ def Z80selectcc: SDNode<"Z80ISD::SELECT_CC", SDT_Z80SelectCC, [SDNPInGlue]>;
 //// Shift nodes.
 //def Z80lsl : SDNode<"Z80ISD::LSL", SDTIntUnaryOp>;
 //def Z80lsr : SDNode<"Z80ISD::LSR", SDTIntUnaryOp>;
-//def Z80rol : SDNode<"Z80ISD::ROL", SDTIntUnaryOp>;
+def Z80rol : SDNode<"Z80ISD::ROL", SDTIntUnaryOp>;
 //def Z80ror : SDNode<"Z80ISD::ROR", SDTIntUnaryOp>;
 //def Z80asr : SDNode<"Z80ISD::ASR", SDTIntUnaryOp>;
-//
+
+//def Z80srl : SDNode<"Z80ISD::SRL", SDTIntUnaryOp>;
+//def Z80sra : SDNode<"Z80ISD::SRA", SDTIntUnaryOp>;
+//def Z80rlc : SDNode<"Z80ISD::RLC", SDTIntUnaryOp>;
+//def Z80rrc : SDNode<"Z80ISD::RRC", SDTIntUnaryOp>;
+//def Z80sla : SDNode<"Z80ISD::SLA", SDTIntUnaryOp>;
+//def Z80rr : SDNode<"Z80ISD::RR", SDTIntUnaryOp>;
+//def Z80rl : SDNode<"Z80ISD::RL", SDTIntUnaryOp>;
+def Z80rotshift : SDNode<"Z80ISD::ROTSHIFT", SDT_Z80RotShift>;
+
+def Z80_ROT_RLC : PatLeaf<(i8 0)>;
+def Z80_ROT_RRC : PatLeaf<(i8 1)>;
+def Z80_ROT_RL  : PatLeaf<(i8 2)>;
+def Z80_ROT_RR  : PatLeaf<(i8 3)>;
+def Z80_ROT_SLA : PatLeaf<(i8 4)>;
+def Z80_ROT_SRA : PatLeaf<(i8 5)>;
+def Z80_ROT_SRL : PatLeaf<(i8 7)>;
+
 //// Pseudo shift nodes for non-constant shift amounts.
 //def Z80lslLoop : SDNode<"Z80ISD::LSLLOOP", SDTIntShiftOp>;
-//def Z80lsrLoop : SDNode<"Z80ISD::LSRLOOP", SDTIntShiftOp>;
+//def Z80srlLoop : SDNode<"Z80ISD::SRLLOOP", SDTIntShiftOp>;
 //def Z80rolLoop : SDNode<"Z80ISD::ROLLOOP", SDTIntShiftOp>;
 //def Z80rorLoop : SDNode<"Z80ISD::RORLOOP", SDTIntShiftOp>;
-//def Z80asrLoop : SDNode<"Z80ISD::ASRLOOP", SDTIntShiftOp>;
-//
-////===----------------------------------------------------------------------===//
-//// Z80 Operands, Complex Patterns and Transformations Definitions.
-////===----------------------------------------------------------------------===//
-//
+//def Z80sraLoop : SDNode<"Z80ISD::SRALOOP", SDTIntShiftOp>;
+
+//===----------------------------------------------------------------------===//
+// Z80 Operands, Complex Patterns and Transformations Definitions.
+//===----------------------------------------------------------------------===//
+
+def rot : PatLeaf<(i8 imm), [{
+   auto r = (Z80II::Rotation)(N->getSExtValue());
+   return r != Z80II::ROT_INVALID;
+}]>;
+
 //def imm8_neg_XFORM : SDNodeXForm<imm,
 //[{
 //  return CurDAG->getTargetConstant(-N->getAPIntValue(), SDLoc(N), MVT::i8);
@@ -171,6 +196,11 @@ def memri : Operand<iPTR>
   let EncoderMethod = "encodeMemri";
 
   let ParserMatchClass = MemriAsmOperand;
+}
+
+def rottype : Operand<i8>
+{
+  let MIOperandInfo = (ops i8imm);
 }
 
 //// Address operand for `SP+imm` used by STD{W}SPQRr
@@ -336,35 +366,35 @@ def Z80_COND_MI : PatLeaf<(i8 6)>;
 def Z80_COND_PL : PatLeaf<(i8 7)>;
 
 
-////===----------------------------------------------------------------------===//
-////===----------------------------------------------------------------------===//
-//// Z80 Instruction list
-////===----------------------------------------------------------------------===//
-////===----------------------------------------------------------------------===//
-//
-//// ADJCALLSTACKDOWN/UP implicitly use/def SP because they may be expanded into
-//// a stack adjustment and the codegen must know that they may modify the stack
-//// pointer before prolog-epilog rewriting occurs.
-//// Pessimistically assume ADJCALLSTACKDOWN / ADJCALLSTACKUP will become
-//// sub / add which can clobber SREG.
-//let Defs = [SP, SREG],
-//Uses = [SP] in
-//{
-//  def ADJCALLSTACKDOWN : Pseudo<(outs),
-//                                (ins i16imm:$amt, i16imm:$amt2),
-//                                "#ADJCALLSTACKDOWN",
-//                                [(Z80callseq_start timm:$amt, timm:$amt2)]>;
-//
-//  // R31R30 is used to update SP, since it is a scratch reg and this instruction
-//  // is placed after the function call then R31R30 should be always free.
-//  //let Defs = [R31R30],
-//  //Uses = [R31R30] in
-//  //:TODO: if we enable this, the pseudo is killed because it looks dead
-//  def ADJCALLSTACKUP : Pseudo<(outs),
-//                              (ins i16imm:$amt1, i16imm:$amt2),
-//                              "#ADJCALLSTACKUP",
-//                              [(Z80callseq_end timm:$amt1, timm:$amt2)]>;
-//}
+//===----------------------------------------------------------------------===//
+//===----------------------------------------------------------------------===//
+// Z80 Instruction list
+//===----------------------------------------------------------------------===//
+//===----------------------------------------------------------------------===//
+
+// ADJCALLSTACKDOWN/UP implicitly use/def SP because they may be expanded into
+// a stack adjustment and the codegen must know that they may modify the stack
+// pointer before prolog-epilog rewriting occurs.
+// Pessimistically assume ADJCALLSTACKDOWN / ADJCALLSTACKUP will become
+// sub / add which can clobber SREG.
+let Defs = [SP, SREG],
+Uses = [SP] in
+{
+  def ADJCALLSTACKDOWN : Pseudo<(outs),
+                                (ins i16imm:$amt, i16imm:$amt2),
+                                "#ADJCALLSTACKDOWN",
+                                [(Z80callseq_start timm:$amt, timm:$amt2)]>;
+
+  // R31R30 is used to update SP, since it is a scratch reg and this instruction
+  // is placed after the function call then R31R30 should be always free.
+  //let Defs = [R31R30],
+  //Uses = [R31R30] in
+  //:TODO: if we enable this, the pseudo is killed because it looks dead
+  def ADJCALLSTACKUP : Pseudo<(outs),
+                              (ins i16imm:$amt1, i16imm:$amt2),
+                              "#ADJCALLSTACKUP",
+                              [(Z80callseq_end timm:$amt1, timm:$amt2)]>;
+}
 
 //===----------------------------------------------------------------------===//
 // Addition
@@ -406,7 +436,7 @@ Defs = [SREG] in
 
     let Uses = [SREG] in
     def ADCRdRr8 : FormB<0xc6,
-                         (outs ACC:$rd), (ins GPR8:$src, GPR8:$rr), "adc  $rr",
+                         (outs ACC:$rd), (ins GPR8:$src, GPR8:$rr), "adc  $rd, $rr",
                          [(set i8:$rd, (adde i8:$src, i8:$rr)), (implicit SREG)]>;
 
     let Uses = [SREG] in
@@ -552,26 +582,18 @@ Defs = [SREG] in
   }
 }
 
-////===----------------------------------------------------------------------===//
-//// Increment and Decrement
-////===----------------------------------------------------------------------===//
-//let Constraints = "$src = $rd",
-//Defs = [SREG] in
-//{
-//  def INCRd : FRd<0b1001,
-//                  0b0100011,
-//                  (outs GPR8:$rd),
-//                  (ins GPR8:$src),
-//                  "inc\t$rd",
-//                  [(set i8:$rd, (add i8:$src, 1)), (implicit SREG)]>;
-//
-//  def DECRd : FRd<0b1001,
-//                  0b0101010,
-//                  (outs GPR8:$rd),
-//                  (ins GPR8:$src),
-//                  "dec\t$rd",
-//                  [(set i8:$rd, (add i8:$src, -1)), (implicit SREG)]>;
-//}
+//===----------------------------------------------------------------------===//
+// Increment and Decrement
+//===----------------------------------------------------------------------===//
+let Constraints = "$src = $rd",
+Defs = [SREG] in
+{
+  def INCRd : FormH<0x04, (outs GPR8:$rd), (ins GPR8:$src), "inc  $rd",
+                    [(set i8:$rd, (add i8:$src, 1)), (implicit SREG)]>;
+
+  def DECRd : FormH<0x05, (outs GPR8:$rd), (ins GPR8:$src), "dec  $rd",
+                    [(set i8:$rd, (add i8:$src, -1)), (implicit SREG)]>;
+}
 
 //===----------------------------------------------------------------------===//
 // Logic
@@ -1017,7 +1039,7 @@ let isBranch = 1,
 isTerminator = 1,
 Uses = [SREG] in
 {
-  def JRCC : FormJ<0x20, (outs), (ins relbrtarget_7:$d8, condcode:$cc), "jr$cc\t$d8", [(Z80brcond bb:$d8, i8:$cc)]>;
+  def JRCC : FormJ<0x20, (outs), (ins relbrtarget_7:$d8, condcode:$cc), "jr$cc\t$d8", [(Z80brcond bb:$d8, imm:$cc)]>;
 
 //  def BREQk : FBRsk<0,
 //                    0b001,
@@ -1325,8 +1347,10 @@ isReMaterializable = 1 in
 //def AtomicLoadXor16 : AtomicLoadOp16<atomic_load_xor_16>;
 //def AtomicFence     : Pseudo<(outs), (ins), "atomic_fence",
 //                             [(atomic_fence timm, timm)]>;
-//
-//// Indirect store from register to data space.
+
+// Indirect store from register to data space.
+def STSKRr : FormF<0x32, (outs), (ins imm16:$d16, ACC:$rd), "ld   ($d16), $rd", [(store i8:$rd, imm:$d16)]>;
+
 //def STSKRr : F32DM<0b1,
 //                   (outs),
 //                   (ins imm16:$k, GPR8:$rd),
@@ -1424,7 +1448,10 @@ isReMaterializable = 1 in
 //                           (pre_store i16:$reg, i16:$ptrreg, imm:$offs))]>,
 //                   Requires<[HasSRAM]>;
 //}
-//
+
+  def STDPtrQRr : FormB<0x70, (outs), (ins memri:$d8, GPR8:$rr), "ld   ($d8), $rr",
+                        [(store i8:$rr, addr:$d8)]>;
+
 //// Store indirect with displacement operations.
 //// STD P+q, Rr
 //// Stores the value of Rr into the location addressed by pointer P with a
@@ -1501,11 +1528,90 @@ hasSideEffects = 0 in
 ////===----------------------------------------------------------------------===//
 //// Bit and bit-test instructions
 ////===----------------------------------------------------------------------===//
+
+// Bit shift/rotate operations.
+let Constraints = "$src = $rr",
+Defs = [SREG] in
+{
+  def ROT16 : Pseudo<(outs DREGS:$rr), (ins DREGS:$src, Operand<i8>:$rot), "#ROT16 $rr",
+                     [(set i16:$rr, (Z80rotshift i16:$src, rot:$rot)), (implicit SREG)]>;
+
+
+  def SRLRd : FormB<0x38, (outs GPR8:$rr), (ins GPR8:$src), "srl  $rr",
+                    [(set i8:$rr, (Z80rotshift i8:$src, Z80_ROT_SRL)), (implicit SREG)]>, CB;
+
+  def SRARd : FormB<0x28, (outs GPR8:$rr), (ins GPR8:$src), "sra  $rr",
+                    [(set i8:$rr, (Z80rotshift i8:$src, Z80_ROT_SRA)), (implicit SREG)]>, CB;
+
+  def RLCRd : FormB<0x00, (outs GPR8:$rr), (ins GPR8:$src), "rlc  $rr",
+                    [(set i8:$rr, (Z80rotshift i8:$src, Z80_ROT_RLC)), (implicit SREG)]>, CB;
+
+  def RRCRd : FormB<0x08, (outs GPR8:$rr), (ins GPR8:$src), "rrc  $rr",
+                    [(set i8:$rr, (Z80rotshift i8:$src, Z80_ROT_RRC)), (implicit SREG)]>, CB;
+
+  def SLARd : FormB<0x20, (outs GPR8:$rr), (ins GPR8:$src), "sla  $rr",
+                    [(set i8:$rr, (Z80rotshift i8:$src, Z80_ROT_SLA)), (implicit SREG)]>, CB;
+
+  let Uses = [SREG] in
+  {
+    def RRRd : FormB<0x18, (outs GPR8:$rr), (ins GPR8:$src), "rr   $rr",
+                     [(set i8:$rr, (Z80rotshift i8:$src, Z80_ROT_RR)), (implicit SREG)]>, CB;
+
+    def RLRd : FormB<0x10, (outs GPR8:$rr), (ins GPR8:$src), "rl   $rr",
+                     [(set i8:$rr, (Z80rotshift i8:$src, Z80_ROT_RL)), (implicit SREG)]>, CB;
+  }
+
+//  def SRLRd : FormB<0x38, (outs GPR8:$rr), (ins GPR8:$src), "srl  $rr",
+//                    [(set i8:$rr, (Z80srl i8:$src)), (implicit SREG)]>, CB;
 //
-//// Bit shift/rotate operations.
-//let Constraints = "$src = $rd",
-//Defs = [SREG] in
-//{
+//  def SRARd : FormB<0x28, (outs GPR8:$rr), (ins GPR8:$src), "sra  $rr",
+//                    [(set i8:$rr, (Z80sra i8:$src)), (implicit SREG)]>, CB;
+//
+//  def RLCRd : FormB<0x00, (outs GPR8:$rr), (ins GPR8:$src), "rlc  $rr",
+//                    [(set i8:$rr, (Z80rlc i8:$src)), (implicit SREG)]>, CB;
+//
+//  def RRCRd : FormB<0x08, (outs GPR8:$rr), (ins GPR8:$src), "rrc  $rr",
+//                    [(set i8:$rr, (Z80rrc i8:$src)), (implicit SREG)]>, CB;
+//
+//  def SLARd : FormB<0x20, (outs GPR8:$rr), (ins GPR8:$src), "sla  $rr",
+//                    [(set i8:$rr, (Z80sla i8:$src)), (implicit SREG)]>, CB;
+//
+//  let Uses = [SREG] in
+//  {
+//    def RRRd : FormB<0x18, (outs GPR8:$rr), (ins GPR8:$src), "rr   $rr",
+//                     [(set i8:$rr, (Z80rr i8:$src)), (implicit SREG)]>, CB;
+//
+//    def RLRd : FormB<0x10, (outs GPR8:$rr), (ins GPR8:$src), "rl   $rr",
+//                     [(set i8:$rr, (Z80rl i8:$src)), (implicit SREG)]>, CB;
+//  }
+//
+//  // ---------------- 16 bit ----------------
+//
+//  def SRLWRd : Pseudo<(outs DREGS:$rr), (ins DREGS:$src), "srl  $rr",
+//                    [(set i16:$rr, (Z80srl i16:$src)), (implicit SREG)]>;
+//
+//  def SRAWRd : Pseudo<(outs DREGS:$rr), (ins DREGS:$src), "sra  $rr",
+//                    [(set i16:$rr, (Z80sra i16:$src)), (implicit SREG)]>;
+//
+//  def RLCWRd : Pseudo<(outs DREGS:$rr), (ins DREGS:$src), "rlc  $rr",
+//                    [(set i16:$rr, (Z80rlc i16:$src)), (implicit SREG)]>;
+//
+//  def RRCWRd : Pseudo<(outs DREGS:$rr), (ins DREGS:$src), "rrc  $rr",
+//                    [(set i16:$rr, (Z80rrc i16:$src)), (implicit SREG)]>;
+//
+//  def SLAWRd : Pseudo<(outs DREGS:$rr), (ins DREGS:$src), "sla  $rr",
+//                    [(set i16:$rr, (Z80sla i16:$src)), (implicit SREG)]>;
+//
+//  let Uses = [SREG] in
+//  {
+//    def RRWRd : Pseudo<(outs DREGS:$rr), (ins DREGS:$src), "rr   $rr",
+//                     [(set i16:$rr, (Z80rr i16:$src)), (implicit SREG)]>;
+//
+//    def RLWRd : Pseudo<(outs DREGS:$rr), (ins DREGS:$src), "rl   $rr",
+//                     [(set i16:$rr, (Z80rl i16:$src)), (implicit SREG)]>;
+//  }
+
+
 //  // 8-bit LSL is an alias of ADD Rd, Rd
 //
 //  def LSLWRd : Pseudo<(outs DREGS:$rd),
@@ -1569,8 +1675,8 @@ hasSideEffects = 0 in
 //                        "rorw\t$rd",
 //                        [(set i16:$rd, (Z80ror i16:$src)), (implicit SREG)]>;
 //  }
-//}
-//
+}
+
 //// SWAP Rd
 //// Swaps the high and low nibbles in a register.
 //let Constraints = "$src = $rd" in
@@ -1945,8 +2051,8 @@ def : Pat<(i16 (load (Z80Wrapper tglobaladdr:$dst))),
           (LD16MEMPTR tglobaladdr:$dst)>;
 //def : Pat<(i16 (load (Z80Wrapper tglobaladdr:$dst))),
 //          (LDSWRdK tglobaladdr:$dst)>;
-//def : Pat<(store i8:$src, (i16 (Z80Wrapper tglobaladdr:$dst))),
-//          (STSKRr tglobaladdr:$dst, i8:$src)>;
+def : Pat<(store i8:$src, (i16 (Z80Wrapper tglobaladdr:$dst))),
+          (STSKRr tglobaladdr:$dst, i8:$src)>;
 //def : Pat<(store i16:$src, (i16 (Z80Wrapper tglobaladdr:$dst))),
 //          (STSWKRr tglobaladdr:$dst, i16:$src)>;
 //

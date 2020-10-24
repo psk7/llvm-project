@@ -29,11 +29,11 @@ public:
     TLSSupported = false;
     PointerWidth = 16;
     PointerAlign = 8;
-    IntWidth = 16;
+    IntWidth = 8;
     IntAlign = 8;
-    LongWidth = 32;
+    LongWidth = 16;
     LongAlign = 8;
-    LongLongWidth = 64;
+    LongLongWidth = 32;
     LongLongAlign = 8;
     SuitableAlign = 8;
     DefaultAlignForAttributeAligned = 8;
@@ -54,7 +54,7 @@ public:
     WIntType = SignedInt;
     Char32Type = UnsignedLong;
     SigAtomicType = SignedChar;
-    resetDataLayout("e-P1-p:16:8-i8:8-i16:8-i32:8-i64:8-f32:8-f64:8-n8-a:8");
+    resetDataLayout("e-P1-p:16:8-i8:8-i16:8-i32:8-n8-a:8");
   }
 
   void getTargetDefines(const LangOptions &Opts,
@@ -143,15 +143,15 @@ public:
   }
 
   IntType getIntTypeByWidth(unsigned BitWidth, bool IsSigned) const final {
-    // Z80 prefers int for 16-bit integers.
-    return BitWidth == 16 ? (IsSigned ? SignedInt : UnsignedInt)
+    // Z80 prefers int for 8-bit integers.
+    return BitWidth == 8 ? (IsSigned ? SignedInt : UnsignedInt)
                           : TargetInfo::getIntTypeByWidth(BitWidth, IsSigned);
   }
 
   IntType getLeastIntTypeByWidth(unsigned BitWidth, bool IsSigned) const final {
     // Z80 uses int for int_least16_t and int_fast16_t.
     return BitWidth == 16
-               ? (IsSigned ? SignedInt : UnsignedInt)
+               ? (IsSigned ? SignedLong : UnsignedLong)
                : TargetInfo::getLeastIntTypeByWidth(BitWidth, IsSigned);
   }
 

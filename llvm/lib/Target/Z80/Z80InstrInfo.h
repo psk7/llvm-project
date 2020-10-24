@@ -29,7 +29,7 @@ namespace Z80CC {
 /// These correspond to `Z80_*_COND` in `Z80InstrInfo.td`.
 /// They must be kept in synch.
 enum CondCodes {
-  COND_EQ, //!< Equal
+/*  COND_EQ, //!< Equal
   COND_NE, //!< Not equal
   COND_GE, //!< Greater than or equal
   COND_LT, //!< Less than
@@ -37,10 +37,8 @@ enum CondCodes {
   COND_LO, //!< Unsigned lower
   COND_MI, //!< Minus
   COND_PL, //!< Plus
-  COND_INVALID
-};
+  COND_INVALID*/
 
-enum TargetCondCode{
   COND_NZ = 0,
   COND_Z = 1,
   COND_NC = 2,
@@ -48,7 +46,8 @@ enum TargetCondCode{
   COND_PO = 4,
   COND_PE = 5,
   COND_P = 6,
-  COND_M = 7
+  COND_M = 7,
+  COND_INVALID = 8
 };
 
 } // end of namespace Z80CC
@@ -79,12 +78,38 @@ enum Prefix {
   FDCB = 6
 };
 
-unsigned getPrefixLength(const MCInstrDesc &MI);
+enum Rotation {
+  ROT_RLC = 0,
+  ROT_RRC = 1,
+  ROT_RL  = 2,
+  ROT_RR  = 3,
+  ROT_SLA = 4,
+  ROT_SRA = 5,
+  ROT_SRL = 7,
+  ROT_INVALID = 8
+};
 
-bool hasCBPrefix(const MCInstrDesc &MI);
-bool hasEDPrefix(const MCInstrDesc &MI);
-bool hasDDPrefix(const MCInstrDesc &MI);
-bool hasFDPrefix(const MCInstrDesc &MI);
+class InstPrefixInfo {
+private:
+  bool HasHL, HasIX, HasIY;
+  bool HasCB, HasED, HasDD, HasFD;
+  unsigned InstrSize;
+
+private:
+  template <class T>
+  InstPrefixInfo(const T &B, const T&E, const MCInstrDesc &MD);
+
+public:
+  InstPrefixInfo(const MCInst &MI, const MCInstrInfo &MII);
+  InstPrefixInfo(const MachineInstr &MI);
+
+  bool hasCB() const;
+  bool hasED() const;
+  bool hasDD() const;
+  bool hasFD() const;
+
+  unsigned getSize() const { return InstrSize; };
+};
 
 } // end of namespace Z80II
 
@@ -95,10 +120,8 @@ public:
 
   const Z80RegisterInfo &getRegisterInfo() const { return RI; }
   const MCInstrDesc &getBrCond(Z80CC::CondCodes CC) const;
-  Z80CC::TargetCondCode getTargetCondCode(Z80CC::CondCodes CC) const;
   Z80CC::CondCodes getCondFromBranchOpc(unsigned Opc) const;
   Z80CC::CondCodes getOppositeCondition(Z80CC::CondCodes CC) const;
-  Z80CC::TargetCondCode getOppositeCondition(Z80CC::TargetCondCode CC) const;
   unsigned getInstSizeInBytes(const MachineInstr &MI) const override;
 
   void copyPhysReg(MachineBasicBlock &MBB, MachineBasicBlock::iterator MI,
@@ -117,6 +140,8 @@ public:
                                int &FrameIndex) const override;
   unsigned isStoreToStackSlot(const MachineInstr &MI,
                               int &FrameIndex) const override;
+
+  bool isCommuteAllowed(const MachineInstr &MI) const override;
 
   // Branch analysis.
   bool analyzeBranch(MachineBasicBlock &MBB, MachineBasicBlock *&TBB,

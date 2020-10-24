@@ -541,6 +541,10 @@ public:
                                 const MachineInstr &MI1,
                                 const MachineRegisterInfo *MRI = nullptr) const;
 
+  virtual bool isCommuteAllowed(const MachineInstr &MI) const{
+    return true;
+  }
+
   /// \returns true if a branch from an instruction with opcode \p BranchOpc
   ///  bytes is capable of jumping to a position \p BrOffset bytes away.
   virtual bool isBranchOffsetInRange(unsigned BranchOpc,

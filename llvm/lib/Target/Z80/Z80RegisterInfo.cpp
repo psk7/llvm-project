@@ -273,6 +273,7 @@ bool Z80RegisterInfo::shouldCoalesce(MachineInstr *MI,
                                      unsigned DstSubReg,
                                      const TargetRegisterClass *NewRC,
                                      LiveIntervals &LIS) const {
+  return true;
   /*if(this->getRegClass(Z80::PTRDISPREGSRegClassID)->hasSubClassEq(NewRC)) {
     return false;
   }*/

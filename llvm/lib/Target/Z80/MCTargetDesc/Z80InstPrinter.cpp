@@ -175,7 +175,7 @@ void Z80InstPrinter::printCondCode(const MCInst *MI, unsigned OpNo,
                                    raw_ostream &O) {
   assert(MI->getOpcode() == Z80::JRCC && "Opcode MUST BE JRCC");
 
-  auto cc = static_cast<Z80CC::TargetCondCode>(MI->getOperand(OpNo).getImm());
+  auto cc = static_cast<Z80CC::CondCodes>(MI->getOperand(OpNo).getImm());
 
   switch (cc) {
   case Z80CC::COND_NZ:

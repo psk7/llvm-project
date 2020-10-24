@@ -331,10 +331,7 @@ template <> bool Z80DAGToDAGISel::select<ISD::FrameIndex>(SDNode *N) {
 }
 
 template <> bool Z80DAGToDAGISel::select<ISD::STORE>(SDNode *N) {
-
-  llvm_unreachable("Z80DAGToDAGISel::select<ISD::STORE>");
-
-  /*// Use the STD{W}SPQRr pseudo instruction when passing arguments through
+  // Use the STD{W}SPQRr pseudo instruction when passing arguments through
   // the stack on function calls for further expansion during the PEI phase.
   const StoreSDNode *ST = cast<StoreSDNode>(N);
   SDValue BasePtr = ST->getBasePtr();
@@ -347,7 +344,7 @@ template <> bool Z80DAGToDAGISel::select<ISD::STORE>(SDNode *N) {
 
   const RegisterSDNode *RN = dyn_cast<RegisterSDNode>(BasePtr.getOperand(0));
   // Only stores where SP is the base pointer are valid.
-  if (!RN || (RN->getReg() != Z80::SP)) {
+  if (!RN || (RN->getReg() != Z80::IY)) {
     return false;
   }
 
@@ -357,7 +354,7 @@ template <> bool Z80DAGToDAGISel::select<ISD::STORE>(SDNode *N) {
   SDLoc DL(N);
   SDValue Offset = CurDAG->getTargetConstant(CST, DL, MVT::i16);
   SDValue Ops[] = {BasePtr.getOperand(0), Offset, ST->getValue(), Chain};
-  unsigned Opc = (VT == MVT::i16) ? Z80::STDWSPQRr : Z80::STDSPQRr;
+  /*unsigned Opc = (VT == MVT::i16) ? Z80::STDWSPQRr : Z80::STDSPQRr;
 
   SDNode *ResNode = CurDAG->getMachineNode(Opc, DL, MVT::Other, Ops);
 
@@ -365,9 +362,9 @@ template <> bool Z80DAGToDAGISel::select<ISD::STORE>(SDNode *N) {
   CurDAG->setNodeMemRefs(cast<MachineSDNode>(ResNode), {ST->getMemOperand()});
 
   ReplaceUses(SDValue(N, 0), SDValue(ResNode, 0));
-  CurDAG->RemoveDeadNode(N);
+  CurDAG->RemoveDeadNode(N);*/
 
-  return true;*/
+  return true;
 }
 
 template <> bool Z80DAGToDAGISel::select<ISD::LOAD>(SDNode *N) {
@@ -427,8 +424,7 @@ template <> bool Z80DAGToDAGISel::select<ISD::LOAD>(SDNode *N) {
 }
 
 template <> bool Z80DAGToDAGISel::select<Z80ISD::CALL>(SDNode *N) {
-
-  llvm_unreachable("Z80DAGToDAGISel::select<Z80ISD::CALL>");
+  return true;
 
   /*
   SDValue InFlag;

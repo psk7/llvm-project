@@ -142,7 +142,6 @@ class FormH<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
   : FormA<opcode, outs, ins, asmstr, pattern>
 {
   bits<3> rd;
-  bits<3> rr;
 
   let Inst{5-3} = rd;
   let Size = 1;
@@ -165,6 +164,17 @@ class FormJ<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
 
   let Inst{15-8} = d8;
   let Inst{4-3} = cc;
+  let Size = 2;
+}
+
+class FormK<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
+  : FormA<opcode, outs, ins, asmstr, pattern>
+{
+  bits<8> d8;
+  bits<3> rr;
+
+  let Inst{15-8} = d8;
+  let Inst{2-0} = rr;
   let Size = 2;
 }
 

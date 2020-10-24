@@ -298,35 +298,20 @@ void Z80MCCodeEmitter::encodeInstruction(const MCInst &MI, raw_ostream &OS,
   // Get byte count of instruction
   unsigned Size = Desc.Size;
 
-  bool HasIX = false;
-  bool HasIY = false;
-  bool HasHL = false;
-
   assert(Size > 0 && "Instruction size cannot be zero");
 
-  for(unsigned i = 0; i < MI.getNumOperands(); ++i) {
-    MCOperand Op = MI.getOperand(i);
-    if (Op.isReg()) {
-      unsigned reg = Op.getReg();
-      HasIX |= (reg == Z80::IX);
-      HasIY |= (reg == Z80::IY);
-      HasHL |= (reg == Z80::HL);
-    }
-  }
+  Z80II::InstPrefixInfo P(MI, MCII);
 
-  if (HasHL && (HasIX || HasIY))
-    report_fatal_error("Unable to mix IX, IY and HL registers in single instruction");
-
-  if (Z80II::hasFDPrefix(Desc) || HasIY)
+  if (P.hasFD())
     OS << (unsigned char)0xFD;
 
-  if (Z80II::hasDDPrefix(Desc) || HasIX)
+  if (P.hasDD())
     OS << (unsigned char)0xDD;
 
-  if (Z80II::hasCBPrefix(Desc))
+  if (P.hasCB())
     OS << (unsigned char)0xCB;
 
-  if (Z80II::hasEDPrefix(Desc))
+  if (P.hasED())
     OS << (unsigned char)0xED;
 
   uint64_t BinaryOpCode = getBinaryCodeForInstr(MI, Fixups, STI);

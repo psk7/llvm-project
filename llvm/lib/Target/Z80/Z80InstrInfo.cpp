@@ -37,43 +37,76 @@ namespace llvm {
 
 namespace Z80II{
 
-unsigned getPrefixLength(const MCInstrDesc &MI) {
-  switch (static_cast<Z80II::Prefix>(MI.TSFlags & 7)) {
-  case Z80II::NoPrfx:   return 0;
-  case Z80II::CB:       return 1;
-  case Z80II::ED:       return 1;
-  case Z80II::DD:       return 1;
-  case Z80II::FD:       return 1;
-  case Z80II::DDCB:     return 2;
-  case Z80II::FDCB:     return 2;
-  default:              return 0;
+template <class T>
+inline bool isImplicitDefOrKill(const T &Op);
+
+template <>
+inline bool isImplicitDefOrKill(const MCOperand &Op){
+  return false;
+}
+
+template <>
+inline bool isImplicitDefOrKill(const MachineOperand &Op){
+  return Op.isReg() && Op.isImplicit() && (Op.isDef() || Op.isKill());
+}
+
+template <class T>
+InstPrefixInfo::InstPrefixInfo(const T &B, const T&E, const MCInstrDesc &MD) {
+  HasIX = false;
+  HasIY = false;
+  HasHL = false;
+
+  for (auto i = B; i != E; ++i) {
+    auto &Op = *i;
+    if (isImplicitDefOrKill(Op) || !Op.isReg())
+      continue;
+    unsigned reg = Op.getReg();
+    HasIX |= (reg == Z80::IX);
+    HasIY |= (reg == Z80::IY);
+    HasHL |= (reg == Z80::HL);
   }
+
+  if (HasHL && (HasIX || HasIY))
+    report_fatal_error(
+        "Unable to mix IX, IY and HL registers in same instruction");
+
+  Z80II::Prefix Prefixes = static_cast<Z80II::Prefix>(MD.TSFlags & 7);
+
+  HasCB = Prefixes == CB || Prefixes == DDCB || Prefixes == FDCB;
+  HasED = Prefixes == ED;
+  HasDD = Prefixes == DD || Prefixes == DDCB || HasIX;
+  HasFD = Prefixes == FD || Prefixes == FDCB || HasIY;
+
+  if (HasDD && HasFD)
+    report_fatal_error(
+        "Unable to mix IX and IY registers in same instruction");
+
+  InstrSize = MD.getSize();
+  if (HasCB)
+    InstrSize += 1;
+  if (HasED)
+    InstrSize += 1;
+  if (HasDD)
+    InstrSize += 1;
+  if (HasFD)
+    InstrSize += 1;
 }
 
-bool hasCBPrefix(const MCInstrDesc &MI) {
-  Z80II::Prefix prefixes = static_cast<Z80II::Prefix>(MI.TSFlags & 7);
-  return prefixes == CB || prefixes == DDCB || prefixes == FDCB;
-}
+InstPrefixInfo::InstPrefixInfo(const MachineInstr &MI)
+    : InstPrefixInfo(MI.operands_begin(), MI.operands_end(), MI.getDesc()) {}
 
-bool hasEDPrefix(const MCInstrDesc &MI) {
-  Z80II::Prefix prefixes = static_cast<Z80II::Prefix>(MI.TSFlags & 7);
-  return prefixes == ED;
-}
+InstPrefixInfo::InstPrefixInfo(const MCInst &MI, const MCInstrInfo &MII)
+    : InstPrefixInfo(MI.begin(), MI.end(), MII.get(MI.getOpcode())) {}
 
-bool hasDDPrefix(const MCInstrDesc &MI) {
-  Z80II::Prefix prefixes = static_cast<Z80II::Prefix>(MI.TSFlags & 7);
-  return prefixes == DD || prefixes == DDCB;
-}
-
-bool hasFDPrefix(const MCInstrDesc &MI) {
-  Z80II::Prefix prefixes = static_cast<Z80II::Prefix>(MI.TSFlags & 7);
-  return prefixes == FD || prefixes == FDCB;
-}
+bool InstPrefixInfo::hasCB() const { return HasCB; }
+bool InstPrefixInfo::hasED() const { return HasED; }
+bool InstPrefixInfo::hasDD() const { return HasDD; }
+bool InstPrefixInfo::hasFD() const { return HasFD; }
 
 }
 
 Z80InstrInfo::Z80InstrInfo()
-    : Z80GenInstrInfo(/*Z80::ADJCALLSTACKDOWN, Z80::ADJCALLSTACKUP*/), RI() {}
+    : Z80GenInstrInfo(Z80::ADJCALLSTACKDOWN, Z80::ADJCALLSTACKUP), RI() {}
 
 void Z80InstrInfo::copyPhysReg(MachineBasicBlock &MBB,
                                MachineBasicBlock::iterator MI,
@@ -148,10 +181,9 @@ unsigned Z80InstrInfo::isLoadFromStackSlot(const MachineInstr &MI,
 
 unsigned Z80InstrInfo::isStoreToStackSlot(const MachineInstr &MI,
                                           int &FrameIndex) const {
-  llvm_unreachable("Z80InstrInfo::isStoreToStackSlot");
-  /*switch (MI.getOpcode()) {
+  switch (MI.getOpcode()) {
   case Z80::STDPtrQRr:
-  case Z80::STDWPtrQRr: {
+  /*case Z80::STDWPtrQRr:*/ {
     if (MI.getOperand(0).isFI() && MI.getOperand(1).isImm() &&
         MI.getOperand(1).getImm() == 0) {
       FrameIndex = MI.getOperand(0).getIndex();
@@ -163,7 +195,7 @@ unsigned Z80InstrInfo::isStoreToStackSlot(const MachineInstr &MI,
     break;
   }
 
-  return 0;*/
+  return 0;
 }
 
 void Z80InstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
@@ -265,19 +297,6 @@ const MCInstrDesc &Z80InstrInfo::getBrCond(Z80CC::CondCodes CC) const {
   }*/
 }
 
-Z80CC::TargetCondCode Z80InstrInfo::getTargetCondCode(Z80CC::CondCodes CC) const {
-  switch (CC) {
-  default:
-    llvm_unreachable("Unable to get target condition code");
-  case Z80CC::COND_EQ:
-    return Z80CC::COND_Z;
-  case Z80CC::COND_NE:
-    return Z80CC::COND_NZ;
-  case Z80CC::COND_LT:
-    return Z80CC::COND_C;
-  }
-}
-
 Z80CC::CondCodes Z80InstrInfo::getCondFromBranchOpc(unsigned Opc) const {
   llvm_unreachable("Z80InstrInfo::getCondFromBranchOpc");
   /*switch (Opc) {
@@ -303,31 +322,6 @@ Z80CC::CondCodes Z80InstrInfo::getCondFromBranchOpc(unsigned Opc) const {
 }
 
 Z80CC::CondCodes Z80InstrInfo::getOppositeCondition(Z80CC::CondCodes CC) const {
-  llvm_unreachable("Z80InstrInfo::getOppositeCondition");
-  /*switch (CC) {
-  default:
-    llvm_unreachable("Invalid condition!");
-  case Z80CC::COND_EQ:
-    return Z80CC::COND_NE;
-  case Z80CC::COND_NE:
-    return Z80CC::COND_EQ;
-  case Z80CC::COND_SH:
-    return Z80CC::COND_LO;
-  case Z80CC::COND_LO:
-    return Z80CC::COND_SH;
-  case Z80CC::COND_GE:
-    return Z80CC::COND_LT;
-  case Z80CC::COND_LT:
-    return Z80CC::COND_GE;
-  case Z80CC::COND_MI:
-    return Z80CC::COND_PL;
-  case Z80CC::COND_PL:
-    return Z80CC::COND_MI;
-  }*/
-}
-
-Z80CC::TargetCondCode
-Z80InstrInfo::getOppositeCondition(Z80CC::TargetCondCode CC) const {
   switch (CC) {
   default:
     llvm_unreachable("Unable to get opposite condition code");
@@ -339,6 +333,14 @@ Z80InstrInfo::getOppositeCondition(Z80CC::TargetCondCode CC) const {
     return Z80CC::COND_NC;
   case Z80CC::COND_NC:
     return Z80CC::COND_C;
+  case Z80CC::COND_PO:
+    return Z80CC::COND_PE;
+  case Z80CC::COND_PE:
+    return Z80CC::COND_PO;
+  case Z80CC::COND_P:
+    return Z80CC::COND_M;
+  case Z80CC::COND_M:
+    return Z80CC::COND_P;
   }
 }
 
@@ -405,8 +407,8 @@ bool Z80InstrInfo::analyzeBranch(MachineBasicBlock &MBB,
 
     // Handle conditional branches.
     //Z80CC::CondCodes BranchCode = getCondFromBranchOpc(I->getOpcode());
-    Z80CC::TargetCondCode BranchCode =
-        static_cast<Z80CC::TargetCondCode>(I->getOperand(1).getImm());
+    Z80CC::CondCodes BranchCode =
+        static_cast<Z80CC::CondCodes>(I->getOperand(1).getImm());
 
     if (I->getOpcode() == Z80::JRk) {
       return true; // Can't handle indirect branch.
@@ -503,8 +505,9 @@ unsigned Z80InstrInfo::insertBranch(MachineBasicBlock &MBB,
 
   // Conditional branch.
   unsigned Count = 0;
-  Z80CC::TargetCondCode CC = (Z80CC::TargetCondCode)Cond[0].getImm();
-  auto &CondMI = *BuildMI(&MBB, DL, get(Z80::JRCC)).addMBB(TBB).addImm(CC);
+  auto &CondMI = *BuildMI(&MBB, DL, get(Z80::JRCC))
+                      .addMBB(TBB)
+                      .addImm(Cond[0].getImm()); /*Z80CC::CondCodes*/
 
   if (BytesAdded) *BytesAdded += getInstSizeInBytes(CondMI);
   ++Count;
@@ -555,7 +558,7 @@ bool Z80InstrInfo::reverseBranchCondition(
   /*Z80CC::CondCodes CC = static_cast<Z80CC::CondCodes>(Cond[0].getImm());
   Cond[0].setImm(getOppositeCondition(CC));*/
 
-  Z80CC::TargetCondCode CC = static_cast<Z80CC::TargetCondCode>(Cond[0].getImm());
+  Z80CC::CondCodes CC = static_cast<Z80CC::CondCodes>(Cond[0].getImm());
   Cond[0].setImm(getOppositeCondition(CC));
 
   return false;
@@ -564,13 +567,12 @@ bool Z80InstrInfo::reverseBranchCondition(
 unsigned Z80InstrInfo::getInstSizeInBytes(const MachineInstr &MI) const {
   unsigned Opcode = MI.getOpcode();
 
-  unsigned prefixSize = Z80II::getPrefixLength(MI.getDesc());
+  Z80II::InstPrefixInfo P(MI);
 
   switch (Opcode) {
   // A regular instruction
   default: {
-    const MCInstrDesc &Desc = get(Opcode);
-    return Desc.getSize() + prefixSize;
+    return P.getSize();
   }
   case TargetOpcode::EH_LABEL:
   case TargetOpcode::IMPLICIT_DEF:
@@ -664,6 +666,26 @@ unsigned Z80InstrInfo::insertIndirectBranch(MachineBasicBlock &MBB,
     auto &MI = *BuildMI(&MBB, DL, get(Z80::JMPk)).addMBB(&NewDestBB);
 
     return getInstSizeInBytes(MI);*/
+}
+
+bool Z80InstrInfo::isCommuteAllowed(const MachineInstr &MI) const {
+  switch (MI.getOpcode()) {
+  default:
+    return TargetInstrInfo::isCommuteAllowed(MI);
+  case Z80::ADDRdRr8:
+  case Z80::ADDRdRr16:
+  case Z80::ORrr8:
+  case Z80::XORrr8:
+    const MachineRegisterInfo &RI = MI.getParent()->getParent()->getRegInfo();
+
+    auto RegClass0 = RI.getRegClass(MI.getOperand(0).getReg())->getID();
+    auto RegClass1 = RI.getRegClass(MI.getOperand(1).getReg())->getID();
+    auto RegClass2 = RI.getRegClass(MI.getOperand(2).getReg())->getID();
+
+    return !(RegClass0 == Z80::ACCRegClassID &&
+             RegClass1 == Z80::ACCRegClassID &&
+             RegClass2 == Z80::GPR8RegClassID);
+  }
 }
 
 } // end of namespace llvm
