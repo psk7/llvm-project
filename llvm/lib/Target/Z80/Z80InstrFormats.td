@@ -40,9 +40,11 @@ class Z80Inst<dag outs, dag ins, string asmstr, list<dag> pattern> : Instruction
   let AsmString = asmstr;
   let Pattern = pattern;
 
+  bits<1> IsPtrInstruction = 0;
   Prefix OpPrefix = NoPrfx;
   bits<3> OpPrefixBits = OpPrefix.Value;
 
+  let TSFlags{3} = IsPtrInstruction;
   let TSFlags{2-0} = OpPrefixBits;
 
   field bits<64> Inst;
@@ -69,6 +71,10 @@ class Z80Inst24<dag outs, dag ins, string asmstr, list<dag> pattern>
   : Z80Inst<outs, ins, asmstr, pattern>
 {
   let Size = 3;
+}
+
+class IsPtrInstr {
+  bits<1> IsPtrInstruction = 1;
 }
 
 class FormA<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>

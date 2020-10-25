@@ -316,9 +316,16 @@ void Z80MCCodeEmitter::encodeInstruction(const MCInst &MI, raw_ostream &OS,
 
   uint64_t BinaryOpCode = getBinaryCodeForInstr(MI, Fixups, STI);
 
+  if (P.hasDisplacement() && P.hasCB())
+    OS << (unsigned char)P.getDisplacement();
+
   for (int64_t i = 0; i < Size; ++i) {
     uint8_t Word = (BinaryOpCode >> (i * 8)) & 0xFF;
     OS << Word;
+  }
+
+  if (P.hasDisplacement() && !P.hasCB()) {
+    OS << (unsigned char)P.getDisplacement();
   }
 }
 

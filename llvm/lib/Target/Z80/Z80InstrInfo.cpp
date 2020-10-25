@@ -51,10 +51,12 @@ inline bool isImplicitDefOrKill(const MachineOperand &Op){
 }
 
 template <class T>
-InstPrefixInfo::InstPrefixInfo(const T &B, const T&E, const MCInstrDesc &MD) {
+InstPrefixInfo::InstPrefixInfo(const T &B, const T &E, const MCInstrDesc &MD) {
   HasIX = false;
   HasIY = false;
   HasHL = false;
+  Displacement = 0;
+  HasDisplacement = false;
 
   for (auto i = B; i != E; ++i) {
     auto &Op = *i;
@@ -64,6 +66,18 @@ InstPrefixInfo::InstPrefixInfo(const T &B, const T&E, const MCInstrDesc &MD) {
     HasIX |= (reg == Z80::IX);
     HasIY |= (reg == Z80::IY);
     HasHL |= (reg == Z80::HL);
+
+    auto d = (reg == Z80::IX || reg == Z80::IY) && (MD.TSFlags & (1 << 3));
+    HasDisplacement |= d;
+
+    if (d) {
+      ++i;
+      assert(i != E);
+      auto &Opi = *i;
+      if (Opi.isImm()){
+        Displacement = Opi.getImm();
+      }
+    }
   }
 
   if (HasHL && (HasIX || HasIY))
@@ -90,6 +104,9 @@ InstPrefixInfo::InstPrefixInfo(const T &B, const T&E, const MCInstrDesc &MD) {
     InstrSize += 1;
   if (HasFD)
     InstrSize += 1;
+
+  if (HasDisplacement)
+    InstrSize += 1;
 }
 
 InstPrefixInfo::InstPrefixInfo(const MachineInstr &MI)
@@ -97,12 +114,6 @@ InstPrefixInfo::InstPrefixInfo(const MachineInstr &MI)
 
 InstPrefixInfo::InstPrefixInfo(const MCInst &MI, const MCInstrInfo &MII)
     : InstPrefixInfo(MI.begin(), MI.end(), MII.get(MI.getOpcode())) {}
-
-bool InstPrefixInfo::hasCB() const { return HasCB; }
-bool InstPrefixInfo::hasED() const { return HasED; }
-bool InstPrefixInfo::hasDD() const { return HasDD; }
-bool InstPrefixInfo::hasFD() const { return HasFD; }
-
 }
 
 Z80InstrInfo::Z80InstrInfo()

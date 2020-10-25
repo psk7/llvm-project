@@ -213,6 +213,8 @@ void Z80InstPrinter::printMemri(const MCInst *MI, unsigned OpNo,
 
   const MCOperand &OffsetOp = MI->getOperand(OpNo + 1);
 
+  O << "(";
+
   // Print the register.
   printOperand(MI, OpNo, O);
 
@@ -229,6 +231,8 @@ void Z80InstPrinter::printMemri(const MCInst *MI, unsigned OpNo,
   } else {
     llvm_unreachable("unknown type for offset");
   }
+
+  O << ")";
 }
 
 } // end of namespace llvm

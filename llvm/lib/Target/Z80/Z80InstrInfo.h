@@ -93,9 +93,10 @@ class InstPrefixInfo {
 private:
   bool HasHL, HasIX, HasIY;
   bool HasCB, HasED, HasDD, HasFD;
+  bool HasDisplacement;
   unsigned InstrSize;
+  unsigned Displacement;
 
-private:
   template <class T>
   InstPrefixInfo(const T &B, const T&E, const MCInstrDesc &MD);
 
@@ -103,10 +104,12 @@ public:
   InstPrefixInfo(const MCInst &MI, const MCInstrInfo &MII);
   InstPrefixInfo(const MachineInstr &MI);
 
-  bool hasCB() const;
-  bool hasED() const;
-  bool hasDD() const;
-  bool hasFD() const;
+  bool hasCB() const { return HasCB; };
+  bool hasED() const { return HasED; };
+  bool hasDD() const { return HasDD; };
+  bool hasFD() const { return HasFD; };
+  bool hasDisplacement() const { return HasDisplacement; };
+  unsigned getDisplacement() const { return Displacement; };
 
   unsigned getSize() const { return InstrSize; };
 };

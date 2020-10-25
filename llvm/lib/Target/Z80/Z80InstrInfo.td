@@ -138,19 +138,19 @@ def rot : PatLeaf<(i8 imm), [{
 //  return CurDAG->getTargetConstant(uint8_t(N->getZExtValue()) - offset,
 //                                   SDLoc(N), MVT::i8);
 //}]>;
-//
-//def iobitpos8_XFORM : SDNodeXForm<imm,
-//[{
-//  return CurDAG->getTargetConstant(Log2_32(uint8_t(N->getZExtValue())),
-//                                   SDLoc(N), MVT::i8);
-//}]>;
-//
-//def iobitposn8_XFORM : SDNodeXForm<imm,
-//[{
-//  return CurDAG->getTargetConstant(Log2_32(uint8_t(~N->getZExtValue())),
-//                                   SDLoc(N), MVT::i8);
-//}]>;
-//
+
+def iobitpos8_XFORM : SDNodeXForm<imm,
+[{
+  return CurDAG->getTargetConstant(Log2_32(uint8_t(N->getZExtValue())),
+                                   SDLoc(N), MVT::i8);
+}]>;
+
+def iobitposn8_XFORM : SDNodeXForm<imm,
+[{
+  return CurDAG->getTargetConstant(Log2_32(uint8_t(~N->getZExtValue())),
+                                   SDLoc(N), MVT::i8);
+}]>;
+
 //def ioaddr8 : PatLeaf<(imm),
 //[{
 //  uint8_t offset = Subtarget->getIORegisterOffset();
@@ -171,16 +171,16 @@ def rot : PatLeaf<(i8 imm), [{
 //  uint64_t val = N->getZExtValue() - offset;
 //  return val < 0x3f;
 //}], ioaddr_XFORM>;
-//
-//def iobitpos8 : PatLeaf<(imm),
-//[{
-//  return isPowerOf2_32(uint8_t(N->getZExtValue()));
-//}], iobitpos8_XFORM>;
-//
-//def iobitposn8 : PatLeaf<(imm),
-//[{
-//  return isPowerOf2_32(uint8_t(~N->getZExtValue()));
-//}], iobitposn8_XFORM>;
+
+def iobitpos8 : PatLeaf<(imm),
+[{
+  return isPowerOf2_32(uint8_t(N->getZExtValue()));
+}], iobitpos8_XFORM>;
+
+def iobitposn8 : PatLeaf<(imm),
+[{
+  return isPowerOf2_32(uint8_t(~N->getZExtValue()));
+}], iobitposn8_XFORM>;
 
 def MemriAsmOperand : AsmOperandClass {
   let Name = "Memri";
@@ -595,9 +595,26 @@ Defs = [SREG] in
                     [(set i8:$rd, (add i8:$src, -1)), (implicit SREG)]>;
 }
 
+let Defs = [SREG], rd = 6 in
+{
+  def INCRdPTR : FormH<0x04, (outs), (ins memri:$addr), "inc  $addr",
+                       [(store (i8 (add (i8 (load addr:$addr)), 1)), addr:$addr)]>, IsPtrInstr;
+
+  def DECRdPTR : FormH<0x05, (outs), (ins memri:$addr), "dec  $addr",
+                       [(store (i8 (add (i8 (load addr:$addr)), -1)), addr:$addr)]>, IsPtrInstr;
+}
+
+
 //===----------------------------------------------------------------------===//
 // Logic
 //===----------------------------------------------------------------------===//
+
+def SETBITPTR : FormH<0xC6, (outs), (ins memri:$addr, i8imm:$rd), "set  $rd, $addr",
+                      [(store (i8 (or (i8 (load addr:$addr)), iobitpos8:$rd)), addr:$addr)]>, IsPtrInstr, CB;
+
+def RESBITPTR : FormH<0x86, (outs), (ins memri:$addr, i8imm:$rd), "res  $rd, $addr",
+                      [(store (i8 (and (i8 (load addr:$addr)), iobitposn8:$rd)), addr:$addr)]>, IsPtrInstr, CB;
+
 let Constraints = "$src = $rd",
 Defs = [SREG] in
 {
@@ -613,6 +630,15 @@ Defs = [SREG] in
 
       def ANDrr8 : FormB<0xa0, (outs ACC:$rd), (ins GPR8:$src, GPR8:$rr), "and  $rd, $rr",
                         [(set i8:$rd, (and i8:$src, i8:$rr)), (implicit SREG)]>;
+
+      def ANDimm8 : FormI<0xe6, (outs ACC:$rd), (ins GPR8:$src, i8imm:$d8), "and  a, $d8",
+                         [(set i8:$rd, (and i8:$src, imm:$d8)), (implicit SREG)]>;
+
+      let rr=6 in
+      {
+        def ORrr8PTR : FormB<0xb0, (outs ACC:$rd), (ins GPR8:$src, memri:$addr), "or   $rd, $addr",
+                               [(set i8:$rd, (or i8:$src, (i8 (load addr:$addr)))), (implicit SREG)]>, IsPtrInstr;
+      }
 
 //    def ANDRdRr : FRdRr<0b0010,
 //                        0b00,
@@ -1249,8 +1275,8 @@ isReMaterializable = 1 in
 {
 
   let Constraints = "@earlyclobber $rd" in
-  def LDRdIXoffs : FormD<0x46, (outs GPR8:$rd), (ins memri:$d8), "ld   $rd, ($d8)",
-                         [(set i8:$rd, (load addr:$d8))]>;
+  def LDRdIXoffs : FormH<0x46, (outs GPR8:$rd), (ins memri:$d8), "ld   $rd, $d8",
+                         [(set i8:$rd, (load addr:$d8))]>, IsPtrInstr;
 
 //  let Constraints = "@earlyclobber $reg" in
 //  def LDDRdPtrQ : FSTDLDD<0,
@@ -1449,8 +1475,8 @@ def STSKRr : FormF<0x32, (outs), (ins imm16:$d16, ACC:$rd), "ld   ($d16), $rd", 
 //                   Requires<[HasSRAM]>;
 //}
 
-  def STDPtrQRr : FormB<0x70, (outs), (ins memri:$d8, GPR8:$rr), "ld   ($d8), $rr",
-                        [(store i8:$rr, addr:$d8)]>;
+  def STDPtrQRr : FormB<0x70, (outs), (ins memri:$d8, GPR8:$rr), "ld   $d8, $rr",
+                        [(store i8:$rr, addr:$d8)]>, IsPtrInstr;
 
 //// Store indirect with displacement operations.
 //// STD P+q, Rr
@@ -1676,6 +1702,16 @@ Defs = [SREG] in
 //                        [(set i16:$rd, (Z80ror i16:$src)), (implicit SREG)]>;
 //  }
 }
+
+//def LDRdIXoffs : FormD<0x46, (outs GPR8:$rd), (ins memri:$d8), "ld   $rd, ($d8)",
+//                         [(set i8:$rd, (load addr:$d8))]>;
+
+//def SRLRdPTR : FormB<0x38, (outs), (ins memri:$addr), "srl  $addr",
+//                     [(store (i8 (srl (i8 (load addr:$addr)), 0)), addr:$addr)]>, CB;
+//                     [(store (Z80rotshift (i8 (load addr:$addr)), Z80_ROT_SRL), addr:$addr)]>, CB;
+
+//def : Pat<(store (Z80rotshift (i8 (load addr:$addr)), Z80_ROT_SRL), addr:$addr),
+//          (SRLRdPTR addr:$addr)>;
 
 //// SWAP Rd
 //// Swaps the high and low nibbles in a register.
