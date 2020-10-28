@@ -90,11 +90,11 @@ Z80RegisterInfo::getLargestLegalSuperClass(const TargetRegisterClass *RC,
 /// Fold a frame offset shared between two add instructions into a single one.
 static void foldFrameOffset(MachineBasicBlock::iterator &II, int &Offset,
                             Register DstReg) {
-  /*MachineInstr &MI = *II;
+  MachineInstr &MI = *II;
   int Opcode = MI.getOpcode();
 
   // Don't bother trying if the next instruction is not an add or a sub.
-  if ((Opcode != Z80::SUBIWRdK) && (Opcode != Z80::ADIWRdK)) {
+  if (Opcode != Z80::ADIWRdK) {
     return;
   }
 
@@ -105,19 +105,11 @@ static void foldFrameOffset(MachineBasicBlock::iterator &II, int &Offset,
   }
 
   // Add the offset in the next instruction to our offset.
-  switch (Opcode) {
-  case Z80::SUBIWRdK:
-    Offset += -MI.getOperand(2).getImm();
-    break;
-  case Z80::ADIWRdK:
-    Offset += MI.getOperand(2).getImm();
-    break;
-  }
+  Offset += MI.getOperand(2).getImm();
 
   // Finally remove the instruction.
   II++;
-  MI.eraseFromParent();*/
-  llvm_unreachable("foldFrameOffset");
+  MI.eraseFromParent();
 }
 
 void Z80RegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
@@ -144,14 +136,27 @@ void Z80RegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
   // This is actually "load effective address" of the stack slot
   // instruction. We have only two-address instructions, thus we need to
   // expand it into move + add.
-  /*if (MI.getOpcode() == Z80::FRMIDX) {
-    MI.setDesc(TII.get(Z80::MOVWRdRr));
+  if (MI.getOpcode() == Z80::FRMIDX) {
+    const auto &LDI16 = BuildMI(MBB, II, dl, TII.get(Z80::LDI16), Z80::HL);
+
+    II++;
+
+    assert(Offset >= 0 && "Invalid offset");
+
+    MI.setDesc(TII.get(Z80::ADDRdRr16));
+    MI.getOperand(FIOperandNum).ChangeToRegister(Z80::HL, false);
+    MI.getOperand(FIOperandNum + 1).ChangeToRegister(Z80::SP, false);
+
+    if (II != MBB.end())
+      foldFrameOffset(II, Offset, Z80::HL);
+
+    LDI16.addImm(Offset);
+
+    /*MI.setDesc(TII.get(Z80::MOVWRdRr));
     MI.getOperand(FIOperandNum).ChangeToRegister(Z80::R29R28, false);
-    MI.RemoveOperand(2);
+    MI.RemoveOperand(2);*/
 
-    assert(Offset > 0 && "Invalid offset");
-
-    // We need to materialize the offset via an add instruction.
+    /*// We need to materialize the offset via an add instruction.
     unsigned Opcode;
     Register DstReg = MI.getOperand(0).getReg();
     assert(DstReg != Z80::R29R28 && "Dest reg cannot be the frame pointer");
@@ -191,10 +196,10 @@ void Z80RegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
     MachineInstr *New = BuildMI(MBB, II, dl, TII.get(Opcode), DstReg)
                             .addReg(DstReg, RegState::Kill)
                             .addImm(Offset);
-    New->getOperand(3).setIsDead();
+    New->getOperand(3).setIsDead();*/
 
     return;
-  }*/
+  }
 
   // If the offset is too big we have to adjust and restore the frame pointer
   // to materialize a valid load/store with displacement.

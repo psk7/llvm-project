@@ -137,7 +137,6 @@ bool Z80ExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
 
   return Modified;
 }
-/*
 
 bool Z80ExpandPseudo::
 expandArith(unsigned OpLo, unsigned OpHi, Block &MBB, BlockIt MBBI) {
@@ -171,7 +170,7 @@ expandArith(unsigned OpLo, unsigned OpHi, Block &MBB, BlockIt MBBI) {
   MI.eraseFromParent();
   return true;
 }
-
+/*
 bool Z80ExpandPseudo::
 expandLogic(unsigned Op, Block &MBB, BlockIt MBBI) {
   MachineInstr &MI = *MBBI;
@@ -255,12 +254,32 @@ expandLogicImm(unsigned Op, Block &MBB, BlockIt MBBI) {
   MI.eraseFromParent();
   return true;
 }
-
+*/
 template <>
 bool Z80ExpandPseudo::expand<Z80::ADDWRdRr>(Block &MBB, BlockIt MBBI) {
-  return expandArith(Z80::ADDRdRr, Z80::ADCRdRr, MBB, MBBI);
-}
+  MachineInstr &MI = *MBBI;
+  Register DstReg = MI.getOperand(0).getReg();
+  Register SrcReg = MI.getOperand(2).getReg();
+  bool DstIsDead = MI.getOperand(0).isDead();
+  bool DstIsKill = MI.getOperand(1).isKill();
+  bool SrcIsKill = MI.getOperand(2).isKill();
+  bool ImpIsDead = MI.getOperand(3).isDead();
 
+  auto &MIBHI = buildMI(MBB, MBBI, Z80::ADDRdRr16)
+      .addReg(DstReg, RegState::Define | getDeadRegState(DstIsDead))
+      .addReg(DstReg, getKillRegState(DstIsKill))
+      .addReg(SrcReg, getKillRegState(SrcIsKill));
+
+  if (ImpIsDead)
+    MIBHI->getOperand(3).setIsDead();
+
+  // SREG is always implicitly killed
+  MIBHI.addReg(Z80::SREG, RegState::ImplicitKill);
+
+  MI.eraseFromParent();
+  return true;
+}
+/*
 template <>
 bool Z80ExpandPseudo::expand<Z80::ADCWRdRr>(Block &MBB, BlockIt MBBI) {
   return expandArith(Z80::ADCRdRr, Z80::ADCRdRr, MBB, MBBI);
@@ -483,22 +502,15 @@ bool Z80ExpandPseudo::expand<Z80::CPCWRdRr>(Block &MBB, BlockIt MBBI) {
   MI.eraseFromParent();
   return true;
 }
-
+*/
 template <>
 bool Z80ExpandPseudo::expand<Z80::LDIWRdK>(Block &MBB, BlockIt MBBI) {
   MachineInstr &MI = *MBBI;
-  Register DstLoReg, DstHiReg;
   Register DstReg = MI.getOperand(0).getReg();
   bool DstIsDead = MI.getOperand(0).isDead();
-  unsigned OpLo = Z80::LDIRdK;
-  unsigned OpHi = Z80::LDIRdK;
-  TRI->splitReg(DstReg, DstLoReg, DstHiReg);
 
-  auto MIBLO = buildMI(MBB, MBBI, OpLo)
-    .addReg(DstLoReg, RegState::Define | getDeadRegState(DstIsDead));
-
-  auto MIBHI = buildMI(MBB, MBBI, OpHi)
-    .addReg(DstHiReg, RegState::Define | getDeadRegState(DstIsDead));
+  auto MIBLO = buildMI(MBB, MBBI, Z80::LDI16)
+    .addReg(DstReg, RegState::Define | getDeadRegState(DstIsDead));
 
   switch (MI.getOperand(1).getType()) {
   case MachineOperand::MO_GlobalAddress: {
@@ -507,7 +519,6 @@ bool Z80ExpandPseudo::expand<Z80::LDIWRdK>(Block &MBB, BlockIt MBBI) {
     unsigned TF = MI.getOperand(1).getTargetFlags();
 
     MIBLO.addGlobalAddress(GV, Offs, TF | Z80II::MO_LO);
-    MIBHI.addGlobalAddress(GV, Offs, TF | Z80II::MO_HI);
     break;
   }
   case MachineOperand::MO_BlockAddress: {
@@ -515,14 +526,12 @@ bool Z80ExpandPseudo::expand<Z80::LDIWRdK>(Block &MBB, BlockIt MBBI) {
     unsigned TF = MI.getOperand(1).getTargetFlags();
 
     MIBLO.add(MachineOperand::CreateBA(BA, TF | Z80II::MO_LO));
-    MIBHI.add(MachineOperand::CreateBA(BA, TF | Z80II::MO_HI));
     break;
   }
   case MachineOperand::MO_Immediate: {
     unsigned Imm = MI.getOperand(1).getImm();
 
-    MIBLO.addImm(Imm & 0xff);
-    MIBHI.addImm((Imm >> 8) & 0xff);
+    MIBLO.addImm(Imm);
     break;
   }
   default:
@@ -532,7 +541,7 @@ bool Z80ExpandPseudo::expand<Z80::LDIWRdK>(Block &MBB, BlockIt MBBI) {
   MI.eraseFromParent();
   return true;
 }
-
+/*
 template <>
 bool Z80ExpandPseudo::expand<Z80::LDSWRdK>(Block &MBB, BlockIt MBBI) {
   MachineInstr &MI = *MBBI;
@@ -687,54 +696,34 @@ bool Z80ExpandPseudo::expand<Z80::LDWRdPtrPd>(Block &MBB, BlockIt MBBI) {
   MI.eraseFromParent();
   return true;
 }
-
+*/
 template <>
 bool Z80ExpandPseudo::expand<Z80::LDDWRdPtrQ>(Block &MBB, BlockIt MBBI) {
   MachineInstr &MI = *MBBI;
   Register DstLoReg, DstHiReg;
   Register DstReg = MI.getOperand(0).getReg();
-  Register TmpReg = 0; // 0 for no temporary register
   Register SrcReg = MI.getOperand(1).getReg();
   unsigned Imm = MI.getOperand(2).getImm();
   bool SrcIsKill = MI.getOperand(1).isKill();
-  unsigned OpLo = Z80::LDDRdPtrQ;
-  unsigned OpHi = Z80::LDDRdPtrQ;
+  unsigned OpLo = Z80::LDRdIXoffs;
+  unsigned OpHi = Z80::LDRdIXoffs;
   TRI->splitReg(DstReg, DstLoReg, DstHiReg);
 
   // Since we add 1 to the Imm value for the high byte below, and 63 is the highest Imm value
-  // allowed for the instruction, 62 is the limit here.
-  assert(Imm <= 62 && "Offset is out of range");
-
-  // Use a temporary register if src and dst registers are the same.
-  if (DstReg == SrcReg)
-    TmpReg = scavengeGPR8(MI);
-
-  Register CurDstLoReg = (DstReg == SrcReg) ? TmpReg : DstLoReg;
-  Register CurDstHiReg = (DstReg == SrcReg) ? TmpReg : DstHiReg;
+  // allowed for the instruction, 126 is the limit here.
+  assert(Imm <= 126 && "Offset is out of range");
 
   // Load low byte.
   auto MIBLO = buildMI(MBB, MBBI, OpLo)
-    .addReg(CurDstLoReg, RegState::Define)
+    .addReg(DstLoReg, RegState::Define)
     .addReg(SrcReg)
     .addImm(Imm);
 
-  // Push low byte onto stack if necessary.
-  if (TmpReg)
-    buildMI(MBB, MBBI, Z80::PUSHRr).addReg(TmpReg);
-
   // Load high byte.
   auto MIBHI = buildMI(MBB, MBBI, OpHi)
-    .addReg(CurDstHiReg, RegState::Define)
+    .addReg(DstHiReg, RegState::Define)
     .addReg(SrcReg, getKillRegState(SrcIsKill))
     .addImm(Imm + 1);
-
-  if (TmpReg) {
-    // Move the high byte into the final destination.
-    buildMI(MBB, MBBI, Z80::MOVRdRr).addReg(DstHiReg).addReg(TmpReg);
-
-    // Move the low byte from the scratch space into the final destination.
-    buildMI(MBB, MBBI, Z80::POPRd).addReg(DstLoReg);
-  }
 
   MIBLO.setMemRefs(MI.memoperands());
   MIBHI.setMemRefs(MI.memoperands());
@@ -742,7 +731,7 @@ bool Z80ExpandPseudo::expand<Z80::LDDWRdPtrQ>(Block &MBB, BlockIt MBBI) {
   MI.eraseFromParent();
   return true;
 }
-
+/*
 template <>
 bool Z80ExpandPseudo::expand<Z80::LPMWRdZ>(Block &MBB, BlockIt MBBI) {
   MachineInstr &MI = *MBBI;
@@ -862,7 +851,7 @@ bool Z80ExpandPseudo::expandAtomicArithmeticOp(unsigned Width,
       buildMI(MBB, MBBI, StoreOpcode).add(Op2).add(Op1);
   });
 }
-
+*/
 Register Z80ExpandPseudo::scavengeGPR8(MachineInstr &MI) {
   MachineBasicBlock &MBB = *MI.getParent();
   RegScavenger RS;
@@ -888,7 +877,7 @@ Register Z80ExpandPseudo::scavengeGPR8(MachineInstr &MI) {
   assert(Reg != -1 && "ran out of registers");
   return Reg;
 }
-
+/*
 template<>
 bool Z80ExpandPseudo::expand<Z80::AtomicLoad8>(Block &MBB, BlockIt MBBI) {
   return expandAtomicBinaryOp(Z80::LDRdPtr, MBB, MBBI);
@@ -1623,7 +1612,7 @@ bool Z80ExpandPseudo::expandMI(Block &MBB, BlockIt MBBI) {
     return expand<Op>(MBB, MI)
 
   switch (Opcode) {
-//    EXPAND(Z80::ADDWRdRr);
+    EXPAND(Z80::ADDWRdRr);
 //    EXPAND(Z80::ADCWRdRr);
 //    EXPAND(Z80::SUBWRdRr);
 //    EXPAND(Z80::SUBIWRdK);
@@ -1637,13 +1626,13 @@ bool Z80ExpandPseudo::expandMI(Block &MBB, BlockIt MBBI) {
 //    EXPAND(Z80::COMWRd);
 //    EXPAND(Z80::CPWRdRr);
 //    EXPAND(Z80::CPCWRdRr);
-//    EXPAND(Z80::LDIWRdK);
+    EXPAND(Z80::LDIWRdK);
 //    EXPAND(Z80::LDSWRdK);
 //    EXPAND(Z80::LDWRdPtr);
 //    EXPAND(Z80::LDWRdPtrPi);
 //    EXPAND(Z80::LDWRdPtrPd);
 //  case Z80::LDDWRdYQ: //:FIXME: remove this once PR13375 gets fixed
-//    EXPAND(Z80::LDDWRdPtrQ);
+    EXPAND(Z80::LDDWRdPtrQ);
 //    EXPAND(Z80::LPMWRdZ);
 //    EXPAND(Z80::LPMWRdZPi);
 //    EXPAND(Z80::AtomicLoad8);

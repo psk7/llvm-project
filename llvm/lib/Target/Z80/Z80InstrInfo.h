@@ -97,8 +97,8 @@ private:
   unsigned InstrSize;
   unsigned Displacement;
 
-  template <class T>
-  InstPrefixInfo(const T &B, const T&E, const MCInstrDesc &MD);
+  template <class T, class I>
+  InstPrefixInfo(const T &B, const T&E, const MCInstrDesc &MD, const I &Inst);
 
 public:
   InstPrefixInfo(const MCInst &MI, const MCInstrInfo &MII);

@@ -91,7 +91,7 @@ void Z80FrameLowering::emitPrologue(MachineFunction &MF,
   }
 
   const MachineFrameInfo &MFI = MF.getFrameInfo();
-  unsigned FrameSize = MFI.getStackSize() - AFI->getCalleeSavedFrameSize();
+  int FrameSize = MFI.getStackSize() - AFI->getCalleeSavedFrameSize();
 
   // Skip the callee-saved push instructions.
   while (
@@ -116,7 +116,7 @@ void Z80FrameLowering::emitPrologue(MachineFunction &MF,
 
   BuildMI(MBB, MBBI, DL, TII.get(Z80::LDI16IXY), Z80::IY)
       //.addReg(Z80::R29R28, RegState::Kill)
-      .addImm((-FrameSize) & 0xffff)
+      .addImm(-FrameSize)
       .setMIFlag(MachineInstr::FrameSetup);
 
   BuildMI(MBB, MBBI, DL, TII.get(Z80::ADDRdRr16), Z80::IY)
@@ -163,7 +163,7 @@ void Z80FrameLowering::emitEpilogue(MachineFunction &MF,
 
   DebugLoc DL = MBBI->getDebugLoc();
   const MachineFrameInfo &MFI = MF.getFrameInfo();
-  unsigned FrameSize = MFI.getStackSize() - AFI->getCalleeSavedFrameSize();
+  int FrameSize = MFI.getStackSize() - AFI->getCalleeSavedFrameSize();
   const Z80Subtarget &STI = MF.getSubtarget<Z80Subtarget>();
   const Z80InstrInfo &TII = *STI.getInstrInfo();
 

@@ -314,9 +314,7 @@ bool Z80DAGToDAGISel::SelectInlineAsmMemoryOperand(const SDValue &Op,
 }
 
 template <> bool Z80DAGToDAGISel::select<ISD::FrameIndex>(SDNode *N) {
-  llvm_unreachable("Z80DAGToDAGISel::select<ISD::FrameIndex>");
-
-  /*auto DL = CurDAG->getDataLayout();
+  auto DL = CurDAG->getDataLayout();
 
   // Convert the frameindex into a temp instruction that will hold the
   // effective address of the final stack slot.
@@ -327,7 +325,7 @@ template <> bool Z80DAGToDAGISel::select<ISD::FrameIndex>(SDNode *N) {
   CurDAG->SelectNodeTo(N, Z80::FRMIDX,
                        getTargetLowering()->getPointerTy(DL), TFI,
                        CurDAG->getTargetConstant(0, SDLoc(N), MVT::i16));
-  return true;*/
+  return true;
 }
 
 template <> bool Z80DAGToDAGISel::select<ISD::STORE>(SDNode *N) {

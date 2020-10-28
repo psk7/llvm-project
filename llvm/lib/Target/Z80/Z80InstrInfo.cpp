@@ -50,8 +50,9 @@ inline bool isImplicitDefOrKill(const MachineOperand &Op){
   return Op.isReg() && Op.isImplicit() && (Op.isDef() || Op.isKill());
 }
 
-template <class T>
-InstPrefixInfo::InstPrefixInfo(const T &B, const T &E, const MCInstrDesc &MD) {
+template <class T, class I>
+InstPrefixInfo::InstPrefixInfo(const T &B, const T &E, const MCInstrDesc &MD,
+                               const I &Inst) {
   HasIX = false;
   HasIY = false;
   HasHL = false;
@@ -80,9 +81,11 @@ InstPrefixInfo::InstPrefixInfo(const T &B, const T &E, const MCInstrDesc &MD) {
     }
   }
 
-  if (HasHL && (HasIX || HasIY))
+  if (HasHL && (HasIX || HasIY)) {
+    Inst.dump();
     report_fatal_error(
         "Unable to mix IX, IY and HL registers in same instruction");
+  }
 
   Z80II::Prefix Prefixes = static_cast<Z80II::Prefix>(MD.TSFlags & 7);
 
@@ -110,10 +113,11 @@ InstPrefixInfo::InstPrefixInfo(const T &B, const T &E, const MCInstrDesc &MD) {
 }
 
 InstPrefixInfo::InstPrefixInfo(const MachineInstr &MI)
-    : InstPrefixInfo(MI.operands_begin(), MI.operands_end(), MI.getDesc()) {}
+    : InstPrefixInfo(MI.operands_begin(), MI.operands_end(), MI.getDesc(), MI) {
+}
 
 InstPrefixInfo::InstPrefixInfo(const MCInst &MI, const MCInstrInfo &MII)
-    : InstPrefixInfo(MI.begin(), MI.end(), MII.get(MI.getOpcode())) {}
+    : InstPrefixInfo(MI.begin(), MI.end(), MII.get(MI.getOpcode()), MI) {}
 }
 
 Z80InstrInfo::Z80InstrInfo()
