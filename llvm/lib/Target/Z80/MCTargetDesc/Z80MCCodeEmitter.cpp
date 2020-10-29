@@ -212,25 +212,25 @@ unsigned Z80MCCodeEmitter::encodeImm(const MCInst &MI, unsigned OpNo,
   assert(MO.isImm());
   return MO.getImm();
 }
-
+*/
 unsigned Z80MCCodeEmitter::encodeCallTarget(const MCInst &MI, unsigned OpNo,
                                             SmallVectorImpl<MCFixup> &Fixups,
                                             const MCSubtargetInfo &STI) const {
   auto MO = MI.getOperand(OpNo);
 
   if (MO.isExpr()) {
-    MCFixupKind FixupKind = static_cast<MCFixupKind>(Z80::fixup_call);
-    Fixups.push_back(MCFixup::create(0, MO.getExpr(), FixupKind, MI.getLoc()));
+    //MCFixupKind FixupKind = static_cast<MCFixupKind>(Z80::fixup_call);
+    //Fixups.push_back(MCFixup::create(0, MO.getExpr(), FixupKind, MI.getLoc()));
     return 0;
   }
 
   assert(MO.isImm());
 
   auto Target = MO.getImm();
-  Z80::fixups::adjustBranchTarget(Target);
+  //Z80::fixups::adjustBranchTarget(Target);
   return Target;
 }
-*/
+
 unsigned Z80MCCodeEmitter::getExprOpValue(const MCExpr *Expr,
                                           SmallVectorImpl<MCFixup> &Fixups,
                                           const MCSubtargetInfo &STI) const {

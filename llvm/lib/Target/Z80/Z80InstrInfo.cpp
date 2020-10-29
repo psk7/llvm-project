@@ -198,7 +198,7 @@ unsigned Z80InstrInfo::isStoreToStackSlot(const MachineInstr &MI,
                                           int &FrameIndex) const {
   switch (MI.getOpcode()) {
   case Z80::STDPtrQRr:
-  /*case Z80::STDWPtrQRr:*/ {
+  case Z80::STDWPtrQRr: {
     if (MI.getOperand(0).isFI() && MI.getOperand(1).isImm() &&
         MI.getOperand(1).getImm() == 0) {
       FrameIndex = MI.getOperand(0).getIndex();
@@ -617,7 +617,6 @@ Z80InstrInfo::getBranchDestBlock(const MachineInstr &MI) const {
     return MI.getOperand(0).getMBB();
   /*case Z80::JMPk:
   case Z80::CALLk:
-  case Z80::RCALLk:
   case Z80::RJMPk:
   case Z80::BREQk:
   case Z80::BRNEk:
@@ -650,7 +649,6 @@ bool Z80InstrInfo::isBranchOffsetInRange(unsigned BranchOp,
   /*case Z80::JMPk:
   case Z80::CALLk:
     return true;
-  case Z80::RCALLk:
   case Z80::RJMPk:
     return isIntN(13, BrOffset);
   case Z80::BRBSsk:

@@ -529,7 +529,7 @@ bool Z80ExpandPseudo::expand<Z80::LDIWRdK>(Block &MBB, BlockIt MBBI) {
     break;
   }
   case MachineOperand::MO_Immediate: {
-    unsigned Imm = MI.getOperand(1).getImm();
+    int Imm = MI.getOperand(1).getImm();
 
     MIBLO.addImm(Imm);
     break;
@@ -1096,7 +1096,7 @@ bool Z80ExpandPseudo::expand<Z80::STWPtrPdRr>(Block &MBB, BlockIt MBBI) {
   MI.eraseFromParent();
   return true;
 }
-
+*/
 template <>
 bool Z80ExpandPseudo::expand<Z80::STDWPtrQRr>(Block &MBB, BlockIt MBBI) {
   MachineInstr &MI = *MBBI;
@@ -1106,20 +1106,20 @@ bool Z80ExpandPseudo::expand<Z80::STDWPtrQRr>(Block &MBB, BlockIt MBBI) {
   unsigned Imm = MI.getOperand(1).getImm();
   bool DstIsKill = MI.getOperand(0).isKill();
   bool SrcIsKill = MI.getOperand(2).isKill();
-  unsigned OpLo = Z80::STDPtrQRr;
-  unsigned OpHi = Z80::STDPtrQRr;
   TRI->splitReg(SrcReg, SrcLoReg, SrcHiReg);
 
   // Since we add 1 to the Imm value for the high byte below, and 63 is the highest Imm value
   // allowed for the instruction, 62 is the limit here.
-  assert(Imm <= 62 && "Offset is out of range");
+  assert(Imm <= 126 && "Offset is out of range");
 
-  auto MIBLO = buildMI(MBB, MBBI, OpLo)
+  assert(DstReg == Z80::IX || DstReg == Z80::IY);
+
+  auto MIBLO = buildMI(MBB, MBBI, Z80::STDPtrQRr)
     .addReg(DstReg)
     .addImm(Imm)
     .addReg(SrcLoReg, getKillRegState(SrcIsKill));
 
-  auto MIBHI = buildMI(MBB, MBBI, OpHi)
+  auto MIBHI = buildMI(MBB, MBBI, Z80::STDPtrQRr)
     .addReg(DstReg, getKillRegState(DstIsKill))
     .addImm(Imm + 1)
     .addReg(SrcHiReg, getKillRegState(SrcIsKill));
@@ -1130,7 +1130,7 @@ bool Z80ExpandPseudo::expand<Z80::STDWPtrQRr>(Block &MBB, BlockIt MBBI) {
   MI.eraseFromParent();
   return true;
 }
-
+/*
 template <>
 bool Z80ExpandPseudo::expand<Z80::INWRdA>(Block &MBB, BlockIt MBBI) {
   MachineInstr &MI = *MBBI;
@@ -1539,69 +1539,6 @@ template <> bool Z80ExpandPseudo::expand<Z80::ZEXT>(Block &MBB, BlockIt MBBI) {
   MI.eraseFromParent();
   return true;
 }
-/*
-template <>
-bool Z80ExpandPseudo::expand<Z80::SPREAD>(Block &MBB, BlockIt MBBI) {
-  MachineInstr &MI = *MBBI;
-  Register DstLoReg, DstHiReg;
-  Register DstReg = MI.getOperand(0).getReg();
-  bool DstIsDead = MI.getOperand(0).isDead();
-  unsigned Flags = MI.getFlags();
-  unsigned OpLo = Z80::INRdA;
-  unsigned OpHi = Z80::INRdA;
-  TRI->splitReg(DstReg, DstLoReg, DstHiReg);
-
-  // Low part
-  buildMI(MBB, MBBI, OpLo)
-    .addReg(DstLoReg, RegState::Define | getDeadRegState(DstIsDead))
-    .addImm(0x3d)
-    .setMIFlags(Flags);
-
-  // High part
-  buildMI(MBB, MBBI, OpHi)
-    .addReg(DstHiReg, RegState::Define | getDeadRegState(DstIsDead))
-    .addImm(0x3e)
-    .setMIFlags(Flags);
-
-  MI.eraseFromParent();
-  return true;
-}
-
-template <>
-bool Z80ExpandPseudo::expand<Z80::SPWRITE>(Block &MBB, BlockIt MBBI) {
-  MachineInstr &MI = *MBBI;
-  Register SrcLoReg, SrcHiReg;
-  Register SrcReg = MI.getOperand(1).getReg();
-  bool SrcIsKill = MI.getOperand(1).isKill();
-  unsigned Flags = MI.getFlags();
-  TRI->splitReg(SrcReg, SrcLoReg, SrcHiReg);
-
-  buildMI(MBB, MBBI, Z80::INRdA)
-    .addReg(Z80::R0, RegState::Define)
-    .addImm(SREG_ADDR)
-    .setMIFlags(Flags);
-
-  buildMI(MBB, MBBI, Z80::BCLRs).addImm(0x07).setMIFlags(Flags);
-
-  buildMI(MBB, MBBI, Z80::OUTARr)
-    .addImm(0x3e)
-    .addReg(SrcHiReg, getKillRegState(SrcIsKill))
-    .setMIFlags(Flags);
-
-  buildMI(MBB, MBBI, Z80::OUTARr)
-    .addImm(SREG_ADDR)
-    .addReg(Z80::R0, RegState::Kill)
-    .setMIFlags(Flags);
-
-  buildMI(MBB, MBBI, Z80::OUTARr)
-    .addImm(0x3d)
-    .addReg(SrcLoReg, getKillRegState(SrcIsKill))
-    .setMIFlags(Flags);
-
-  MI.eraseFromParent();
-  return true;
-}
-*/
 
 bool Z80ExpandPseudo::expandMI(Block &MBB, BlockIt MBBI) {
   MachineInstr &MI = *MBBI;
@@ -1654,7 +1591,7 @@ bool Z80ExpandPseudo::expandMI(Block &MBB, BlockIt MBBI) {
 //    EXPAND(Z80::STWPtrRr);
 //    EXPAND(Z80::STWPtrPiRr);
 //    EXPAND(Z80::STWPtrPdRr);
-//    EXPAND(Z80::STDWPtrQRr);
+    EXPAND(Z80::STDWPtrQRr);
 //    EXPAND(Z80::INWRdA);
 //    EXPAND(Z80::OUTWARr);
 //    EXPAND(Z80::PUSHWRr);
@@ -1668,8 +1605,6 @@ bool Z80ExpandPseudo::expandMI(Block &MBB, BlockIt MBBI) {
 //    EXPAND(Z80::ASRWRd);
     EXPAND(Z80::SEXT);
     EXPAND(Z80::ZEXT);
-//    EXPAND(Z80::SPREAD);
-//    EXPAND(Z80::SPWRITE);
   }
 #undef EXPAND
   return false;

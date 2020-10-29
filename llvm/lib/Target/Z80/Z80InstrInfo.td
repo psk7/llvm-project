@@ -37,8 +37,8 @@ def SDT_Z80RotShift : SDTypeProfile<1, 2, [
 
 def Z80retflag : SDNode<"Z80ISD::RET_FLAG", SDTNone,
                         [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
-//def Z80retiflag : SDNode<"Z80ISD::RETI_FLAG", SDTNone,
-//                         [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
+def Z80retiflag : SDNode<"Z80ISD::RETI_FLAG", SDTNone,
+                         [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
 
 def Z80callseq_start : SDNode<"ISD::CALLSEQ_START", SDT_Z80CallSeqStart,
                               [SDNPHasChain, SDNPOutGlue]>;
@@ -203,11 +203,11 @@ def rottype : Operand<i8>
   let MIOperandInfo = (ops i8imm);
 }
 
-//// Address operand for `SP+imm` used by STD{W}SPQRr
-//def memspi : Operand<iPTR>
-//{
-//  let MIOperandInfo = (ops SPREG, i16imm);
-//}
+// Address operand for `SP+imm` used by STD{W}SPQRr
+def memspi : Operand<iPTR>
+{
+  let MIOperandInfo = (ops SPREG, i16imm);
+}
 
 def relbrtarget_7 : Operand<OtherVT>
 {
@@ -226,12 +226,12 @@ def condcode : Operand<i8>
     let PrintMethod   = "printCondCode";
 }
 
-//// The target of a 22 or 16-bit call/jmp instruction.
-//def call_target : Operand<iPTR>
-//{
-//    let EncoderMethod = "encodeCallTarget";
-//    let DecoderMethod = "decodeCallTarget";
-//}
+// The target of a 22 or 16-bit call/jmp instruction.
+def call_target : Operand<iPTR>
+{
+    let EncoderMethod = "encodeCallTarget";
+    let DecoderMethod = "decodeCallTarget";
+}
 
 // A 16-bit address (which can lead to an R_Z80_16 relocation).
 def imm16 : Operand<i16>
@@ -297,62 +297,11 @@ def addr : ComplexPattern<iPTR, 2, "SelectAddr", [], [SDNPWantRoot]>;
 //
 //    let ParserMatchClass = PtrRegAsmOperand;
 //}
-//
-////===----------------------------------------------------------------------===//
-//// Z80 predicates for subtarget features
-////===----------------------------------------------------------------------===//
-//
-//def HasSRAM       :    Predicate<"Subtarget->hasSRAM()">,
-//                         AssemblerPredicate<(all_of FeatureSRAM)>;
-//
-//def HasJMPCALL    :    Predicate<"Subtarget->hasJMPCALL()">,
-//                         AssemblerPredicate<(all_of FeatureJMPCALL)>;
-//
-//def HasIJMPCALL   :    Predicate<"Subtarget->hasIJMPCALL()">,
-//                         AssemblerPredicate<(all_of FeatureIJMPCALL)>;
-//
-//def HasEIJMPCALL  :    Predicate<"Subtarget->hasEIJMPCALL()">,
-//                         AssemblerPredicate<(all_of FeatureEIJMPCALL)>;
-//
-//def HasADDSUBIW   :    Predicate<"Subtarget->hasADDSUBIW()">,
-//                         AssemblerPredicate<(all_of FeatureADDSUBIW)>;
-//
-//def HasSmallStack :    Predicate<"Subtarget->HasSmallStack()">,
-//                         AssemblerPredicate<(all_of FeatureSmallStack)>;
-//
-//def HasMOVW       :    Predicate<"Subtarget->hasMOVW()">,
-//                         AssemblerPredicate<(all_of FeatureMOVW)>;
-//
-//def HasLPM        :    Predicate<"Subtarget->hasLPM()">,
-//                         AssemblerPredicate<(all_of FeatureLPM)>;
-//
-//def HasLPMX       :    Predicate<"Subtarget->hasLPMX()">,
-//                         AssemblerPredicate<(all_of FeatureLPMX)>;
-//
-//def HasELPM       :    Predicate<"Subtarget->hasELPM()">,
-//                         AssemblerPredicate<(all_of FeatureELPM)>;
-//
-//def HasELPMX      :    Predicate<"Subtarget->hasELPMX()">,
-//                         AssemblerPredicate<(all_of FeatureELPMX)>;
-//
-//def HasSPM        :    Predicate<"Subtarget->hasSPM()">,
-//                         AssemblerPredicate<(all_of FeatureSPM)>;
-//
-//def HasSPMX       :    Predicate<"Subtarget->hasSPMX()">,
-//                         AssemblerPredicate<(all_of FeatureSPMX)>;
-//
-//def HasDES        :    Predicate<"Subtarget->hasDES()">,
-//                         AssemblerPredicate<(all_of FeatureDES)>;
-//
-//def SupportsRMW   :    Predicate<"Subtarget->supportsRMW()">,
-//                         AssemblerPredicate<(all_of FeatureRMW)>;
-//
-//def HasBREAK      :    Predicate<"Subtarget->hasBREAK()">,
-//                         AssemblerPredicate<(all_of FeatureBREAK)>;
-//
-//def HasTinyEncoding : Predicate<"Subtarget->hasTinyEncoding()">,
-//                        AssemblerPredicate<(all_of FeatureTinyEncoding)>;
-//
+
+//===----------------------------------------------------------------------===//
+// Z80 predicates for subtarget features
+//===----------------------------------------------------------------------===//
+
 
 // Z80 specific condition code. These correspond to Z80_*_COND in
 // Z80InstrInfo.td. They must be kept in synch.
@@ -399,12 +348,12 @@ Uses = [SP] in
 //===----------------------------------------------------------------------===//
 // Addition
 //===----------------------------------------------------------------------===//
-let isCommutable = 1,
+let isCommutable = 0,
 Constraints = "$src = $rd",
 Defs = [SREG] in
 {
     def ADDRdRr8 : FormB<0b10000000,
-                         (outs ACC:$rd), (ins GPR8:$src, GPR8:$rr), "add  $rd, $rr",
+                         (outs ACC:$rd), (ins ACC:$src, GPR8:$rr), "add  $rd, $rr",
                          [(set i8:$rd, (add i8:$src, i8:$rr)), (implicit SREG)]>;
 
     def ADDRdRr16 : FormC<0b00001001, (outs HLREG:$rd), (ins HLREG:$src, DREGS:$rr), "add  $rd, $rr", []>;
@@ -628,35 +577,35 @@ Defs = [SREG] in
 {
   // Register-Register logic instructions (which have the
   // property of commutativity).
-  let isCommutable = 1 in
+  let isCommutable = 0 in
   {
-      def ORrr8 : FormB<0xb0, (outs ACC:$rd), (ins GPR8:$src, GPR8:$rr), "or   $rd, $rr",
+      def ORrr8 : FormB<0xb0, (outs ACC:$rd), (ins ACC:$src, GPR8:$rr), "or   $rd, $rr",
                        [(set i8:$rd, (or i8:$src, i8:$rr)), (implicit SREG)]>;
 
-      def ORimm8 : FormI<0xf6, (outs ACC:$rd), (ins GPR8:$src, i8imm:$d8), "or   a, $d8",
+      def ORimm8 : FormI<0xf6, (outs ACC:$rd), (ins ACC:$src, i8imm:$d8), "or   a, $d8",
                          [(set i8:$rd, (or i8:$src, imm:$d8)), (implicit SREG)]>;
 
-      def XORrr8 : FormB<0xA8, (outs ACC:$rd), (ins GPR8:$src, GPR8:$rr), "xor  $rd, $rr",
+      def XORrr8 : FormB<0xA8, (outs ACC:$rd), (ins ACC:$src, GPR8:$rr), "xor  $rd, $rr",
                          [(set i8:$rd, (xor i8:$src, i8:$rr)), (implicit SREG)]>;
 
-      def XORimm8 : FormI<0xee, (outs ACC:$rd), (ins GPR8:$src, i8imm:$d8), "xor  a, $d8",
+      def XORimm8 : FormI<0xee, (outs ACC:$rd), (ins ACC:$src, i8imm:$d8), "xor  a, $d8",
                          [(set i8:$rd, (xor i8:$src, imm:$d8)), (implicit SREG)]>;
 
-      def ANDrr8 : FormB<0xa0, (outs ACC:$rd), (ins GPR8:$src, GPR8:$rr), "and  $rd, $rr",
+      def ANDrr8 : FormB<0xa0, (outs ACC:$rd), (ins ACC:$src, GPR8:$rr), "and  $rd, $rr",
                          [(set i8:$rd, (and i8:$src, i8:$rr)), (implicit SREG)]>;
 
-      def ANDimm8 : FormI<0xe6, (outs ACC:$rd), (ins GPR8:$src, i8imm:$d8), "and  a, $d8",
+      def ANDimm8 : FormI<0xe6, (outs ACC:$rd), (ins ACC:$src, i8imm:$d8), "and  a, $d8",
                          [(set i8:$rd, (and i8:$src, imm:$d8)), (implicit SREG)]>;
 
       let rr=6 in
       {
-        def ORrr8PTR : FormB<0xb0, (outs ACC:$rd), (ins GPR8:$src, memri:$addr), "or   $rd, $addr",
+        def ORrr8PTR : FormB<0xb0, (outs ACC:$rd), (ins ACC:$src, memri:$addr), "or   $rd, $addr",
                              [(set i8:$rd, (or i8:$src, (i8 (load addr:$addr)))), (implicit SREG)]>, IsPtrInstr;
 
-        def XORrr8PTR : FormB<0xa8, (outs ACC:$rd), (ins GPR8:$src, memri:$addr), "xor  $rd, $addr",
+        def XORrr8PTR : FormB<0xa8, (outs ACC:$rd), (ins ACC:$src, memri:$addr), "xor  $rd, $addr",
                               [(set i8:$rd, (xor i8:$src, (i8 (load addr:$addr)))), (implicit SREG)]>, IsPtrInstr;
 
-        def ANDrr8PTR : FormB<0xa0, (outs ACC:$rd), (ins GPR8:$src, memri:$addr), "and  $rd, $addr",
+        def ANDrr8PTR : FormB<0xa0, (outs ACC:$rd), (ins ACC:$src, memri:$addr), "and  $rd, $addr",
                               [(set i8:$rd, (and i8:$src, (i8 (load addr:$addr)))), (implicit SREG)]>, IsPtrInstr;
       }
 
@@ -841,53 +790,16 @@ isTerminator = 1 in
 //             Requires<[HasJMPCALL]>;
 }
 
-////===----------------------------------------------------------------------===//
-//// Call instructions
-////===----------------------------------------------------------------------===//
-//let isCall = 1 in
-//{
-//  // SP is marked as a use to prevent stack-pointer assignments that appear
-//  // immediately before calls from potentially appearing dead.
-//  let Uses = [SP] in
-//  def RCALLk : FBRk<1,
-//                    (outs),
-//                    (ins brtarget_13:$target),
-//                    "rcall\t$target",
-//                    []>;
-//
-//  // SP is marked as a use to prevent stack-pointer assignments that appear
-//  // immediately before calls from potentially appearing dead.
-//  let Uses = [SP, R31R30] in
-//  def ICALL : F16<0b1001010100001001,
-//                  (outs),
-//                  (ins variable_ops),
-//                  "icall",
-//                  []>,
-//              Requires<[HasIJMPCALL]>;
-//
-//  // SP is marked as a use to prevent stack-pointer assignments that appear
-//  // immediately before calls from potentially appearing dead.
-//  let Uses = [SP, R31R30] in
-//  def EICALL : F16<0b1001010100011001,
-//                   (outs),
-//                   (ins variable_ops),
-//                   "eicall",
-//                   []>,
-//               Requires<[HasEIJMPCALL]>;
-//
-//  // SP is marked as a use to prevent stack-pointer assignments that appear
-//  // immediately before calls from potentially appearing dead.
-//  //
-//  //:TODO: the imm field can be either 16 or 22 bits in devices with more
-//  // than 64k of ROM, fix it once we support the largest devices.
-//  let Uses = [SP] in
-//  def CALLk : F32BRk<0b111,
-//                     (outs),
-//                     (ins call_target:$k),
-//                     "call\t$k",
-//                     [(Z80call imm:$k)]>,
-//              Requires<[HasJMPCALL]>;
-//}
+//===----------------------------------------------------------------------===//
+// Call instructions
+//===----------------------------------------------------------------------===//
+let isCall = 1 in
+{
+  // SP is marked as a use to prevent stack-pointer assignments that appear
+  // immediately before calls from potentially appearing dead.
+  let Uses = [SP] in
+  def CALLk : FormF<0xcd, (outs), (ins call_target:$k), "call $k", [(Z80call imm:$k)]>;
+}
 
 ////===----------------------------------------------------------------------===//
 //// Return instructions.
@@ -897,18 +809,7 @@ isReturn = 1,
 isBarrier = 1 in
 {
     def RET : FormA<0xc9, (outs), (ins), "ret", [(Z80retflag)]>;
-
-//  def RET : F16<0b1001010100001000,
-//                (outs),
-//                (ins),
-//                "ret",
-//                [(Z80retflag)]>;
-//
-//  def RETI : F16<0b1001010100011000,
-//                 (outs),
-//                 (ins),
-//                 "reti",
-//                 [(Z80retiflag)]>;
+    def RETI : FormA<0x4d, (outs), (ins), "reti", [(Z80retiflag)]>, ED;
 }
 
 //===----------------------------------------------------------------------===//
@@ -978,103 +879,6 @@ let Defs = [SREG] in
 //                    "cpi\t$rd, $k",
 //                    [(Z80cmp i8:$rd, imm:$k), (implicit SREG)]>;
 }
-
-////===----------------------------------------------------------------------===//
-//// Register conditional skipping/branching operations.
-////===----------------------------------------------------------------------===//
-//let isBranch = 1,
-//isTerminator = 1 in
-//{
-//  // Conditional skipping on GPR register bits, and
-//  // conditional skipping on IO register bits.
-//  let isBarrier = 1 in
-//  {
-//    def SBRCRrB : FRdB<0b10,
-//                       (outs),
-//                       (ins GPR8:$rr, i8imm:$b),
-//                       "sbrc\t$rr, $b",
-//                       []>;
-//
-//    def SBRSRrB : FRdB<0b11,
-//                       (outs),
-//                       (ins GPR8:$rr, i8imm:$b),
-//                       "sbrs\t$rr, $b",
-//                       []>;
-//
-//    def SBICAb : FIOBIT<0b01,
-//                        (outs),
-//                        (ins imm_port5:$a, i8imm:$b),
-//                        "sbic\t$a, $b",
-//                        []>;
-//
-//    def SBISAb : FIOBIT<0b11,
-//                        (outs),
-//                        (ins imm_port5:$a, i8imm:$b),
-//                        "sbis\t$a, $b",
-//                        []>;
-//  }
-//
-//  // Relative branches on status flag bits.
-//  let Uses = [SREG] in
-//  {
-//    // BRBS s, k
-//    // Branch if `s` flag in status register is set.
-//    def BRBSsk : FSK<0,
-//                     (outs),
-//                     (ins i8imm:$s, relbrtarget_7:$k),
-//                     "brbs\t$s, $k",
-//                     []>;
-//
-//    // BRBC s, k
-//    // Branch if `s` flag in status register is clear.
-//    def BRBCsk : FSK<1,
-//                     (outs),
-//                     (ins i8imm:$s, relbrtarget_7:$k),
-//                     "brbc\t$s, $k",
-//                     []>;
-//  }
-//}
-//
-//
-//// BRCS k
-//// Branch if carry flag is set
-//def : InstAlias<"brcs\t$k", (BRBSsk 0, relbrtarget_7:$k)>;
-//
-//// BRCC k
-//// Branch if carry flag is clear
-//def : InstAlias<"brcc\t$k", (BRBCsk 0, relbrtarget_7:$k)>;
-//
-//// BRHS k
-//// Branch if half carry flag is set
-//def : InstAlias<"brhs\t$k", (BRBSsk 5, relbrtarget_7:$k)>;
-//
-//// BRHC k
-//// Branch if half carry flag is clear
-//def : InstAlias<"brhc\t$k", (BRBCsk 5, relbrtarget_7:$k)>;
-//
-//// BRTS k
-//// Branch if the T flag is set
-//def : InstAlias<"brts\t$k", (BRBSsk 6, relbrtarget_7:$k)>;
-//
-//// BRTC k
-//// Branch if the T flag is clear
-//def : InstAlias<"brtc\t$k", (BRBCsk 6, relbrtarget_7:$k)>;
-//
-//// BRVS k
-//// Branch if the overflow flag is set
-//def : InstAlias<"brvs\t$k", (BRBSsk 3, relbrtarget_7:$k)>;
-//
-//// BRVC k
-//// Branch if the overflow flag is clear
-//def : InstAlias<"brvc\t$k", (BRBCsk 3, relbrtarget_7:$k)>;
-//
-//// BRIE k
-//// Branch if the global interrupt flag is enabled
-//def : InstAlias<"brie\t$k", (BRBSsk 7, relbrtarget_7:$k)>;
-//
-//// BRID k
-//// Branch if the global interrupt flag is disabled
-//def : InstAlias<"brid\t$k", (BRBCsk 7, relbrtarget_7:$k)>;
 
 //===----------------------------------------------------------------------===//
 // PC-relative conditional branches
@@ -1507,34 +1311,23 @@ def STPtrRr : FormB<0x70, (outs), (ins HLIXIYREGS:$ptrreg, GPR8:$rr), "ld   ($pt
 //                   Requires<[HasSRAM]>;
 //}
 
+// Store indirect with displacement operations.
+// STD P+q, Rr
+// Stores the value of Rr into the location addressed by pointer P with a
+// displacement of q. Does not modify P.
   def STDPtrQRr : FormB<0x70, (outs), (ins memri:$d8, GPR8:$rr), "ld   $d8, $rr",
                         [(store i8:$rr, addr:$d8)]>, IsPtrInstr;
 
-//// Store indirect with displacement operations.
-//// STD P+q, Rr
-//// Stores the value of Rr into the location addressed by pointer P with a
-//// displacement of q. Does not modify P.
-//def STDPtrQRr : FSTDLDD<1,
-//                        (outs),
-//                        (ins memri:$memri, GPR8:$reg),
-//                        "std\t$memri, $reg",
-//                        [(store i8:$reg, addr:$memri)]>,
-//                Requires<[HasSRAM]>;
+// STDW P+q, Rr+1:Rr
+// Stores the value of Rr into the location addressed by pointer P with a
+// displacement of q. Does not modify P.
 //
-//// STDW P+q, Rr+1:Rr
-//// Stores the value of Rr into the location addressed by pointer P with a
-//// displacement of q. Does not modify P.
-////
-//// Expands to:
-//// std P+q,   Rr
-//// std P+q+1, Rr+1
-//def STDWPtrQRr : Pseudo<(outs),
-//                        (ins memri:$memri, DREGS:$src),
-//                        "stdw\t$memri, $src",
-//                        [(store i16:$src, addr:$memri)]>,
-//                 Requires<[HasSRAM]>;
-//
-//
+// Expands to:
+// std P+q,   Rr
+// std P+q+1, Rr+1
+def STDWPtrQRr : Pseudo<(outs), (ins memri:$memri, DREGS:$src), "stdw\t$memri, $src",
+                        [(store i16:$src, addr:$memri)]>;
+
 
 // Stack push/pop operations.
 let Defs = [SP],
@@ -1745,33 +1538,6 @@ Defs = [SREG] in
 //def : Pat<(store (Z80rotshift (i8 (load addr:$addr)), Z80_ROT_SRL), addr:$addr),
 //          (SRLRdPTR addr:$addr)>;
 
-//// SWAP Rd
-//// Swaps the high and low nibbles in a register.
-//let Constraints = "$src = $rd" in
-//def SWAPRd : FRd<0b1001,
-//                 0b0100010,
-//                 (outs GPR8:$rd),
-//                 (ins GPR8:$src),
-//                 "swap\t$rd",
-//                 [(set i8:$rd, (bswap i8:$src))]>;
-//
-//// IO register bit set/clear operations.
-////:TODO: add patterns when popcount(imm)==2 to be expanded with 2 sbi/cbi
-//// instead of in+ori+out which requires one more instr.
-//def SBIAb : FIOBIT<0b10,
-//                   (outs),
-//                   (ins imm_port5:$addr, i8imm:$bit),
-//                   "sbi\t$addr, $bit",
-//                   [(store (or (i8 (load lowioaddr8:$addr)), iobitpos8:$bit),
-//                     lowioaddr8:$addr)]>;
-//
-//def CBIAb : FIOBIT<0b00,
-//                   (outs),
-//                   (ins imm_port5:$addr, i8imm:$bit),
-//                   "cbi\t$addr, $bit",
-//                   [(store (and (i8 (load lowioaddr8:$addr)), iobitposn8:$bit),
-//                     lowioaddr8:$addr)]>;
-//
 //// Status register bit load/store operations.
 //let Defs = [SREG] in
 //def BST : FRdB<0b01,
@@ -1854,55 +1620,13 @@ Defs = [SREG] in
 //// Set/clear aliases for the interrupt (I) status flag (bit 7).
 //def : InstAlias<"sei", (BSETs 7)>;
 //def : InstAlias<"cli", (BCLRs 7)>;
-//
-////===----------------------------------------------------------------------===//
-//// Special/Control instructions
-////===----------------------------------------------------------------------===//
-//
-//// BREAK
-//// Breakpoint instruction
-//// ---------
-//// <|1001|0101|1001|1000>
-//def BREAK : F16<0b1001010110011000,
-//                (outs),
-//                (ins),
-//                "break",
-//                []>,
-//            Requires<[HasBREAK]>;
-//
 
+//===----------------------------------------------------------------------===//
+// Special/Control instructions
+//===----------------------------------------------------------------------===//
 
-// NOP
-// No-operation instruction
-// ---------
 def NOP : FormA<0, (outs), (ins), "nop", []>;
-
-//// <|0000|0000|0000|0000>
-//def NOP : F16<0b0000000000000000,
-//              (outs),
-//              (ins),
-//              "nop",
-//              []>;
-
-//// SLEEP
-//// Sleep instruction
-//// ---------
-//// <|1001|0101|1000|1000>
-//def SLEEP : F16<0b1001010110001000,
-//                (outs),
-//                (ins),
-//                "sleep",
-//                []>;
-//
-//// WDR
-//// Watchdog reset
-//// ---------
-//// <|1001|0101|1010|1000>
-//def WDR : F16<0b1001010110101000,
-//              (outs),
-//              (ins),
-//              "wdr",
-//              []>;
+def HALT : FormA<0x76, (outs), (ins), "halt", []>;
 
 //===----------------------------------------------------------------------===//
 // Pseudo instructions for later expansion
@@ -1933,45 +1657,19 @@ def FRMIDX : Pseudo<(outs HLIXIYREGS:$dst),
                     "frmidx\t$dst, $src, $src2",
                     []>;
 
-//// This pseudo is either converted to a regular store or a push which clobbers
-//// SP.
-//def STDSPQRr : StorePseudo<
-//  (outs),
-//  (ins memspi:$dst, GPR8:$src),
-//  "stdstk\t$dst, $src",
-//  [(store i8:$src, addr:$dst)]
-//>;
-//
-//// This pseudo is either converted to a regular store or a push which clobbers
-//// SP.
-//def STDWSPQRr : StorePseudo<
-//  (outs),
-//  (ins memspi:$dst, DREGS:$src),
-//  "stdwstk\t$dst, $src",
-//  [(store i16:$src, addr:$dst)]
-//>;
-//
-//// SP read/write pseudos.
-//let hasSideEffects = 0 in
-//{
-//  let Uses = [SP] in
-//  def SPREAD : Pseudo<
-//    (outs DREGS:$dst),
-//    (ins SPREG:$src),
-//    "spread\t$dst, $src",
-//    []
-//  >;
-//
-//  let Defs = [SP] in
-//  def SPWRITE : Pseudo<
-//    (outs SPREG:$dst),
-//    (ins DREGS:$src),
-//    "spwrite\t$dst, $src",
-//    []>;
-//}
+// This pseudo is either converted to a regular store or a push which clobbers
+// SP.
+def STDSPQRr : StorePseudo<(outs), (ins memspi:$dst, GPR8:$src), "stdstk\t$dst, $src",
+                           [(store i8:$src, addr:$dst)]>;
 
-def Select8 : SelectPseudo< (outs GPR8:$dst), (ins GPR8:$src, GPR8:$src2, i8imm:$cc), "# Select8 PSEUDO",
-                            [(set i8:$dst, (Z80selectcc i8:$src, i8:$src2, imm:$cc))] >;
+// This pseudo is either converted to a regular store or a push which clobbers
+// SP.
+def STDWSPQRr : StorePseudo<(outs), (ins memspi:$dst, DREGS:$src), "stdwstk\t$dst, $src",
+                            [(store i16:$src, addr:$dst)]>;
+
+def Select8 : SelectPseudo<(outs GPR8:$dst), (ins GPR8:$src, GPR8:$src2, i8imm:$cc),
+                           "# Select8 PSEUDO",
+                           [(set i8:$dst, (Z80selectcc i8:$src, i8:$src2, imm:$cc))]>;
 
 //def Select16 : SelectPseudo<
 //  (outs DREGS:$dst),
@@ -2089,12 +1787,10 @@ def Select8 : SelectPseudo< (outs GPR8:$dst), (ins GPR8:$src, GPR8:$src2, i8imm:
 //          (SUBIRdK i8:$src1, (imm8_neg_XFORM imm:$src2))>;
 //def : Pat<(adde i8:$src1, imm:$src2),
 //          (SBCIRdK i8:$src1, (imm8_neg_XFORM imm:$src2))>;
-//
-//// Calls.
-//def : Pat<(Z80call (i16 tglobaladdr:$dst)),
-//          (CALLk tglobaladdr:$dst)>;
-//def : Pat<(Z80call (i16 texternalsym:$dst)),
-//          (CALLk texternalsym:$dst)>;
+
+// Calls.
+def : Pat<(Z80call (i16 tglobaladdr:$dst)), (CALLk tglobaladdr:$dst)>;
+def : Pat<(Z80call (i16 texternalsym:$dst)), (CALLk texternalsym:$dst)>;
 
 // `anyext`
 def : Pat<(i16 (anyext i8:$src)),

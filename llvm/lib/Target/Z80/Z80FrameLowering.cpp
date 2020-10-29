@@ -318,10 +318,8 @@ static void fixStackStores(MachineBasicBlock &MBB,
                            MachineBasicBlock::iterator MI,
                            const TargetInstrInfo &TII, Register FP) {
 
-  llvm_unreachable("fixStackStores");
-
   // Iterate through the BB until we hit a call instruction or we reach the end.
-/*  for (auto I = MI, E = MBB.end(); I != E && !I->isCall();) {
+  for (auto I = MI, E = MBB.end(); I != E && !I->isCall();) {
     MachineBasicBlock::iterator NextMI = std::next(I);
     MachineInstr &MI = *I;
     unsigned Opcode = I->getOpcode();
@@ -332,8 +330,10 @@ static void fixStackStores(MachineBasicBlock &MBB,
       continue;
     }
 
-    assert(MI.getOperand(0).getReg() == Z80::SP &&
-           "Invalid register, should be SP!");
+    auto reg = MI.getOperand(0).getReg();
+
+    assert((reg == Z80::IX || reg == Z80::IY) &&
+           "Invalid register, should be IX or IY!");
 
     // Replace this instruction with a regular store. Use Y as the base
     // pointer since it is guaranteed to contain a copy of SP.
@@ -344,14 +344,12 @@ static void fixStackStores(MachineBasicBlock &MBB,
     MI.getOperand(0).setReg(FP);
 
     I = NextMI;
-  }*/
+  }
 }
 
 MachineBasicBlock::iterator Z80FrameLowering::eliminateCallFramePseudoInstr(
     MachineFunction &MF, MachineBasicBlock &MBB,
     MachineBasicBlock::iterator MI) const {
-
-  llvm_unreachable("Z80FrameLowering::eliminateCallFramePseudoInstr");
 
   const Z80Subtarget &STI = MF.getSubtarget<Z80Subtarget>();
   const Z80InstrInfo &TII = *STI.getInstrInfo();
@@ -359,10 +357,10 @@ MachineBasicBlock::iterator Z80FrameLowering::eliminateCallFramePseudoInstr(
   // There is nothing to insert when the call frame memory is allocated during
   // function entry. Delete the call frame pseudo and replace all pseudo stores
   // with real store instructions.
-/*  if (hasReservedCallFrame(MF)) {
-    fixStackStores(MBB, MI, TII, Z80::R29R28);
+  if (hasReservedCallFrame(MF)) {
+    fixStackStores(MBB, MI, TII, Z80::IY);
     return MBB.erase(MI);
-  }*/
+  }
 
   DebugLoc DL = MI->getDebugLoc();
   unsigned int Opcode = MI->getOpcode();
@@ -370,7 +368,7 @@ MachineBasicBlock::iterator Z80FrameLowering::eliminateCallFramePseudoInstr(
 
   // ADJCALLSTACKUP and ADJCALLSTACKDOWN are converted to adiw/subi
   // instructions to read and write the stack pointer in I/O space.
-  /*if (Amount != 0) {
+  if (Amount != 0) {
     assert(getStackAlign() == Align(1) && "Unsupported stack alignment");
 
     if (Opcode == TII.getCallFrameSetupOpcode()) {
@@ -379,19 +377,30 @@ MachineBasicBlock::iterator Z80FrameLowering::eliminateCallFramePseudoInstr(
       // relevant values directly to the stack. However, doing that correctly
       // (in the right order, possibly skipping some empty space for undef
       // values, etc) is tricky and thus left to be optimized in the future.
-      BuildMI(MBB, MI, DL, TII.get(Z80::SPREAD), Z80::R31R30).addReg(Z80::SP);
 
-      MachineInstr *New = BuildMI(MBB, MI, DL, TII.get(Z80::SUBIWRdK), Z80::R31R30)
-                              .addReg(Z80::R31R30, RegState::Kill)
-                              .addImm(Amount);
+      BuildMI(MBB, MI, DL, TII.get(Z80::LDI16IXY), Z80::IX)
+          .addImm(-Amount);
+
+      BuildMI(MBB, MI, DL, TII.get(Z80::ADDRdRr16), Z80::IX)
+          .addReg(Z80::IX)
+          .addReg(Z80::SP, RegState::Kill);
+
+      BuildMI(MBB, MI, DL, TII.get(Z80::LDSP), Z80::SP)
+          .addReg(Z80::IX);
+
+      /*BuildMI(MBB, MI, DL, TII.get(Z80::SPREAD), Z80::IX).addReg(Z80::SP);
+
+      MachineInstr *New = BuildMI(MBB, MI, DL, TII.get(Z80::ADDWRdRr), Z80::IX)
+                              .addReg(Z80::IX, RegState::Kill)
+                              .addImm(-Amount);
       New->getOperand(3).setIsDead();
 
       BuildMI(MBB, MI, DL, TII.get(Z80::SPWRITE), Z80::SP)
-          .addReg(Z80::R31R30, RegState::Kill);
+          .addReg(Z80::R31R30, RegState::Kill);*/
 
       // Make sure the remaining stack stores are converted to real store
       // instructions.
-      fixStackStores(MBB, MI, TII, Z80::R31R30);
+      fixStackStores(MBB, MI, TII, Z80::IX);
     } else {
       assert(Opcode == TII.getCallFrameDestroyOpcode());
 
@@ -400,7 +409,7 @@ MachineBasicBlock::iterator Z80FrameLowering::eliminateCallFramePseudoInstr(
       // required.
 
       // Select the best opcode to adjust SP based on the offset size.
-      unsigned addOpcode;
+      /*unsigned addOpcode;
       if (isUInt<6>(Amount)) {
         addOpcode = Z80::ADIWRdK;
       } else {
@@ -417,9 +426,9 @@ MachineBasicBlock::iterator Z80FrameLowering::eliminateCallFramePseudoInstr(
       New->getOperand(3).setIsDead();
 
       BuildMI(MBB, MI, DL, TII.get(Z80::SPWRITE), Z80::SP)
-          .addReg(Z80::R31R30, RegState::Kill);
+          .addReg(Z80::R31R30, RegState::Kill);*/
     }
-  }*/
+  }
 
   return MBB.erase(MI);
 }

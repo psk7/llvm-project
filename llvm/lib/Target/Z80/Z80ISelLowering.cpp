@@ -46,7 +46,7 @@ Z80TargetLowering::Z80TargetLowering(const Z80TargetMachine &TM,
   setBooleanContents(ZeroOrOneBooleanContent);
   setBooleanVectorContents(ZeroOrOneBooleanContent);
   setSchedulingPreference(Sched::RegPressure);
-  setStackPointerRegisterToSaveRestore(Z80::SP);
+  setStackPointerRegisterToSaveRestore(Z80::IY);
   setSupportsUnalignedAtomics(true);
 
   setOperationAction(ISD::GlobalAddress, MVT::i16, Custom);
@@ -1164,8 +1164,8 @@ SDValue Z80TargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
       // SP points to one stack slot further so add one to adjust it.
       SDValue PtrOff = DAG.getNode(
           ISD::ADD, DL, getPointerTy(DAG.getDataLayout()),
-          DAG.getRegister(Z80::SP, getPointerTy(DAG.getDataLayout())),
-          DAG.getIntPtrConstant(VA.getLocMemOffset() + 1, DL));
+          DAG.getRegister(Z80::IX, getPointerTy(DAG.getDataLayout())),
+          DAG.getIntPtrConstant(VA.getLocMemOffset() /*+ 1*/, DL));
 
       Chain =
           DAG.getStore(Chain, DL, Arg, PtrOff,

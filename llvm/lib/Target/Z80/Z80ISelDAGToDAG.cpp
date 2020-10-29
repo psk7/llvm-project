@@ -340,19 +340,26 @@ template <> bool Z80DAGToDAGISel::select<ISD::STORE>(SDNode *N) {
     return false;
   }
 
-  const RegisterSDNode *RN = dyn_cast<RegisterSDNode>(BasePtr.getOperand(0));
+  bool ois = isa<RegisterSDNode>(BasePtr);
+
+  const RegisterSDNode *RN =
+      ois ? dyn_cast<RegisterSDNode>(BasePtr)
+          : dyn_cast<RegisterSDNode>(BasePtr.getOperand(0));
   // Only stores where SP is the base pointer are valid.
-  if (!RN || (RN->getReg() != Z80::IY)) {
+  if (!RN || ((RN->getReg() != Z80::IY) && (RN->getReg() != Z80::IX) )) {
     return false;
   }
 
-  int CST = (int)cast<ConstantSDNode>(BasePtr.getOperand(1))->getZExtValue();
+  int CST =
+      ois ? 0
+          : (int)cast<ConstantSDNode>(BasePtr.getOperand(1))->getZExtValue();
   SDValue Chain = ST->getChain();
   EVT VT = ST->getValue().getValueType();
   SDLoc DL(N);
   SDValue Offset = CurDAG->getTargetConstant(CST, DL, MVT::i16);
-  SDValue Ops[] = {BasePtr.getOperand(0), Offset, ST->getValue(), Chain};
-  /*unsigned Opc = (VT == MVT::i16) ? Z80::STDWSPQRr : Z80::STDSPQRr;
+  SDValue Ops[] = {ois ? BasePtr : BasePtr.getOperand(0), Offset,
+                   ST->getValue(), Chain};
+  unsigned Opc = (VT == MVT::i16) ? Z80::STDWSPQRr : Z80::STDSPQRr;
 
   SDNode *ResNode = CurDAG->getMachineNode(Opc, DL, MVT::Other, Ops);
 
@@ -360,7 +367,7 @@ template <> bool Z80DAGToDAGISel::select<ISD::STORE>(SDNode *N) {
   CurDAG->setNodeMemRefs(cast<MachineSDNode>(ResNode), {ST->getMemOperand()});
 
   ReplaceUses(SDValue(N, 0), SDValue(ResNode, 0));
-  CurDAG->RemoveDeadNode(N);*/
+  CurDAG->RemoveDeadNode(N);
 
   return true;
 }
@@ -422,9 +429,6 @@ template <> bool Z80DAGToDAGISel::select<ISD::LOAD>(SDNode *N) {
 }
 
 template <> bool Z80DAGToDAGISel::select<Z80ISD::CALL>(SDNode *N) {
-  return true;
-
-  /*
   SDValue InFlag;
   SDValue Chain = N->getOperand(0);
   SDValue Callee = N->getOperand(1);
@@ -436,7 +440,9 @@ template <> bool Z80DAGToDAGISel::select<Z80ISD::CALL>(SDNode *N) {
     return false;
   }
 
-  // Skip the incoming flag if present
+  llvm_unreachable("Z80DAGToDAGISel::select<Z80ISD::CALL>");
+
+  /*// Skip the incoming flag if present
   if (N->getOperand(LastOpNum).getValueType() == MVT::Glue) {
     --LastOpNum;
   }
@@ -461,9 +467,7 @@ template <> bool Z80DAGToDAGISel::select<Z80ISD::CALL>(SDNode *N) {
   ReplaceUses(SDValue(N, 1), SDValue(ResNode, 1));
   CurDAG->RemoveDeadNode(N);
 
-  return true;
-
-   */
+  return true;*/
 }
 
 template <> bool Z80DAGToDAGISel::select<ISD::BRIND>(SDNode *N) {
