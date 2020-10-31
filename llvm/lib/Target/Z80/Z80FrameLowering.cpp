@@ -114,7 +114,7 @@ void Z80FrameLowering::emitPrologue(MachineFunction &MF,
   // Reserve the necessary frame memory by doing FP -= <size>.
   /*unsigned Opcode = (isUInt<6>(FrameSize)) ? Z80::SBIWRdK : Z80::SUBIWRdK;*/
 
-  BuildMI(MBB, MBBI, DL, TII.get(Z80::LDI16IXY), Z80::IY)
+  BuildMI(MBB, MBBI, DL, TII.get(Z80::LDIWRdK), Z80::IY)
       //.addReg(Z80::R29R28, RegState::Kill)
       .addImm(-FrameSize)
       .setMIFlag(MachineInstr::FrameSetup);
@@ -132,7 +132,7 @@ void Z80FrameLowering::emitPrologue(MachineFunction &MF,
       .addReg(Z80::IY)
       .setMIFlag(MachineInstr::FrameSetup);
 
-  /*MachineInstr *MI = BuildMI(MBB, MBBI, DL, TII.get(Z80::LDI16), Z80::HL)
+  /*MachineInstr *MI = BuildMI(MBB, MBBI, DL, TII.get(Z80::LDIWRdK), Z80::HL)
       //.addReg(Z80::R29R28, RegState::Kill)
       .addImm(-FrameSize)
       .setMIFlag(MachineInstr::FrameSetup);*/
@@ -194,7 +194,7 @@ void Z80FrameLowering::emitEpilogue(MachineFunction &MF,
     --MBBI;
   }
 
-  BuildMI(MBB, MBBI, DL, TII.get(Z80::LDI16IXY), Z80::IY)
+  BuildMI(MBB, MBBI, DL, TII.get(Z80::LDIWRdK), Z80::IY)
       .addImm(FrameSize)
       .setMIFlag(MachineInstr::FrameDestroy);
 
@@ -378,7 +378,7 @@ MachineBasicBlock::iterator Z80FrameLowering::eliminateCallFramePseudoInstr(
       // (in the right order, possibly skipping some empty space for undef
       // values, etc) is tricky and thus left to be optimized in the future.
 
-      BuildMI(MBB, MI, DL, TII.get(Z80::LDI16IXY), Z80::IX)
+      BuildMI(MBB, MI, DL, TII.get(Z80::LDIWRdK), Z80::IX)
           .addImm(-Amount);
 
       BuildMI(MBB, MI, DL, TII.get(Z80::ADDRdRr16), Z80::IX)

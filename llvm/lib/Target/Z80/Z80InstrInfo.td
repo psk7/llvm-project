@@ -976,51 +976,26 @@ let hasSideEffects = 0 in
 // Load immediate values into registers.
 let isReMaterializable = 1 in
 {
-    def LDI8 : FormD<0b00000110, (outs GPR8:$rd), (ins imm_ldi8:$d8), "ld   $rd, $d8", [(set i8:$rd, imm:$d8)]>;
-    def LDI16: FormE<0b00000001, (outs DREGS:$rd), (ins i16imm:$d16), "ld   $rd, $d16", []>;
+  def LDI16: FormE<0x01, (outs DREGS:$rd), (ins i16imm:$d16), "ld   $rd, $d16", []>;
 
-    def LDI16IXY: FormE<0b00000001, (outs XDREGS:$rd), (ins i16imm:$d16), "ld   $rd, $d16", []>;
+  def LDIRdK : FormD<0x06, (outs GPR8:$rd), (ins imm_ldi8:$d8), "ld   $rd, $d8",
+       [(set i8:$rd, imm:$d8)]>;
 
-//  def LDIRdK : FRdK<0b1110,
-//                    (outs LD8:$rd),
-//                    (ins imm_ldi8:$k),
-//                    "ldi\t$rd, $k",
-//                    [(set i8:$rd, imm:$k)]>;
-//
-//  // LDIW Rd+1:Rd, K+1:K
-//  //
-//  // Expands to:
-//  // ldi Rd,   K
-//  // ldi Rd+1, K+1
   def LDIWRdK : Pseudo<(outs DREGS:$dst), (ins i16imm:$src), "LDIWRdK\t$dst, $src",
                        [(set i16:$dst, imm:$src)]>;
 }
 
 //// Load from data space into register.
 let canFoldAsLoad = 1,
-mayLoad = 1,
 isReMaterializable = 1 in
 {
-    def LD8MEMPTR : FormF<0x3a, (outs ACC:$rd), (ins imm16:$ptr), "ld   $rd, ($ptr)", []>;
-    def LD16MEMPTR : FormE<0b01001011, (outs DREGS:$rd), (ins imm16:$ptr), "ld   $rd, ($ptr)", []>, ED;
+  def LDSRdK : FormF<0x3a, (outs ACC:$rd), (ins imm16:$k), "ld   $rd, ($k)",
+                     [(set i8:$rd, (load imm:$k))]>;
 
-//  def LDSRdK : F32DM<0b0,
-//                     (outs GPR8:$rd),
-//                     (ins imm16:$k),
-//                     "lds\t$rd, $k",
-//                     [(set i8:$rd, (load imm:$k))]>,
-//               Requires<[HasSRAM]>;
-//
-//  // LDSW Rd+1:Rd, K+1:K
-//  //
-//  // Expands to:
-//  // lds Rd,  (K+1:K)
-//  // lds Rd+1 (K+1:K) + 1
-//  def LDSWRdK : Pseudo<(outs DREGS:$dst),
-//                       (ins i16imm:$src),
-//                       "ldsw\t$dst, $src",
-//                       [(set i16:$dst, (load imm:$src))]>,
-//                Requires<[HasSRAM]>;
+  //def LD16MEMPTR : FormE<0x4b, (outs DREGS:$rd), (ins imm16:$ptr), "ld   $rd, ($ptr)", []>, ED;
+
+  def LDSWRdK : Pseudo<(outs DREGS:$dst), (ins i16imm:$src), "ldsw\t$dst, $src",
+                       [(set i16:$dst, (load imm:$src))]>;
 }
 
 // Indirect loads.
@@ -1030,68 +1005,9 @@ isReMaterializable = 1 in
   def LDRdPtr : FormH<0x46, (outs GPR8:$rd), (ins HLIXIYREGS:$ptrreg), "ld   $rd, ($ptrreg)",
                       [(set GPR8:$rd, (load i16:$ptrreg))]>;
 
-//  def LDRdPtr : FSTLD<0,
-//                      0b00,
-//                      (outs GPR8:$reg),
-//                      (ins LDSTPtrReg:$ptrreg),
-//                      "ld\t$reg, $ptrreg",
-//                      [(set GPR8:$reg, (load i16:$ptrreg))]>,
-//                Requires<[HasSRAM]>;
-//
-//  // LDW Rd+1:Rd, P
-//  //
-//  // Expands to:
-//  // ld  Rd,   P
-//  // ldd Rd+1, P+1
-//  let Constraints = "@earlyclobber $reg" in
-//  def LDWRdPtr : Pseudo<(outs DREGS:$reg),
-//                        (ins PTRDISPREGS:$ptrreg),
-//                        "ldw\t$reg, $ptrreg",
-//                        [(set i16:$reg, (load i16:$ptrreg))]>,
-//                 Requires<[HasSRAM]>;
-//}
-//
-//// Indirect loads (with postincrement or predecrement).
-//let mayLoad = 1,
-//hasSideEffects = 0,
-//Constraints = "$ptrreg = $base_wb,@earlyclobber $reg" in
-//{
-//  def LDRdPtrPi : FSTLD<0,
-//                        0b01,
-//                        (outs GPR8:$reg, PTRREGS:$base_wb),
-//                        (ins LDSTPtrReg:$ptrreg),
-//                        "ld\t$reg, $ptrreg+",
-//                        []>,
-//                  Requires<[HasSRAM]>;
-//
-//  // LDW Rd+1:Rd, P+
-//  // Expands to:
-//  // ld Rd,   P+
-//  // ld Rd+1, P+
-//  def LDWRdPtrPi : Pseudo<(outs DREGS:$reg, PTRREGS:$base_wb),
-//                          (ins PTRREGS:$ptrreg),
-//                          "ldw\t$reg, $ptrreg+",
-//                          []>,
-//                   Requires<[HasSRAM]>;
-//
-//  def LDRdPtrPd : FSTLD<0,
-//                        0b10,
-//                        (outs GPR8:$reg, PTRREGS:$base_wb),
-//                        (ins LDSTPtrReg:$ptrreg),
-//                        "ld\t$reg, -$ptrreg",
-//                        []>,
-//                  Requires<[HasSRAM]>;
-//
-//  // LDW Rd+1:Rd, -P
-//  //
-//  // Expands to:
-//  // ld Rd+1, -P
-//  // ld Rd,   -P
-//  def LDWRdPtrPd : Pseudo<(outs DREGS:$reg, PTRREGS:$base_wb),
-//                          (ins PTRREGS:$ptrreg),
-//                          "ldw\t$reg, -$ptrreg",
-//                          []>,
-//                   Requires<[HasSRAM]>;
+  let Constraints = "@earlyclobber $reg" in
+  def LDWRdPtr : Pseudo<(outs DREGS:$reg), (ins HLIXIYREGS:$ptrreg), "ldw  $reg, $ptrreg",
+                        [(set i16:$reg, (load i16:$ptrreg))]>;
 }
 
 // Load indirect with displacement operations.
@@ -1100,147 +1016,32 @@ isReMaterializable = 1 in
 {
 
   let Constraints = "@earlyclobber $rd" in
-  def LDRdIXoffs : FormH<0x46, (outs GPR8:$rd), (ins memri:$d8), "ld   $rd, $d8",
+  def LDDRdPtrQ : FormH<0x46, (outs GPR8:$rd), (ins memri:$d8), "ld   $rd, $d8",
                          [(set i8:$rd, (load addr:$d8))]>, IsPtrInstr;
-
-//  let Constraints = "@earlyclobber $reg" in
-//  def LDDRdPtrQ : FSTDLDD<0,
-//                          (outs GPR8:$reg),
-//                          (ins memri:$memri),
-//                          "ldd\t$reg, $memri",
-//                          [(set i8:$reg, (load addr:$memri))]>,
-//                  Requires<[HasSRAM]>;
 
   let Constraints = "@earlyclobber $dst" in
   def LDDWRdPtrQ : Pseudo<(outs DREGS:$dst), (ins memri:$memri), "lddw $dst, $memri",
                            [(set i16:$dst, (load addr:$memri))]>;
 
-
-//  // LDDW Rd+1:Rd, P+q
-//  //
-//  // Expands to:
-//  // ldd Rd,   P+q
-//  // ldd Rd+1, P+q+1
-//  let Constraints = "@earlyclobber $dst" in
-//  def LDDWRdPtrQ : Pseudo<(outs DREGS_WITHOUT_YZ_WORKAROUND:$dst),
-//                          (ins memri:$memri),
-//                          "lddw\t$dst, $memri",
-//                          [(set i16:$dst, (load addr:$memri))]>,
-//                   Requires<[HasSRAM]>;
-//
-//  // An identical pseudo instruction to LDDWRdPtrQ, expect restricted to the Y
-//  // register and without the @earlyclobber flag.
-//  //
-//  // Used to work around a bug caused by the register allocator not
-//  // being able to handle the expansion of a COPY into an machine instruction
-//  // that has an earlyclobber flag. This is because the register allocator will
-//  // try expand a copy from a register slot into an earlyclobber instruction.
-//  // Instructions that are earlyclobber need to be in a dedicated earlyclobber slot.
-//  //
-//  // This pseudo instruction can be used pre-Z80 pseudo expansion in order to
-//  // get a frame index load without directly using earlyclobber instructions.
-//  //
-//  // The pseudo expansion pass trivially expands this into LDDWRdPtrQ.
-//  //
-//  // This instruction may be removed once PR13375 is fixed.
-//  let mayLoad = 1,
-//  hasSideEffects = 0 in
-//  def LDDWRdYQ : Pseudo<(outs DREGS:$dst),
-//                        (ins memri:$memri),
-//                        "lddw\t$dst, $memri",
-//                        []>,
-//                 Requires<[HasSRAM]>;
+  let mayLoad = 1,
+  hasSideEffects = 0 in
+  def LDDWRdYQ : Pseudo<(outs DREGS:$dst), (ins memri:$memri), "lddw\t$dst, $memri", []>;
 }
 
-//class AtomicLoad<PatFrag Op, RegisterClass DRC,
-//                 RegisterClass PTRRC> :
-//  Pseudo<(outs DRC:$rd), (ins PTRRC:$rr), "atomic_op",
-//         [(set DRC:$rd, (Op i16:$rr))]>;
-//
-//class AtomicStore<PatFrag Op, RegisterClass DRC,
-//                  RegisterClass PTRRC> :
-//  Pseudo<(outs), (ins PTRRC:$rd, DRC:$rr), "atomic_op",
-//         [(Op i16:$rd, DRC:$rr)]>;
-//
-//class AtomicLoadOp<PatFrag Op, RegisterClass DRC,
-//                   RegisterClass PTRRC> :
-//  Pseudo<(outs DRC:$rd), (ins PTRRC:$rr, DRC:$operand),
-//         "atomic_op",
-//         [(set DRC:$rd, (Op i16:$rr, DRC:$operand))]>;
-//
-//// FIXME: I think 16-bit atomic binary ops need to mark
-//// r0 as clobbered.
-//
-//// Atomic instructions
-//// ===================
-////
-//// These are all expanded by Z80ExpandPseudoInsts
-////
-//// 8-bit operations can use any pointer register because
-//// they are expanded directly into an LD/ST instruction.
-////
-//// 16-bit operations use 16-bit load/store postincrement instructions,
-//// which require PTRDISPREGS.
-//
-//def AtomicLoad8   : AtomicLoad<atomic_load_8, GPR8, PTRREGS>;
-//def AtomicLoad16  : AtomicLoad<atomic_load_16, DREGS, PTRDISPREGS>;
-//
-//def AtomicStore8  : AtomicStore<atomic_store_8, GPR8, PTRREGS>;
-//def AtomicStore16 : AtomicStore<atomic_store_16, DREGS, PTRDISPREGS>;
-//
-//class AtomicLoadOp8<PatFrag Op> : AtomicLoadOp<Op, GPR8, PTRREGS>;
-//class AtomicLoadOp16<PatFrag Op> : AtomicLoadOp<Op, DREGS, PTRDISPREGS>;
-//
-//def AtomicLoadAdd8  : AtomicLoadOp8<atomic_load_add_8>;
-//def AtomicLoadAdd16 : AtomicLoadOp16<atomic_load_add_16>;
-//def AtomicLoadSub8  : AtomicLoadOp8<atomic_load_sub_8>;
-//def AtomicLoadSub16 : AtomicLoadOp16<atomic_load_sub_16>;
-//def AtomicLoadAnd8  : AtomicLoadOp8<atomic_load_and_8>;
-//def AtomicLoadAnd16 : AtomicLoadOp16<atomic_load_and_16>;
-//def AtomicLoadOr8   : AtomicLoadOp8<atomic_load_or_8>;
-//def AtomicLoadOr16  : AtomicLoadOp16<atomic_load_or_16>;
-//def AtomicLoadXor8  : AtomicLoadOp8<atomic_load_xor_8>;
-//def AtomicLoadXor16 : AtomicLoadOp16<atomic_load_xor_16>;
-//def AtomicFence     : Pseudo<(outs), (ins), "atomic_fence",
-//                             [(atomic_fence timm, timm)]>;
-
 // Indirect store from register to data space.
-def STSKRr : FormF<0x32, (outs), (ins imm16:$d16, ACC:$rd), "ld   ($d16), $rd", [(store i8:$rd, imm:$d16)]>;
+def STSKRr : FormF<0x32, (outs), (ins imm16:$d16, ACC:$rd), "ld   ($d16), $rd",
+                   [(store i8:$rd, imm:$d16)]>;
 
-//def STSKRr : F32DM<0b1,
-//                   (outs),
-//                   (ins imm16:$k, GPR8:$rd),
-//                   "sts\t$k, $rd",
-//                   [(store i8:$rd, imm:$k)]>,
-//             Requires<[HasSRAM]>;
-//
-//// STSW K+1:K, Rr+1:Rr
-////
-//// Expands to:
-//// sts Rr+1, (K+1:K) + 1
-//// sts Rr,   (K+1:K)
-//def STSWKRr : Pseudo<(outs),
-//                     (ins i16imm:$dst, DREGS:$src),
-//                     "stsw\t$dst, $src",
-//                     [(store i16:$src, imm:$dst)]>,
-//              Requires<[HasSRAM]>;
+def STSWKRr : Pseudo<(outs), (ins i16imm:$dst, DREGS:$src), "stsw\t$dst, $src",
+                   [(store i16:$src, imm:$dst)]>;
 
 // Indirect stores.
 // ST P, Rr
 // Stores the value of Rr into the location addressed by pointer P.
 
-def STPtrRr : FormB<0x70, (outs), (ins HLIXIYREGS:$ptrreg, GPR8:$rr), "ld   ($ptrreg), $rr",
+def STPtrRr : FormB<0x70, (outs), (ins HLIXIYREGS:$ptrreg, GPR8:$rr),
+                    "ld   ($ptrreg), $rr",
                     [(store GPR8:$rr, i16:$ptrreg)]>;
-
-//def STPtrRr : FSTLD<1,
-//                    0b00,
-//                    (outs),
-//                    (ins LDSTPtrReg:$ptrreg, GPR8:$reg),
-//                    "st\t$ptrreg, $reg",
-//                    [(store GPR8:$reg, i16:$ptrreg)]>,
-//              Requires<[HasSRAM]>;
-//
-
 
 //// STW P, Rr+1:Rr
 //// Stores the value of Rr into the location addressed by pointer P.
@@ -1792,6 +1593,21 @@ def Select8 : SelectPseudo<(outs GPR8:$dst), (ins GPR8:$src, GPR8:$src2, i8imm:$
 def : Pat<(Z80call (i16 tglobaladdr:$dst)), (CALLk tglobaladdr:$dst)>;
 def : Pat<(Z80call (i16 texternalsym:$dst)), (CALLk texternalsym:$dst)>;
 
+class Ex16Pat<SDNode Op, Instruction I>
+    : Pat<(i16 (Op DREGS:$a, DREGS:$b)),
+          (INSERT_SUBREG
+                         (INSERT_SUBREG (i16 (IMPLICIT_DEF)),
+                                        (I (EXTRACT_SUBREG $a, sub_hi),
+                                           (EXTRACT_SUBREG $b, sub_hi)),
+                                        sub_hi),
+                         (I (EXTRACT_SUBREG $a, sub_lo),
+                            (EXTRACT_SUBREG $b, sub_lo)),
+                         sub_lo)>;
+
+def : Ex16Pat<or, ORrr8>;
+def : Ex16Pat<and, ANDrr8>;
+def : Ex16Pat<xor, XORrr8>;
+
 // `anyext`
 def : Pat<(i16 (anyext i8:$src)),
           (INSERT_SUBREG (i16 (IMPLICIT_DEF)), i8:$src, sub_lo)>;
@@ -1810,15 +1626,15 @@ def : Pat<(i16 (Z80Wrapper tglobaladdr:$dst)),
 //def : Pat<(add i16:$src, (Z80Wrapper tglobaladdr:$src2)),
 //          (SUBIWRdK i16:$src, tglobaladdr:$src2)>;
 def : Pat<(i8 (load (Z80Wrapper tglobaladdr:$dst))),
-          (LD8MEMPTR tglobaladdr:$dst)>;
+          (LDSRdK tglobaladdr:$dst)>;
 def : Pat<(i16 (load (Z80Wrapper tglobaladdr:$dst))),
-          (LD16MEMPTR tglobaladdr:$dst)>;
-//def : Pat<(i16 (load (Z80Wrapper tglobaladdr:$dst))),
-//          (LDSWRdK tglobaladdr:$dst)>;
+          (LDSWRdK tglobaladdr:$dst)>;
+def : Pat<(i16 (load (Z80Wrapper tglobaladdr:$dst))),
+          (LDSWRdK tglobaladdr:$dst)>;
 def : Pat<(store i8:$src, (i16 (Z80Wrapper tglobaladdr:$dst))),
           (STSKRr tglobaladdr:$dst, i8:$src)>;
-//def : Pat<(store i16:$src, (i16 (Z80Wrapper tglobaladdr:$dst))),
-//          (STSWKRr tglobaladdr:$dst, i16:$src)>;
+def : Pat<(store i16:$src, (i16 (Z80Wrapper tglobaladdr:$dst))),
+          (STSWKRr tglobaladdr:$dst, i16:$src)>;
 
 // BlockAddress
 def : Pat<(i16 (Z80Wrapper tblockaddress:$dst)),

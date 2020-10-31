@@ -37,9 +37,6 @@ public:
 
   bool SelectAddr(SDNode *Op, SDValue N, SDValue &Base, SDValue &Disp);
 
-  bool selectIndexedLoad(SDNode *N);
-  unsigned selectIndexedProgMemLoad(const LoadSDNode *LD, MVT VT);
-
   bool SelectInlineAsmMemoryOperand(const SDValue &Op, unsigned ConstraintCode,
                                     std::vector<SDValue> &OutOps) override;
 
@@ -115,92 +112,6 @@ bool Z80DAGToDAGISel::SelectAddr(SDNode *Op, SDValue N, SDValue &Base,
   }
 
   return false;
-}
-
-bool Z80DAGToDAGISel::selectIndexedLoad(SDNode *N) {
-  const LoadSDNode *LD = cast<LoadSDNode>(N);
-  ISD::MemIndexedMode AM = LD->getAddressingMode();
-  MVT VT = LD->getMemoryVT().getSimpleVT();
-  auto PtrVT = getTargetLowering()->getPointerTy(CurDAG->getDataLayout());
-
-  // We only care if this load uses a POSTINC or PREDEC mode.
-  if ((LD->getExtensionType() != ISD::NON_EXTLOAD) ||
-      (AM != ISD::POST_INC && AM != ISD::PRE_DEC)) {
-
-    return false;
-  }
-
-  llvm_unreachable("Z80DAGToDAGISel::selectIndexedLoad");
-
-  unsigned Opcode = 0;
-  bool isPre = (AM == ISD::PRE_DEC);
-  int Offs = cast<ConstantSDNode>(LD->getOffset())->getSExtValue();
-
-  switch (VT.SimpleTy) {
-  case MVT::i8: {
-    if ((!isPre && Offs != 1) || (isPre && Offs != -1)) {
-      return false;
-    }
-
-    //Opcode = (isPre) ? Z80::LDRdPtrPd : Z80::LDRdPtrPi;
-    break;
-  }
-  case MVT::i16: {
-    if ((!isPre && Offs != 2) || (isPre && Offs != -2)) {
-      return false;
-    }
-
-    //Opcode = (isPre) ? Z80::LDWRdPtrPd : Z80::LDWRdPtrPi;
-    break;
-  }
-  default:
-    return false;
-  }
-
-  SDNode *ResNode = CurDAG->getMachineNode(Opcode, SDLoc(N), VT,
-                                           PtrVT, MVT::Other,
-                                           LD->getBasePtr(), LD->getChain());
-  ReplaceUses(N, ResNode);
-  CurDAG->RemoveDeadNode(N);
-
-  return true;
-}
-
-unsigned Z80DAGToDAGISel::selectIndexedProgMemLoad(const LoadSDNode *LD,
-                                                   MVT VT) {
-
-  llvm_unreachable("Z80DAGToDAGISel::selectIndexedProgMemLoad");
-
-  /*ISD::MemIndexedMode AM = LD->getAddressingMode();
-
-  // Progmem indexed loads only work in POSTINC mode.
-  if (LD->getExtensionType() != ISD::NON_EXTLOAD || AM != ISD::POST_INC) {
-    return 0;
-  }
-
-  unsigned Opcode = 0;
-  int Offs = cast<ConstantSDNode>(LD->getOffset())->getSExtValue();
-
-  switch (VT.SimpleTy) {
-  case MVT::i8: {
-    if (Offs != 1) {
-      return 0;
-    }
-    Opcode = Z80::LPMRdZPi;
-    break;
-  }
-  case MVT::i16: {
-    if (Offs != 2) {
-      return 0;
-    }
-    Opcode = Z80::LPMWRdZPi;
-    break;
-  }
-  default:
-    return 0;
-  }
-
-  return Opcode;*/
 }
 
 bool Z80DAGToDAGISel::SelectInlineAsmMemoryOperand(const SDValue &Op,
@@ -372,62 +283,6 @@ template <> bool Z80DAGToDAGISel::select<ISD::STORE>(SDNode *N) {
   return true;
 }
 
-template <> bool Z80DAGToDAGISel::select<ISD::LOAD>(SDNode *N) {
-  const LoadSDNode *LD = cast<LoadSDNode>(N);
-//  if (!Z80::isProgramMemoryAccess(LD)) {
-    // Check if the opcode can be converted into an indexed load.
-    return selectIndexedLoad(N);
-//  }
-
-  /*assert(Subtarget->hasLPM() && "cannot load from program memory on this mcu");
-
-  // This is a flash memory load, move the pointer into R31R30 and emit
-  // the lpm instruction.
-  MVT VT = LD->getMemoryVT().getSimpleVT();
-  SDValue Chain = LD->getChain();
-  SDValue Ptr = LD->getBasePtr();
-  SDNode *ResNode;
-  SDLoc DL(N);
-
-  Chain = CurDAG->getCopyToReg(Chain, DL, Z80::R31R30, Ptr, SDValue());
-  Ptr = CurDAG->getCopyFromReg(Chain, DL, Z80::R31R30, MVT::i16,
-                               Chain.getValue(1));
-
-  SDValue RegZ = CurDAG->getRegister(Z80::R31R30, MVT::i16);
-
-  // Check if the opcode can be converted into an indexed load.
-  if (unsigned LPMOpc = selectIndexedProgMemLoad(LD, VT)) {
-    // It is legal to fold the load into an indexed load.
-    ResNode = CurDAG->getMachineNode(LPMOpc, DL, VT, MVT::i16, MVT::Other, Ptr,
-                                     RegZ);
-    ReplaceUses(SDValue(N, 1), SDValue(ResNode, 1));
-  } else {
-    // Selecting an indexed load is not legal, fallback to a normal load.
-    switch (VT.SimpleTy) {
-    case MVT::i8:
-      ResNode = CurDAG->getMachineNode(Z80::LPMRdZ, DL, MVT::i8, MVT::Other,
-                                       Ptr, RegZ);
-      break;
-    case MVT::i16:
-      ResNode = CurDAG->getMachineNode(Z80::LPMWRdZ, DL, MVT::i16,
-                                       MVT::Other, Ptr, RegZ);
-      ReplaceUses(SDValue(N, 1), SDValue(ResNode, 1));
-      break;
-    default:
-      llvm_unreachable("Unsupported VT!");
-    }
-  }
-
-  // Transfer memory operands.
-  CurDAG->setNodeMemRefs(cast<MachineSDNode>(ResNode), {LD->getMemOperand()});
-
-  ReplaceUses(SDValue(N, 0), SDValue(ResNode, 0));
-  ReplaceUses(SDValue(N, 1), SDValue(ResNode, 1));
-  CurDAG->RemoveDeadNode(N);
-
-  return true;*/
-}
-
 template <> bool Z80DAGToDAGISel::select<Z80ISD::CALL>(SDNode *N) {
   SDValue InFlag;
   SDValue Chain = N->getOperand(0);
@@ -516,7 +371,6 @@ bool Z80DAGToDAGISel::trySelect(SDNode *N) {
 
   // Nodes we handle partially. Other cases are autogenerated
   case ISD::STORE:   return select<ISD::STORE>(N);
-  case ISD::LOAD:    return select<ISD::LOAD>(N);
   case Z80ISD::CALL: return select<Z80ISD::CALL>(N);
   default:           return false;
   }

@@ -137,7 +137,7 @@ void Z80RegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
   // instruction. We have only two-address instructions, thus we need to
   // expand it into move + add.
   if (MI.getOpcode() == Z80::FRMIDX) {
-    const auto &LDI16 = BuildMI(MBB, II, dl, TII.get(Z80::LDI16), Z80::HL);
+    const auto &LDI16 = BuildMI(MBB, II, dl, TII.get(Z80::LDIWRdK), Z80::HL);
 
     II++;
 

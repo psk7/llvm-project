@@ -177,7 +177,7 @@ void Z80InstrInfo::copyPhysReg(MachineBasicBlock &MBB,
 
 unsigned Z80InstrInfo::isLoadFromStackSlot(const MachineInstr &MI,
                                            int &FrameIndex) const {
-  /*switch (MI.getOpcode()) {
+  switch (MI.getOpcode()) {
   case Z80::LDDRdPtrQ:
   case Z80::LDDWRdYQ: { //:FIXME: remove this once PR13375 gets fixed
     if (MI.getOperand(1).isFI() && MI.getOperand(2).isImm() &&
@@ -189,7 +189,7 @@ unsigned Z80InstrInfo::isLoadFromStackSlot(const MachineInstr &MI,
   }
   default:
     break;
-  }*/
+  }
 
   return 0;
 }
@@ -219,8 +219,7 @@ void Z80InstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
                                        int FrameIndex,
                                        const TargetRegisterClass *RC,
                                        const TargetRegisterInfo *TRI) const {
-  llvm_unreachable("Z80InstrInfo::storeRegToStackSlot");
-  /*MachineFunction &MF = *MBB.getParent();
+  MachineFunction &MF = *MBB.getParent();
   Z80MachineFunctionInfo *AFI = MF.getInfo<Z80MachineFunctionInfo>();
 
   AFI->setHasSpills(true);
@@ -250,7 +249,7 @@ void Z80InstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
       .addFrameIndex(FrameIndex)
       .addImm(0)
       .addReg(SrcReg, getKillRegState(isKill))
-      .addMemOperand(MMO);*/
+      .addMemOperand(MMO);
 }
 
 void Z80InstrInfo::loadRegFromStackSlot(MachineBasicBlock &MBB,
@@ -271,7 +270,7 @@ void Z80InstrInfo::loadRegFromStackSlot(MachineBasicBlock &MBB,
       MachineMemOperand::MOLoad, MFI.getObjectSize(FrameIndex),
       MFI.getObjectAlign(FrameIndex));
 
-  /*unsigned Opcode = 0;
+  unsigned Opcode = 0;
   if (TRI->isTypeLegalForClass(*RC, MVT::i8)) {
     Opcode = Z80::LDDRdPtrQ;
   } else if (TRI->isTypeLegalForClass(*RC, MVT::i16)) {
@@ -285,7 +284,7 @@ void Z80InstrInfo::loadRegFromStackSlot(MachineBasicBlock &MBB,
   BuildMI(MBB, MI, DL, get(Opcode), DestReg)
       .addFrameIndex(FrameIndex)
       .addImm(0)
-      .addMemOperand(MMO);*/
+      .addMemOperand(MMO);
 }
 
 const MCInstrDesc &Z80InstrInfo::getBrCond(Z80CC::CondCodes CC) const {
