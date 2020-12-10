@@ -633,6 +633,9 @@ bool Z80ExpandPseudo::expand<Z80::LDDWRdPtrQ>(Block &MBB, BlockIt MBBI) {
   bool SrcIsKill = MI.getOperand(1).isKill();
   TRI->splitReg(DstReg, DstLoReg, DstHiReg);
 
+  if (Imm > 0)
+    assert(SrcReg == Z80::IX || SrcReg == Z80::IY && "Only IX or IY can has displacement");
+
   // Since we add 1 to the Imm value for the high byte below, and 63 is the highest Imm value
   // allowed for the instruction, 126 is the limit here.
   assert(Imm <= 126 && "Offset is out of range");

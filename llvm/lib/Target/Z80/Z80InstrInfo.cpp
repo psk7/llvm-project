@@ -29,96 +29,12 @@
 #include "Z80RegisterInfo.h"
 #include "Z80TargetMachine.h"
 #include "MCTargetDesc/Z80MCTargetDesc.h"
+#include "MCTargetDesc/Z80MCCodeEmitter.h"
 
 #define GET_INSTRINFO_CTOR_DTOR
 #include "Z80GenInstrInfo.inc"
 
 namespace llvm {
-
-namespace Z80II{
-
-template <class T>
-inline bool isImplicitDefOrKill(const T &Op);
-
-template <>
-inline bool isImplicitDefOrKill(const MCOperand &Op){
-  return false;
-}
-
-template <>
-inline bool isImplicitDefOrKill(const MachineOperand &Op){
-  return Op.isReg() && Op.isImplicit() && (Op.isDef() || Op.isKill());
-}
-
-template <class T, class I>
-InstPrefixInfo::InstPrefixInfo(const T &B, const T &E, const MCInstrDesc &MD,
-                               const I &Inst) {
-  HasIX = false;
-  HasIY = false;
-  HasHL = false;
-  Displacement = 0;
-  HasDisplacement = false;
-
-  for (auto i = B; i != E; ++i) {
-    auto &Op = *i;
-    if (isImplicitDefOrKill(Op) || !Op.isReg())
-      continue;
-    unsigned reg = Op.getReg();
-    HasIX |= (reg == Z80::IX);
-    HasIY |= (reg == Z80::IY);
-    HasHL |= (reg == Z80::HL);
-
-    auto d = (reg == Z80::IX || reg == Z80::IY) && (MD.TSFlags & (1 << 3));
-    HasDisplacement |= d;
-
-    if (d) {
-      ++i;
-      assert(i != E);
-      auto &Opi = *i;
-      if (Opi.isImm()){
-        Displacement = Opi.getImm();
-      }
-    }
-  }
-
-  if (HasHL && (HasIX || HasIY)) {
-    Inst.dump();
-    report_fatal_error(
-        "Unable to mix IX, IY and HL registers in same instruction");
-  }
-
-  Z80II::Prefix Prefixes = static_cast<Z80II::Prefix>(MD.TSFlags & 7);
-
-  HasCB = Prefixes == CB || Prefixes == DDCB || Prefixes == FDCB;
-  HasED = Prefixes == ED;
-  HasDD = Prefixes == DD || Prefixes == DDCB || HasIX;
-  HasFD = Prefixes == FD || Prefixes == FDCB || HasIY;
-
-  if (HasDD && HasFD)
-    report_fatal_error(
-        "Unable to mix IX and IY registers in same instruction");
-
-  InstrSize = MD.getSize();
-  if (HasCB)
-    InstrSize += 1;
-  if (HasED)
-    InstrSize += 1;
-  if (HasDD)
-    InstrSize += 1;
-  if (HasFD)
-    InstrSize += 1;
-
-  if (HasDisplacement)
-    InstrSize += 1;
-}
-
-InstPrefixInfo::InstPrefixInfo(const MachineInstr &MI)
-    : InstPrefixInfo(MI.operands_begin(), MI.operands_end(), MI.getDesc(), MI) {
-}
-
-InstPrefixInfo::InstPrefixInfo(const MCInst &MI, const MCInstrInfo &MII)
-    : InstPrefixInfo(MI.begin(), MI.end(), MII.get(MI.getOpcode()), MI) {}
-}
 
 Z80InstrInfo::Z80InstrInfo()
     : Z80GenInstrInfo(Z80::ADJCALLSTACKDOWN, Z80::ADJCALLSTACKUP), RI() {}
@@ -130,6 +46,32 @@ void Z80InstrInfo::copyPhysReg(MachineBasicBlock &MBB,
   const Z80Subtarget &STI = MBB.getParent()->getSubtarget<Z80Subtarget>();
   const Z80RegisterInfo &TRI = *STI.getRegisterInfo();
   unsigned Opc;
+
+  if (Z80::XDREGSRegClass.contains(DestReg) && (Z80::DE == SrcReg || Z80::BC == SrcReg))
+  {
+    Register DestLo, DestHi, SrcLo, SrcHi;
+
+    TRI.splitReg(DestReg, DestLo, DestHi);
+    TRI.splitReg(SrcReg,  SrcLo,  SrcHi);
+
+    // Copy each individual register with the `LD` instruction.
+    BuildMI(MBB, MI, DL, get(Z80::LDRdRr8), DestLo)
+        .addReg(SrcLo, getKillRegState(KillSrc));
+    BuildMI(MBB, MI, DL, get(Z80::LDRdRr8), DestHi)
+        .addReg(SrcHi, getKillRegState(KillSrc));
+
+    return;
+  }
+
+  if (Z80::XDREGSRegClass.contains(DestReg) && Z80::DREGSRegClass.contains(SrcReg))
+  {
+    BuildMI(MBB, MI, DL, get(Z80::PUSHRr))
+        .addReg(SrcReg, getKillRegState(KillSrc));
+
+    BuildMI(MBB, MI, DL, get(Z80::POPRd), DestReg);
+
+    return;
+  }
 
   if (Z80::DREGSRegClass.contains(DestReg, SrcReg)) {
     Register DestLo, DestHi, SrcLo, SrcHi;

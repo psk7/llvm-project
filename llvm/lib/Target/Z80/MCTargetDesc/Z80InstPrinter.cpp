@@ -123,8 +123,7 @@ void Z80InstPrinter::printOperand(const MCInst *MI, unsigned OpNo,
 
   if (Op.isReg()) {
     bool isPtrReg = false; /*(MOI.RegClass == Z80::PTRREGSRegClassID) ||
-                    (MOI.RegClass == Z80::PTRDISPREGSRegClassID) ||
-                    (MOI.RegClass == Z80::ZREGRegClassID);*/
+                    (MOI.RegClass == Z80::PTRDISPREGSRegClassID);*/
 
     if (isPtrReg) {
       O << getRegisterName(Op.getReg(), Z80::ptr);

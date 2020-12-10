@@ -112,9 +112,13 @@ def ACC : RegisterClass<"Z80", [i8], 8, (add A)>;
 //  )>;
 
 // Main 16-bit pair register class.
-def DREGS : RegisterClass<"Z80", [i16], 8, ( add BC, DE, HL, SP, IX, IY )>;
+def DREGS : RegisterClass<"Z80", [i16], 8, ( add BC, DE, HL, SP )>;
 
 def XDREGS : RegisterClass<"Z80", [i16], 8, ( add IX, IY )>;
+
+def SPLITTABLEDREGS : RegisterClass<"Z80", [i16], 8, ( add BC, DE, HL, IX, IY )>;
+
+def DREGSTOSTACK : RegisterClass<"Z80", [i16], 8, ( add BC, DE, HL, IX, IY )>;
 
 // 16-bit pair register class for movw
 //def DREGSMOVW : RegisterClass<"Z80", [i16], 8,
@@ -171,17 +175,12 @@ def XDREGS : RegisterClass<"Z80", [i16], 8, ( add IX, IY )>;
 //  )>;
 
 // 16-bit register class for the ld and st instructions.
-// AKA X,Y, and Z
-//def PTRREGS : RegisterClass<"Z80", [i16], 8,
-//  (
-//    add R27R26, // X
-//        R29R28, // Y
-//        R31R30  // Z
-//  ), ptr>;
+// AKA HL,IX, and IY
+def PTRREGS : RegisterClass<"Z80", [i16], 8, ( add HL, IX, IY ), ptr>;
 
 // 16-bit register class for the ldd and std instructions.
-// AKA Y and Z.
-def PTRDISPREGS : RegisterClass<"Z80", [i16], 8, ( add HL, IX, IY ), ptr>;
+// AKA IX and IY.
+def PTRDISPREGS : RegisterClass<"Z80", [i16], 8, ( add IX, IY ), ptr>;
 
 def HLREG : RegisterClass<"Z80", [i16], 8, (add HL)>;
 def SPREG : RegisterClass<"Z80", [i16], 8, (add SP)>;

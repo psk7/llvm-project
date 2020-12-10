@@ -32,6 +32,48 @@ class MCInstrInfo;
 class MCOperand;
 class MCSubtargetInfo;
 class raw_ostream;
+class MCInstrDesc;
+class MachineInstr;
+
+namespace Z80II {
+
+enum Prefix {
+  NoPrfx = 0,
+  CB = 1,
+  ED = 2,
+  DD = 3,
+  FD = 4,
+  DDCB = 5,
+  FDCB = 6
+};
+
+class InstPrefixInfo {
+private:
+  bool HasHL, HasIX, HasIY;
+  bool HasCB, HasED, HasDD, HasFD;
+  bool HasDisplacement;
+  unsigned InstrSize;
+  unsigned Displacement;
+
+  template <class T, class I>
+  InstPrefixInfo(const T &B, const T&E, const MCInstrDesc &MD, const I &Inst);
+
+public:
+  InstPrefixInfo(const MCInst &MI, const MCInstrInfo &MII);
+  InstPrefixInfo(const MachineInstr &MI);
+
+  bool hasCB() const { return HasCB; };
+  bool hasED() const { return HasED; };
+  bool hasDD() const { return HasDD; };
+  bool hasFD() const { return HasFD; };
+  bool hasDisplacement() const { return HasDisplacement; };
+  unsigned getDisplacement() const { return Displacement; };
+
+  unsigned getSize() const { return InstrSize; };
+};
+
+} // end of namespace Z80II
+
 
 /// Writes Z80 machine code to a stream.
 class Z80MCCodeEmitter : public MCCodeEmitter {

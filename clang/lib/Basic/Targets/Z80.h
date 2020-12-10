@@ -29,7 +29,7 @@ public:
     TLSSupported = false;
     PointerWidth = 16;
     PointerAlign = 8;
-    IntWidth = 8;
+    IntWidth = 16;
     IntAlign = 8;
     LongWidth = 16;
     LongAlign = 8;
@@ -143,15 +143,15 @@ public:
   }
 
   IntType getIntTypeByWidth(unsigned BitWidth, bool IsSigned) const final {
-    // Z80 prefers int for 8-bit integers.
-    return BitWidth == 8 ? (IsSigned ? SignedInt : UnsignedInt)
+    // Z80 prefers int for 16-bit integers.
+    return BitWidth == 16 ? (IsSigned ? SignedInt : UnsignedInt)
                           : TargetInfo::getIntTypeByWidth(BitWidth, IsSigned);
   }
 
   IntType getLeastIntTypeByWidth(unsigned BitWidth, bool IsSigned) const final {
     // Z80 uses int for int_least16_t and int_fast16_t.
     return BitWidth == 16
-               ? (IsSigned ? SignedLong : UnsignedLong)
+               ? (IsSigned ? SignedInt : UnsignedInt)
                : TargetInfo::getLeastIntTypeByWidth(BitWidth, IsSigned);
   }
 

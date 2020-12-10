@@ -59,11 +59,11 @@ Z80RegisterInfo::getCallPreservedMask(const MachineFunction &MF,
 BitVector Z80RegisterInfo::getReservedRegs(const MachineFunction &MF) const {
   BitVector Reserved(getNumRegs());
 
-  Reserved.set(Z80::IX);
+  //Reserved.set(Z80::IX);
   Reserved.set(Z80::IY);
 
-  Reserved.set(Z80::XL);
-  Reserved.set(Z80::XH);
+  //Reserved.set(Z80::XL);
+  //Reserved.set(Z80::XH);
   Reserved.set(Z80::YL);
   Reserved.set(Z80::YH);
 
@@ -265,7 +265,8 @@ Z80RegisterInfo::getPointerRegClass(const MachineFunction &MF,
 
 void Z80RegisterInfo::splitReg(Register Reg, Register &LoReg,
                                Register &HiReg) const {
-  assert(Z80::DREGSRegClass.contains(Reg) && "can only split 16-bit registers");
+  assert(Z80::SPLITTABLEDREGSRegClass.contains(Reg)
+         && "can only split 16-bit registers");
 
   LoReg = getSubReg(Reg, Z80::sub_lo);
   HiReg = getSubReg(Reg, Z80::sub_hi);
