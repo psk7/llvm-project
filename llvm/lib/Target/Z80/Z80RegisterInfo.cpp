@@ -94,9 +94,9 @@ static void foldFrameOffset(MachineBasicBlock::iterator &II, int &Offset,
   int Opcode = MI.getOpcode();
 
   // Don't bother trying if the next instruction is not an add or a sub.
-  if (Opcode != Z80::ADIWRdK) {
+//  if (Opcode != Z80::ADIWRdK) {
     return;
-  }
+//  }
 
   // Check that DstReg matches with next instruction, otherwise the instruction
   // is not related to stack address manipulation.

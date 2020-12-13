@@ -31,9 +31,9 @@ public:
     PointerAlign = 8;
     IntWidth = 16;
     IntAlign = 8;
-    LongWidth = 16;
+    LongWidth = 32;
     LongAlign = 8;
-    LongLongWidth = 32;
+    LongLongWidth = 64;
     LongLongAlign = 8;
     SuitableAlign = 8;
     DefaultAlignForAttributeAligned = 8;
@@ -54,7 +54,7 @@ public:
     WIntType = SignedInt;
     Char32Type = UnsignedLong;
     SigAtomicType = SignedChar;
-    resetDataLayout("e-P1-p:16:8-i8:8-i16:8-i32:8-n8-a:8");
+    resetDataLayout("e-P1-p:16:8-i8:8-i16:8-i32:8-i64:8-f32:8-f64:8-n8-a:8");
   }
 
   void getTargetDefines(const LangOptions &Opts,
@@ -154,6 +154,8 @@ public:
                ? (IsSigned ? SignedInt : UnsignedInt)
                : TargetInfo::getLeastIntTypeByWidth(BitWidth, IsSigned);
   }
+
+  bool hasExtIntType() const override;
 
   bool isValidCPUName(StringRef Name) const override;
   void fillValidCPUList(SmallVectorImpl<StringRef> &Values) const override;

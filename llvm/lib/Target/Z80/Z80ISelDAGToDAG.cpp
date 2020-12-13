@@ -62,6 +62,7 @@ bool Z80DAGToDAGISel::SelectAddr(SDNode *Op, SDValue N, SDValue &Base,
   SDLoc dl(Op);
   auto DL = CurDAG->getDataLayout();
   MVT PtrVT = getTargetLowering()->getPointerTy(DL);
+  MachineRegisterInfo &RI = CurDAG->getMachineFunction().getRegInfo();
 
   // if the address is a frame index get the TargetFrameIndex.
   if (const FrameIndexSDNode *FIN = dyn_cast<FrameIndexSDNode>(N)) {
@@ -74,6 +75,13 @@ bool Z80DAGToDAGISel::SelectAddr(SDNode *Op, SDValue N, SDValue &Base,
   // Match simple Reg + imm8 operands.
   if (N.getOpcode() != ISD::ADD && N.getOpcode() != ISD::SUB &&
       !CurDAG->isBaseWithConstantOffset(N)) {
+
+    if (const MemSDNode *M = dyn_cast<MemSDNode>(N)) {
+      Base = N;
+      Disp = CurDAG->getTargetConstant(0, dl, MVT::i8);
+      return true;
+    }
+
     return false;
   }
 

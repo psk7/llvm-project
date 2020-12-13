@@ -75,8 +75,8 @@ Z80TargetLowering::Z80TargetLowering(const Z80TargetMachine &TM,
 
   // sub (x, imm) gets canonicalized to add (x, -imm), so for illegal types
   // revert into a sub since we don't have an add with immediate instruction.
-//  setOperationAction(ISD::ADD, MVT::i32, Custom);
-//  setOperationAction(ISD::ADD, MVT::i64, Custom);
+  setOperationAction(ISD::ADD, MVT::i32, LibCall);
+  setOperationAction(ISD::ADD, MVT::i64, LibCall);
 
   // our shift instructions are only able to shift 1 bit at a time, so handle
   // this in a custom way.
@@ -102,15 +102,15 @@ Z80TargetLowering::Z80TargetLowering(const Z80TargetMachine &TM,
 //  setOperationAction(ISD::BRCOND, MVT::Other, Expand);
 
   setOperationAction(ISD::SELECT_CC, MVT::i8, Custom);
-  setOperationAction(ISD::SELECT_CC, MVT::i16, Expand);
+  setOperationAction(ISD::SELECT_CC, MVT::i16, Custom);
   setOperationAction(ISD::SELECT_CC, MVT::i32, Expand);
   setOperationAction(ISD::SELECT_CC, MVT::i64, Expand);
   setOperationAction(ISD::SETCC, MVT::i8, Custom);
   setOperationAction(ISD::SETCC, MVT::i16, Expand);
   setOperationAction(ISD::SETCC, MVT::i32, Expand);
   setOperationAction(ISD::SETCC, MVT::i64, Expand);
-//  setOperationAction(ISD::SELECT, MVT::i8, Expand);
-//  setOperationAction(ISD::SELECT, MVT::i16, Expand);
+  setOperationAction(ISD::SELECT, MVT::i8, Expand);
+  setOperationAction(ISD::SELECT, MVT::i16, Expand);
 
 //  setOperationAction(ISD::BSWAP, MVT::i16, Expand);
 

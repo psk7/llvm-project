@@ -120,6 +120,8 @@ def SPLITTABLEDREGS : RegisterClass<"Z80", [i16], 8, ( add BC, DE, HL, IX, IY )>
 
 def DREGSTOSTACK : RegisterClass<"Z80", [i16], 8, ( add BC, DE, HL, IX, IY )>;
 
+def INCDECDREGS : RegisterClass<"Z80", [i16], 8, ( add BC, DE, HL, IX, IY )>;
+
 // 16-bit pair register class for movw
 //def DREGSMOVW : RegisterClass<"Z80", [i16], 8,
 //  (

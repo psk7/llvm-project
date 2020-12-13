@@ -271,12 +271,35 @@ template <>
 bool Z80ExpandPseudo::expand<Z80::ADCWRdRr>(Block &MBB, BlockIt MBBI) {
   return expandArith(Z80::ADCRdRr, Z80::ADCRdRr, MBB, MBBI);
 }
-
+*/
 template <>
 bool Z80ExpandPseudo::expand<Z80::SUBWRdRr>(Block &MBB, BlockIt MBBI) {
-  return expandArith(Z80::SUBRdRr, Z80::SBCRdRr, MBB, MBBI);
-}
+  MachineInstr &MI = *MBBI;
+  Register DstReg = MI.getOperand(0).getReg();
+  Register SrcReg = MI.getOperand(2).getReg();
+  bool DstIsDead = MI.getOperand(0).isDead();
+  bool DstIsKill = MI.getOperand(1).isKill();
+  bool SrcIsKill = MI.getOperand(2).isKill();
+  bool ImpIsDead = MI.getOperand(3).isDead();
 
+  buildMI(MBB, MBBI, Z80::CLEARC);
+
+  auto &MIBHI = buildMI(MBB, MBBI, Z80::SBCRdRr16)
+      .addReg(DstReg, RegState::Define | getDeadRegState(DstIsDead))
+      .addReg(DstReg, getKillRegState(DstIsKill))
+      .addReg(SrcReg, getKillRegState(SrcIsKill));
+
+  if (ImpIsDead)
+    MIBHI->getOperand(3).setIsDead();
+
+  // SREG is always implicitly killed
+  MIBHI.addReg(Z80::SREG, RegState::ImplicitKill);
+
+  MI.eraseFromParent();
+  return true;
+  //return expandArith(Z80::SUBRdRr, Z80::SBCRdRr, MBB, MBBI);
+}
+/*
 template <>
 bool Z80ExpandPseudo::expand<Z80::SUBIWRdK>(Block &MBB, BlockIt MBBI) {
   MachineInstr &MI = *MBBI;
@@ -1281,7 +1304,7 @@ bool Z80ExpandPseudo::expandMI(Block &MBB, BlockIt MBBI) {
   switch (Opcode) {
     EXPAND(Z80::ADDWRdRr);
 //    EXPAND(Z80::ADCWRdRr);
-//    EXPAND(Z80::SUBWRdRr);
+    EXPAND(Z80::SUBWRdRr);
 //    EXPAND(Z80::SUBIWRdK);
 //    EXPAND(Z80::SBCWRdRr);
 //    EXPAND(Z80::SBCIWRdK);

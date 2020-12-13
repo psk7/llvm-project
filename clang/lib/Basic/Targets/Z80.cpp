@@ -37,3 +37,7 @@ bool Z80TargetInfo::setCPU(const std::string &Name) {
     CPU = Name;
   return isValid;
 }
+
+bool Z80TargetInfo::hasExtIntType() const {
+  return true;
+}

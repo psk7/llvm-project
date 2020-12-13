@@ -417,12 +417,7 @@ Defs = [SREG] in
 //                         (implicit SREG)]>;
 
   // AIDW Rd, k
-  // Adds an immediate 6-bit value K to Rd, placing the result in Rd.
-
-  def ADIWRdK : Pseudo<(outs DREGS:$rd), (ins DREGS:$src, i16imm:$k),
-                      "adiw $rd, $k",
-                      [(set i16:$rd, (add i16:$src, imm:$k)), (implicit SREG)]>;
-
+  // Adds an immediate 16-bit value K to Rd, placing the result in Rd.
 
 //  def ADIWRdK : FWRdK<0b0,
 //                      (outs IWREGS:$rd),
@@ -443,6 +438,8 @@ Defs = [SREG] in
                          (outs ACC:$rd), (ins GPR8:$src, GPR8:$rr), "sub  $rd, $rr",
                          [(set i8:$rd, (sub i8:$src, i8:$rr)), (implicit SREG)]>;
 
+   def SBCRdRr16 : FormC<0x42, (outs HLREG:$rd), (ins HLREG:$src, DREGS:$rr), "sbc  $rd, $rr", []>, ED;
+
 //  // SUB Rd, Rr
 //  // Subtracts the 8-bit value of Rr from Rd and places the value in Rd.
 //  def SUBRdRr : FRdRr<0b0001,
@@ -453,18 +450,19 @@ Defs = [SREG] in
 //                      [(set i8:$rd, (sub i8:$src, i8:$rr)),
 //                       (implicit SREG)]>;
 //
-//  // SUBW Rd+1:Rd, Rr+1:Rr
-//  // Subtracts two 16-bit values and places the result into Rd.
-//  //
-//  // Expands to:
-//  // sub Rd,   Rr
-//  // sbc Rd+1, Rr+1
-//  def SUBWRdRr : Pseudo<(outs DREGS:$rd),
-//                        (ins DREGS:$src, DREGS:$rr),
-//                        "subw\t$rd, $rr",
-//                        [(set i16:$rd, (sub i16:$src, i16:$rr)),
-//                         (implicit SREG)]>;
-//
+
+  // SUBW Rd+1:Rd, Rr+1:Rr
+  // Subtracts two 16-bit values and places the result into Rd.
+  //
+  // Expands to:
+  // sub Rd,   Rr
+  // sbc Rd+1, Rr+1
+  def SUBWRdRr : Pseudo<(outs HLREG:$rd),
+                        (ins HLREG:$src, DREGS:$rr),
+                        "subw $rd, $rr",
+                        [(set i16:$rd, (sub i16:$src, i16:$rr)),
+                         (implicit SREG)]>;
+
 //  def SUBIRdK : FRdK<0b0101,
 //                     (outs LD8:$rd),
 //                     (ins LD8:$src, imm_ldi8:$k),
@@ -546,6 +544,12 @@ Defs = [SREG] in
 
   def DECRd : FormH<0x05, (outs GPR8:$rd), (ins GPR8:$src), "dec  $rd",
                     [(set i8:$rd, (add i8:$src, -1)), (implicit SREG)]>;
+
+  def INCWRd : FormC<0x03, (outs INCDECDREGS:$rd), (ins INCDECDREGS:$src), "inc  $rd",
+                     [(set i16:$rd, (add i16:$src, 1)), (implicit SREG)]>;
+
+  def DECWRd : FormC<0x0b, (outs INCDECDREGS:$rd), (ins INCDECDREGS:$src), "dec  $rd",
+                     [(set i16:$rd, (add i16:$src, -1)), (implicit SREG)]>;
 }
 
 let Defs = [SREG], rd = 6 in
@@ -756,7 +760,7 @@ let isBarrier = 1,
 isBranch = 1,
 isTerminator = 1 in
 {
-  def JRk : FormI<0x18, (outs), (ins brtarget_13:$d8), "jr  $d8", [(br bb:$d8)]>;
+  def JRk : FormI<0x18, (outs), (ins brtarget_13:$d8), "jr   $d8", [(br bb:$d8)]>;
 
 //  def RJMPk : FBRk<0,
 //                   (outs),
@@ -889,7 +893,7 @@ let isBranch = 1,
 isTerminator = 1,
 Uses = [SREG] in
 {
-  def JRCC : FormJ<0x20, (outs), (ins relbrtarget_7:$d8, condcode:$cc), "jr$cc\t$d8", [(Z80brcond bb:$d8, imm:$cc)]>;
+  def JRCC : FormJ<0x20, (outs), (ins relbrtarget_7:$d8, condcode:$cc), "jr$cc $d8", [(Z80brcond bb:$d8, imm:$cc)]>;
 
 //  def BREQk : FBRsk<0,
 //                    0b001,
@@ -1003,7 +1007,7 @@ let canFoldAsLoad = 1,
 isReMaterializable = 1 in
 {
   def LDRdPtr : FormH<0x46, (outs GPR8:$rd), (ins HLIXIYREGS:$ptrreg), "ld   $rd, ($ptrreg)",
-                      [(set GPR8:$rd, (load i16:$ptrreg))]>;
+                      [(set i8:$rd, (load i16:$ptrreg))]>;
 
   let Constraints = "@earlyclobber $reg" in
   def LDWRdPtr : Pseudo<(outs DREGS:$reg), (ins HLIXIYREGS:$ptrreg), "ldw  $reg, $ptrreg",
@@ -1422,6 +1426,9 @@ Defs = [SREG] in
 //def : InstAlias<"sei", (BSETs 7)>;
 //def : InstAlias<"cli", (BCLRs 7)>;
 
+let Defs = [SREG] in
+def CLEARC : FormA<0xb7, (outs), (ins), "or   a, a", []>;
+
 //===----------------------------------------------------------------------===//
 // Special/Control instructions
 //===----------------------------------------------------------------------===//
@@ -1558,10 +1565,10 @@ def Select8 : SelectPseudo<(outs GPR8:$dst), (ins GPR8:$src, GPR8:$src2, i8imm:$
 // add x, 128 -> sub x, -128. Clang is emitting an eor for this (ldi+eor)
 
 // the add instruction always writes the carry flag
-//def : Pat<(addc i8:$src, i8:$src2),
-//          (ADDRdRr8 i8:$src, i8:$src2)>;
-//def : Pat<(addc DREGS:$src, DREGS:$src2),
-//          (ADDRdRr16 DREGS:$src, DREGS:$src2)>;
+def : Pat<(addc i8:$src, i8:$src2),
+          (ADDRdRr8 i8:$src, i8:$src2)>;
+def : Pat<(addc DREGS:$src, DREGS:$src2),
+          (ADDRdRr16 DREGS:$src, DREGS:$src2)>;
 
 //// all sub instruction variants always writes the carry flag
 //def : Pat<(subc i8:$src, i8:$src2),

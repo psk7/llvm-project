@@ -47,12 +47,14 @@ void Z80InstrInfo::copyPhysReg(MachineBasicBlock &MBB,
   const Z80RegisterInfo &TRI = *STI.getRegisterInfo();
   unsigned Opc;
 
-  if (Z80::XDREGSRegClass.contains(DestReg) && (Z80::DE == SrcReg || Z80::BC == SrcReg))
-  {
+  if ((Z80::XDREGSRegClass.contains(DestReg) &&
+       (Z80::DE == SrcReg || Z80::BC == SrcReg)) ||
+      (Z80::XDREGSRegClass.contains(SrcReg) &&
+       (Z80::DE == DestReg || Z80::BC == DestReg))) {
     Register DestLo, DestHi, SrcLo, SrcHi;
 
     TRI.splitReg(DestReg, DestLo, DestHi);
-    TRI.splitReg(SrcReg,  SrcLo,  SrcHi);
+    TRI.splitReg(SrcReg, SrcLo, SrcHi);
 
     // Copy each individual register with the `LD` instruction.
     BuildMI(MBB, MI, DL, get(Z80::LDRdRr8), DestLo)
