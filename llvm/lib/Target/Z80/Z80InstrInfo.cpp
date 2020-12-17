@@ -557,9 +557,9 @@ Z80InstrInfo::getBranchDestBlock(const MachineInstr &MI) const {
     llvm_unreachable("unexpected opcode!");
   case Z80::JRCC:
   case Z80::JRk:
+  case Z80::JMPk:
     return MI.getOperand(0).getMBB();
-  /*case Z80::JMPk:
-  case Z80::CALLk:
+  /*case Z80::CALLk:
   case Z80::RJMPk:
   case Z80::BREQk:
   case Z80::BRNEk:
@@ -589,10 +589,10 @@ bool Z80InstrInfo::isBranchOffsetInRange(unsigned BranchOp,
   case Z80::JRk:
   case Z80::JRCC:
     return isIntN(8, BrOffset);
-  /*case Z80::JMPk:
+  case Z80::JMPk:
   case Z80::CALLk:
     return true;
-  case Z80::RJMPk:
+  /*case Z80::RJMPk:
     return isIntN(13, BrOffset);
   case Z80::BRBSsk:
   case Z80::BRBCsk:
@@ -613,15 +613,14 @@ unsigned Z80InstrInfo::insertIndirectBranch(MachineBasicBlock &MBB,
                                             const DebugLoc &DL,
                                             int64_t BrOffset,
                                             RegScavenger *RS) const {
-  llvm_unreachable("Z80InstrInfo::insertIndirectBranch");
-/*    // This method inserts a *direct* branch (JMP), despite its name.
+    // This method inserts a *direct* branch (JMP), despite its name.
     // LLVM calls this method to fixup unconditional branches; it never calls
     // insertBranch or some hypothetical "insertDirectBranch".
     // See lib/CodeGen/RegisterRelaxation.cpp for details.
     // We end up here when a jump is too long for a RJMP instruction.
     auto &MI = *BuildMI(&MBB, DL, get(Z80::JMPk)).addMBB(&NewDestBB);
 
-    return getInstSizeInBytes(MI);*/
+    return getInstSizeInBytes(MI);
 }
 
 bool Z80InstrInfo::isCommuteAllowed(const MachineInstr &MI) const {

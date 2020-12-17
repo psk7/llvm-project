@@ -22,7 +22,7 @@ def SDT_Z80Call : SDTypeProfile<0, -1, [SDTCisVT<0, iPTR>]>;
 def SDT_Z80Wrapper : SDTypeProfile<1, 1, [SDTCisSameAs<0, 1>, SDTCisPtrTy<0>]>;
 def SDT_Z80Brcond : SDTypeProfile<0, 2,
                                   [SDTCisVT<0, OtherVT>, SDTCisVT<1, i8>]>;
-//def SDT_Z80Cmp : SDTypeProfile<0, 2, [SDTCisSameAs<0, 1>]>;
+def SDT_Z80Cmp : SDTypeProfile<0, 2, [SDTCisSameAs<0, 1>]>;
 def SDT_Z80Cp : SDTypeProfile<0, 2, [SDTCisSameAs<0, 1>]>;
 def SDT_Z80Tst : SDTypeProfile<0, 1, [SDTCisInt<0>]>;
 def SDT_Z80SelectCC : SDTypeProfile<1, 3, [SDTCisSameAs<0, 1>,
@@ -52,9 +52,9 @@ def Z80Wrapper : SDNode<"Z80ISD::WRAPPER", SDT_Z80Wrapper>;
 
 def Z80brcond : SDNode<"Z80ISD::BRCOND", SDT_Z80Brcond,
                        [SDNPHasChain, SDNPInGlue]>;
-//def Z80cmp : SDNode<"Z80ISD::CMP", SDT_Z80Cmp, [SDNPOutGlue]>;
+def Z80cmp : SDNode<"Z80ISD::CMP", SDT_Z80Cmp, [SDNPOutGlue]>;
 def Z80cp : SDNode<"Z80ISD::CP", SDT_Z80Cp, [SDNPOutGlue]>;
-//def Z80cmpc : SDNode<"Z80ISD::CMPC", SDT_Z80Cmp, [SDNPInGlue, SDNPOutGlue]>;
+def Z80cmpc : SDNode<"Z80ISD::CMPC", SDT_Z80Cmp, [SDNPInGlue, SDNPOutGlue]>;
 def Z80tst : SDNode<"Z80ISD::TST", SDT_Z80Tst, [SDNPOutGlue]>;
 def Z80selectcc: SDNode<"Z80ISD::SELECT_CC", SDT_Z80SelectCC, [SDNPInGlue]>;
 
@@ -785,13 +785,8 @@ isTerminator = 1 in
 //                  "eijmp",
 //                  []>,
 //              Requires<[HasEIJMPCALL]>;
-//
-//  def JMPk : F32BRk<0b110,
-//                    (outs),
-//                    (ins call_target:$k),
-//                    "jmp\t$k",
-//                    []>,
-//             Requires<[HasJMPCALL]>;
+
+  def JMPk : FormF<0xc3, (outs), (ins call_target:$k), "jmp  $k", []>;
 }
 
 //===----------------------------------------------------------------------===//
@@ -846,16 +841,14 @@ let Defs = [SREG] in
 //                     "cp\t$rd, $rr",
 //                     [(Z80cmp i8:$rd, i8:$rr), (implicit SREG)]>;
 //
-//  // CPW Rd+1:Rd, Rr+1:Rr
-//  //
-//  // Expands to:
-//  // cp  Rd,   Rr
-//  // cpc Rd+1, Rr+1
-//  def CPWRdRr : Pseudo<(outs),
-//                       (ins DREGS:$src, DREGS:$src2),
-//                       "cpw\t$src, $src2",
-//                       [(Z80cmp i16:$src, i16:$src2), (implicit SREG)]>;
-//
+  // CPW Rd+1:Rd, Rr+1:Rr
+  //
+  // Expands to:
+  // cp  Rd,   Rr
+  // cpc Rd+1, Rr+1
+  def CPWRdRr : Pseudo<(outs), (ins HLREG:$src, DREGS:$src2), "!cpw $src, $src2",
+                       [(Z80cp i16:$src, i16:$src2), (implicit SREG)]>;
+
 //  let Uses = [SREG] in
 //  def CPCRdRr : FRdRr<0b0000,
 //                      0b01,
@@ -1479,12 +1472,10 @@ def Select8 : SelectPseudo<(outs GPR8:$dst), (ins GPR8:$src, GPR8:$src2, i8imm:$
                            "# Select8 PSEUDO",
                            [(set i8:$dst, (Z80selectcc i8:$src, i8:$src2, imm:$cc))]>;
 
-//def Select16 : SelectPseudo<
-//  (outs DREGS:$dst),
-//  (ins DREGS:$src, DREGS:$src2, i8imm:$cc),
-//  "# Select16 PSEUDO",
-//  [(set i16:$dst, (Z80selectcc i16:$src, i16:$src2, imm:$cc))]
-//>;
+def Select16 : SelectPseudo<(outs DREGS:$dst), (ins DREGS:$src, DREGS:$src2, i8imm:$cc),
+                            "# Select16 PSEUDO",
+                            [(set i16:$dst, (Z80selectcc i16:$src, i16:$src2, imm:$cc))]>;
+
 //
 //def Lsl8 : ShiftPseudo<
 //  (outs GPR8:$dst),

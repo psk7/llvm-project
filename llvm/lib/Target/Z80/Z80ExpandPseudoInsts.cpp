@@ -252,7 +252,7 @@ bool Z80ExpandPseudo::expand<Z80::ADDWRdRr>(Block &MBB, BlockIt MBBI) {
   bool SrcIsKill = MI.getOperand(2).isKill();
   bool ImpIsDead = MI.getOperand(3).isDead();
 
-  auto &MIBHI = buildMI(MBB, MBBI, Z80::ADDRdRr16)
+  auto MIBHI = buildMI(MBB, MBBI, Z80::ADDRdRr16)
       .addReg(DstReg, RegState::Define | getDeadRegState(DstIsDead))
       .addReg(DstReg, getKillRegState(DstIsKill))
       .addReg(SrcReg, getKillRegState(SrcIsKill));
@@ -284,7 +284,7 @@ bool Z80ExpandPseudo::expand<Z80::SUBWRdRr>(Block &MBB, BlockIt MBBI) {
 
   buildMI(MBB, MBBI, Z80::CLEARC);
 
-  auto &MIBHI = buildMI(MBB, MBBI, Z80::SBCRdRr16)
+  auto MIBHI = buildMI(MBB, MBBI, Z80::SBCRdRr16)
       .addReg(DstReg, RegState::Define | getDeadRegState(DstIsDead))
       .addReg(DstReg, getKillRegState(DstIsKill))
       .addReg(SrcReg, getKillRegState(SrcIsKill));
@@ -444,40 +444,33 @@ bool Z80ExpandPseudo::expand<Z80::COMWRd>(Block &MBB, BlockIt MBBI) {
   MI.eraseFromParent();
   return true;
 }
-
+*/
 template <>
 bool Z80ExpandPseudo::expand<Z80::CPWRdRr>(Block &MBB, BlockIt MBBI) {
   MachineInstr &MI = *MBBI;
-  Register SrcLoReg, SrcHiReg, DstLoReg, DstHiReg;
   Register DstReg = MI.getOperand(0).getReg();
   Register SrcReg = MI.getOperand(1).getReg();
   bool DstIsKill = MI.getOperand(0).isKill();
   bool SrcIsKill = MI.getOperand(1).isKill();
   bool ImpIsDead = MI.getOperand(2).isDead();
-  unsigned OpLo = Z80::CPRdRr;
-  unsigned OpHi = Z80::CPCRdRr;
-  TRI->splitReg(SrcReg, SrcLoReg, SrcHiReg);
-  TRI->splitReg(DstReg, DstLoReg, DstHiReg);
 
-  // Low part
-  buildMI(MBB, MBBI, OpLo)
-    .addReg(DstLoReg, getKillRegState(DstIsKill))
-    .addReg(SrcLoReg, getKillRegState(SrcIsKill));
+  buildMI(MBB, MBBI, Z80::CLEARC);
 
-  auto MIBHI = buildMI(MBB, MBBI, OpHi)
-    .addReg(DstHiReg, getKillRegState(DstIsKill))
-    .addReg(SrcHiReg, getKillRegState(SrcIsKill));
+  auto MIBHI = buildMI(MBB, MBBI, Z80::SBCRdRr16)
+      .addReg(DstReg, RegState::Define | getDeadRegState(true))
+      .addReg(DstReg, getKillRegState(DstIsKill))
+      .addReg(SrcReg, getKillRegState(SrcIsKill));
 
   if (ImpIsDead)
-    MIBHI->getOperand(2).setIsDead();
+    MIBHI->getOperand(3).setIsDead();
 
   // SREG is always implicitly killed
-  MIBHI->getOperand(3).setIsKill();
+  //MIBHI->getOperand(3).setIsKill();
 
   MI.eraseFromParent();
   return true;
 }
-
+/*
 template <>
 bool Z80ExpandPseudo::expand<Z80::CPCWRdRr>(Block &MBB, BlockIt MBBI) {
   MachineInstr &MI = *MBBI;
@@ -1314,7 +1307,7 @@ bool Z80ExpandPseudo::expandMI(Block &MBB, BlockIt MBBI) {
 //    EXPAND(Z80::ORIWRdK);
 //    EXPAND(Z80::EORWRdRr);
 //    EXPAND(Z80::COMWRd);
-//    EXPAND(Z80::CPWRdRr);
+    EXPAND(Z80::CPWRdRr);
 //    EXPAND(Z80::CPCWRdRr);
     EXPAND(Z80::LDIWRdK);
     EXPAND(Z80::LDSWRdK);

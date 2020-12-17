@@ -16,13 +16,20 @@
 // Special return value calling convention for runtime functions.
 def RetCC_Z80_BUILTIN : CallingConv
 <[
-  CCIfType<[i8], CCAssignToReg<[A, B]>>,
-  CCIfType<[i16], CCAssignToReg<[DE, HL]>>
+  CCIfType<[i8], CCAssignToReg<[L, H, E, D, C, B]>>,
+  CCIfType<[i16], CCAssignToReg<[HL, DE, BC]>>
 ]>;
 
 //===----------------------------------------------------------------------===//
 // Z80 Argument Calling Conventions
 //===----------------------------------------------------------------------===//
+
+// Calling convention for variadic functions.
+def ArgCC_Z80_Builtin : CallingConv
+<[
+  CCIfType<[i8], CCAssignToReg<[L, H, E, D, C, B]>>,
+  CCIfType<[i16], CCAssignToReg<[HL, DE, BC]>>
+]>;
 
 // The calling conventions are implemented in custom C++ code
 

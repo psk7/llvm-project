@@ -13,8 +13,8 @@
 
 #include "Z80ISelLowering.h"
 
-#include "llvm/ADT/StringSwitch.h"
 #include "llvm/ADT/STLExtras.h"
+#include "llvm/ADT/StringSwitch.h"
 #include "llvm/CodeGen/CallingConvLower.h"
 #include "llvm/CodeGen/MachineFrameInfo.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
@@ -24,11 +24,11 @@
 #include "llvm/IR/Function.h"
 #include "llvm/Support/ErrorHandling.h"
 
+#include "MCTargetDesc/Z80MCTargetDesc.h"
 #include "Z80.h"
 #include "Z80MachineFunctionInfo.h"
 #include "Z80Subtarget.h"
 #include "Z80TargetMachine.h"
-#include "MCTargetDesc/Z80MCTargetDesc.h"
 
 namespace llvm {
 
@@ -38,7 +38,7 @@ Z80TargetLowering::Z80TargetLowering(const Z80TargetMachine &TM,
   // Set up the register classes.
   addRegisterClass(MVT::i8, &Z80::GPR8RegClass);
   addRegisterClass(MVT::i16, &Z80::DREGSRegClass);
-  //addRegisterClass(MVT::i16, &Z80::XDREGSRegClass);
+  // addRegisterClass(MVT::i16, &Z80::XDREGSRegClass);
 
   // Compute derived properties from the register classes.
   computeRegisterProperties(Subtarget.getRegisterInfo());
@@ -80,26 +80,26 @@ Z80TargetLowering::Z80TargetLowering(const Z80TargetMachine &TM,
 
   // our shift instructions are only able to shift 1 bit at a time, so handle
   // this in a custom way.
-//  setOperationAction(ISD::SRA, MVT::i8, Custom);
-//  setOperationAction(ISD::SHL, MVT::i8, Custom);
+  //  setOperationAction(ISD::SRA, MVT::i8, Custom);
+  //  setOperationAction(ISD::SHL, MVT::i8, Custom);
   setOperationAction(ISD::SRL, MVT::i8, Custom);
-//  setOperationAction(ISD::SRA, MVT::i16, Custom);
-//  setOperationAction(ISD::SHL, MVT::i16, Custom);
+  //  setOperationAction(ISD::SRA, MVT::i16, Custom);
+  //  setOperationAction(ISD::SHL, MVT::i16, Custom);
   setOperationAction(ISD::SRL, MVT::i16, Custom);
-//  setOperationAction(ISD::SHL_PARTS, MVT::i16, Expand);
-//  setOperationAction(ISD::SRA_PARTS, MVT::i16, Expand);
-//  setOperationAction(ISD::SRL_PARTS, MVT::i16, Expand);
+  //  setOperationAction(ISD::SHL_PARTS, MVT::i16, Expand);
+  //  setOperationAction(ISD::SRA_PARTS, MVT::i16, Expand);
+  //  setOperationAction(ISD::SRL_PARTS, MVT::i16, Expand);
 
-//  setOperationAction(ISD::ROTL, MVT::i8, Custom);
-//  setOperationAction(ISD::ROTL, MVT::i16, Expand);
-//  setOperationAction(ISD::ROTR, MVT::i8, Custom);
-//  setOperationAction(ISD::ROTR, MVT::i16, Expand);
+  //  setOperationAction(ISD::ROTL, MVT::i8, Custom);
+  //  setOperationAction(ISD::ROTL, MVT::i16, Expand);
+  //  setOperationAction(ISD::ROTR, MVT::i8, Custom);
+  //  setOperationAction(ISD::ROTR, MVT::i16, Expand);
 
   setOperationAction(ISD::BR_CC, MVT::i8, Custom);
   setOperationAction(ISD::BR_CC, MVT::i16, Custom);
   setOperationAction(ISD::BR_CC, MVT::i32, Custom);
   setOperationAction(ISD::BR_CC, MVT::i64, Custom);
-//  setOperationAction(ISD::BRCOND, MVT::Other, Expand);
+  //  setOperationAction(ISD::BRCOND, MVT::Other, Expand);
 
   setOperationAction(ISD::SELECT_CC, MVT::i8, Custom);
   setOperationAction(ISD::SELECT_CC, MVT::i16, Custom);
@@ -112,32 +112,32 @@ Z80TargetLowering::Z80TargetLowering(const Z80TargetMachine &TM,
   setOperationAction(ISD::SELECT, MVT::i8, Expand);
   setOperationAction(ISD::SELECT, MVT::i16, Expand);
 
-//  setOperationAction(ISD::BSWAP, MVT::i16, Expand);
+  //  setOperationAction(ISD::BSWAP, MVT::i16, Expand);
 
-//  setOperationAction(ISD::BR_JT, MVT::Other, Expand);
+  //  setOperationAction(ISD::BR_JT, MVT::Other, Expand);
 
-//  setOperationAction(ISD::VASTART, MVT::Other, Custom);
-//  setOperationAction(ISD::VAEND, MVT::Other, Expand);
-//  setOperationAction(ISD::VAARG, MVT::Other, Expand);
-//  setOperationAction(ISD::VACOPY, MVT::Other, Expand);
+  //  setOperationAction(ISD::VASTART, MVT::Other, Custom);
+  //  setOperationAction(ISD::VAEND, MVT::Other, Expand);
+  //  setOperationAction(ISD::VAARG, MVT::Other, Expand);
+  //  setOperationAction(ISD::VACOPY, MVT::Other, Expand);
 
   // Division/remainder
-//  setOperationAction(ISD::UDIV, MVT::i8, Expand);
-//  setOperationAction(ISD::UDIV, MVT::i16, Expand);
-//  setOperationAction(ISD::UREM, MVT::i8, Expand);
-//  setOperationAction(ISD::UREM, MVT::i16, Expand);
-//  setOperationAction(ISD::SDIV, MVT::i8, Expand);
-//  setOperationAction(ISD::SDIV, MVT::i16, Expand);
-//  setOperationAction(ISD::SREM, MVT::i8, Expand);
-//  setOperationAction(ISD::SREM, MVT::i16, Expand);
+  //  setOperationAction(ISD::UDIV, MVT::i8, Expand);
+  //  setOperationAction(ISD::UDIV, MVT::i16, Expand);
+  //  setOperationAction(ISD::UREM, MVT::i8, Expand);
+  //  setOperationAction(ISD::UREM, MVT::i16, Expand);
+  //  setOperationAction(ISD::SDIV, MVT::i8, Expand);
+  //  setOperationAction(ISD::SDIV, MVT::i16, Expand);
+  //  setOperationAction(ISD::SREM, MVT::i8, Expand);
+  //  setOperationAction(ISD::SREM, MVT::i16, Expand);
 
   // Make division and modulus custom
-//  setOperationAction(ISD::UDIVREM, MVT::i8, Custom);
-//  setOperationAction(ISD::UDIVREM, MVT::i16, Custom);
-//  setOperationAction(ISD::UDIVREM, MVT::i32, Custom);
-//  setOperationAction(ISD::SDIVREM, MVT::i8, Custom);
-//  setOperationAction(ISD::SDIVREM, MVT::i16, Custom);
-//  setOperationAction(ISD::SDIVREM, MVT::i32, Custom);
+  //  setOperationAction(ISD::UDIVREM, MVT::i8, Custom);
+  //  setOperationAction(ISD::UDIVREM, MVT::i16, Custom);
+  //  setOperationAction(ISD::UDIVREM, MVT::i32, Custom);
+  //  setOperationAction(ISD::SDIVREM, MVT::i8, Custom);
+  //  setOperationAction(ISD::SDIVREM, MVT::i16, Custom);
+  //  setOperationAction(ISD::SDIVREM, MVT::i32, Custom);
 
   // Do not use MUL. The Z80 instructions are closer to SMUL_LOHI &co.
   setOperationAction(ISD::MUL, MVT::i8, Expand);
@@ -149,9 +149,9 @@ Z80TargetLowering::Z80TargetLowering(const Z80TargetMachine &TM,
 
   // Expand multiplications to libcalls when there is
   // no hardware MUL.
-  //if (!Subtarget.supportsMultiplication()) {
-    setOperationAction(ISD::SMUL_LOHI, MVT::i8, Expand);
-    setOperationAction(ISD::UMUL_LOHI, MVT::i8, Expand);
+  // if (!Subtarget.supportsMultiplication()) {
+  setOperationAction(ISD::SMUL_LOHI, MVT::i8, Expand);
+  setOperationAction(ISD::UMUL_LOHI, MVT::i8, Expand);
   //}
 
   for (MVT VT : MVT::integer_valuetypes()) {
@@ -160,13 +160,13 @@ Z80TargetLowering::Z80TargetLowering(const Z80TargetMachine &TM,
   }
 
   for (MVT VT : MVT::integer_valuetypes()) {
-//    setOperationAction(ISD::CTPOP, VT, Expand);
-//    setOperationAction(ISD::CTLZ, VT, Expand);
-//    setOperationAction(ISD::CTTZ, VT, Expand);
+    //    setOperationAction(ISD::CTPOP, VT, Expand);
+    //    setOperationAction(ISD::CTLZ, VT, Expand);
+    //    setOperationAction(ISD::CTTZ, VT, Expand);
   }
 
   for (MVT VT : MVT::integer_valuetypes()) {
-//    setOperationAction(ISD::SIGN_EXTEND_INREG, VT, Expand);
+    //    setOperationAction(ISD::SIGN_EXTEND_INREG, VT, Expand);
     // TODO: The generated code is pretty poor. Investigate using the
     // same "shift and subtract with carry" trick that we do for
     // extending 8-bit to 16-bit. This may require infrastructure
@@ -174,46 +174,49 @@ Z80TargetLowering::Z80TargetLowering(const Z80TargetMachine &TM,
   }
 
   // Division rtlib functions (not supported), use divmod functions instead
-//  setLibcallName(RTLIB::SDIV_I8, nullptr);
-//  setLibcallName(RTLIB::SDIV_I16, nullptr);
-//  setLibcallName(RTLIB::SDIV_I32, nullptr);
-//  setLibcallName(RTLIB::UDIV_I8, nullptr);
-//  setLibcallName(RTLIB::UDIV_I16, nullptr);
-//  setLibcallName(RTLIB::UDIV_I32, nullptr);
+  //  setLibcallName(RTLIB::SDIV_I8, nullptr);
+  //  setLibcallName(RTLIB::SDIV_I16, nullptr);
+  //  setLibcallName(RTLIB::SDIV_I32, nullptr);
+  //  setLibcallName(RTLIB::UDIV_I8, nullptr);
+  //  setLibcallName(RTLIB::UDIV_I16, nullptr);
+  //  setLibcallName(RTLIB::UDIV_I32, nullptr);
 
   // Modulus rtlib functions (not supported), use divmod functions instead
-//  setLibcallName(RTLIB::SREM_I8, nullptr);
-//  setLibcallName(RTLIB::SREM_I16, nullptr);
-//  setLibcallName(RTLIB::SREM_I32, nullptr);
-//  setLibcallName(RTLIB::UREM_I8, nullptr);
-//  setLibcallName(RTLIB::UREM_I16, nullptr);
-//  setLibcallName(RTLIB::UREM_I32, nullptr);
+  //  setLibcallName(RTLIB::SREM_I8, nullptr);
+  //  setLibcallName(RTLIB::SREM_I16, nullptr);
+  //  setLibcallName(RTLIB::SREM_I32, nullptr);
+  //  setLibcallName(RTLIB::UREM_I8, nullptr);
+  //  setLibcallName(RTLIB::UREM_I16, nullptr);
+  //  setLibcallName(RTLIB::UREM_I32, nullptr);
+
+  setLibcallCallingConv(RTLIB::MUL_I8, CallingConv::Z80_BUILTIN);
+  setLibcallCallingConv(RTLIB::MUL_I16, CallingConv::Z80_BUILTIN);
 
   // Division and modulus rtlib functions
-//  setLibcallName(RTLIB::SDIVREM_I8, "__divmodqi4");
-//  setLibcallName(RTLIB::SDIVREM_I16, "__divmodhi4");
-//  setLibcallName(RTLIB::SDIVREM_I32, "__divmodsi4");
-//  setLibcallName(RTLIB::UDIVREM_I8, "__udivmodqi4");
-//  setLibcallName(RTLIB::UDIVREM_I16, "__udivmodhi4");
-//  setLibcallName(RTLIB::UDIVREM_I32, "__udivmodsi4");
+  //  setLibcallName(RTLIB::SDIVREM_I8, "__divmodqi4");
+  //  setLibcallName(RTLIB::SDIVREM_I16, "__divmodhi4");
+  //  setLibcallName(RTLIB::SDIVREM_I32, "__divmodsi4");
+  //  setLibcallName(RTLIB::UDIVREM_I8, "__udivmodqi4");
+  //  setLibcallName(RTLIB::UDIVREM_I16, "__udivmodhi4");
+  //  setLibcallName(RTLIB::UDIVREM_I32, "__udivmodsi4");
 
   // Several of the runtime library functions use a special calling conv
-//  setLibcallCallingConv(RTLIB::SDIVREM_I8, CallingConv::Z80_BUILTIN);
-//  setLibcallCallingConv(RTLIB::SDIVREM_I16, CallingConv::Z80_BUILTIN);
-//  setLibcallCallingConv(RTLIB::UDIVREM_I8, CallingConv::Z80_BUILTIN);
-//  setLibcallCallingConv(RTLIB::UDIVREM_I16, CallingConv::Z80_BUILTIN);
+  //  setLibcallCallingConv(RTLIB::SDIVREM_I8, CallingConv::Z80_BUILTIN);
+  //  setLibcallCallingConv(RTLIB::SDIVREM_I16, CallingConv::Z80_BUILTIN);
+  //  setLibcallCallingConv(RTLIB::UDIVREM_I8, CallingConv::Z80_BUILTIN);
+  //  setLibcallCallingConv(RTLIB::UDIVREM_I16, CallingConv::Z80_BUILTIN);
 
   // Trigonometric rtlib functions
-//  setLibcallName(RTLIB::SIN_F32, "sin");
-//  setLibcallName(RTLIB::COS_F32, "cos");
+  //  setLibcallName(RTLIB::SIN_F32, "sin");
+  //  setLibcallName(RTLIB::COS_F32, "cos");
 
   setMinFunctionAlignment(Align(1));
   setMinimumJumpTableEntries(UINT_MAX);
 }
 
 const char *Z80TargetLowering::getTargetNodeName(unsigned Opcode) const {
-#define NODE(name)       \
-  case Z80ISD::name:     \
+#define NODE(name)                                                             \
+  case Z80ISD::name:                                                           \
     return #name
 
   switch (Opcode) {
@@ -223,16 +226,16 @@ const char *Z80TargetLowering::getTargetNodeName(unsigned Opcode) const {
     NODE(RETI_FLAG);
     NODE(CALL);
     NODE(WRAPPER);
-//    NODE(LSL);
-//    NODE(LSR);
-//    NODE(ROL);
-//    NODE(ROR);
-//    NODE(ASR);
-//    NODE(LSLLOOP);
-//    NODE(LSRLOOP);
-//    NODE(ROLLOOP);
-//    NODE(RORLOOP);
-//    NODE(ASRLOOP);
+    //    NODE(LSL);
+    //    NODE(LSR);
+    //    NODE(ROL);
+    //    NODE(ROR);
+    //    NODE(ASR);
+    //    NODE(LSLLOOP);
+    //    NODE(LSRLOOP);
+    //    NODE(ROLLOOP);
+    //    NODE(RORLOOP);
+    //    NODE(ASRLOOP);
     NODE(BRCOND);
     NODE(CMP);
     NODE(CP);
@@ -376,8 +379,10 @@ static Z80CC::CondCodes intCCToZ80CC(ISD::CondCode CC) {
   case ISD::SETNE:
     return Z80CC::COND_NZ;
   case ISD::SETGE:
+  case ISD::SETUGE:
     return Z80CC::COND_NC;
   case ISD::SETLT:
+  case ISD::SETULT:
     return Z80CC::COND_C;
   }
 }
@@ -389,9 +394,6 @@ SDValue Z80TargetLowering::getZ80Cmp(SDValue LHS, SDValue RHS, ISD::CondCode CC,
                                      SDLoc DL) const {
   SDValue Cmp;
   EVT VT = LHS.getValueType();
-  bool UseTest = false;
-
-  assert(VT == MVT::i8 && "Unable to compare non i8 values");
 
   switch (CC) {
   default:
@@ -438,21 +440,21 @@ SDValue Z80TargetLowering::getZ80Cmp(SDValue LHS, SDValue RHS, ISD::CondCode CC,
   case ISD::SETLT: {
     if (const ConstantSDNode *C = dyn_cast<ConstantSDNode>(RHS)) {
       switch (C->getSExtValue()) {
-      /*case 1: {
-        // Turn lhs < 1 into 0 >= lhs since 0 can be materialized with
-        // __zero_reg__ in lhs.
-        RHS = LHS;
-        LHS = DAG.getConstant(0, DL, VT);
-        CC = ISD::SETGE;
-        break;
-      }*/
-      /*case 0: {
-        // When doing lhs < 0 use a tst instruction on the top part of lhs
-        // and use brmi instead of using a chain of cp/cpc.
-        UseTest = true;
-        Z80cc = DAG.getConstant(Z80CC::COND_MI, DL, MVT::i8);
-        break;
-      }*/
+        /*case 1: {
+          // Turn lhs < 1 into 0 >= lhs since 0 can be materialized with
+          // __zero_reg__ in lhs.
+          RHS = LHS;
+          LHS = DAG.getConstant(0, DL, VT);
+          CC = ISD::SETGE;
+          break;
+        }*/
+        /*case 0: {
+          // When doing lhs < 0 use a tst instruction on the top part of lhs
+          // and use brmi instead of using a chain of cp/cpc.
+          UseTest = true;
+          Z80cc = DAG.getConstant(Z80CC::COND_MI, DL, MVT::i8);
+          break;
+        }*/
       }
     }
     break;
@@ -478,86 +480,13 @@ SDValue Z80TargetLowering::getZ80Cmp(SDValue LHS, SDValue RHS, ISD::CondCode CC,
   }
   }
 
-  // Expand 32 and 64 bit comparisons with custom CMP and CMPC nodes instead of
-  // using the default and/or/xor expansion code which is much longer.
-  /*if (VT == MVT::i32) {
-    SDValue LHSlo = DAG.getNode(ISD::EXTRACT_ELEMENT, DL, MVT::i16, LHS,
-                                DAG.getIntPtrConstant(0, DL));
-    SDValue LHShi = DAG.getNode(ISD::EXTRACT_ELEMENT, DL, MVT::i16, LHS,
-                                DAG.getIntPtrConstant(1, DL));
-    SDValue RHSlo = DAG.getNode(ISD::EXTRACT_ELEMENT, DL, MVT::i16, RHS,
-                                DAG.getIntPtrConstant(0, DL));
-    SDValue RHShi = DAG.getNode(ISD::EXTRACT_ELEMENT, DL, MVT::i16, RHS,
-                                DAG.getIntPtrConstant(1, DL));
-
-    if (UseTest) {
-      // When using tst we only care about the highest part.
-      SDValue Top = DAG.getNode(ISD::EXTRACT_ELEMENT, DL, MVT::i8, LHShi,
-                                DAG.getIntPtrConstant(1, DL));
-      Cmp = DAG.getNode(Z80ISD::TST, DL, MVT::Glue, Top);
-    } else {
-      Cmp = DAG.getNode(Z80ISD::CMP, DL, MVT::Glue, LHSlo, RHSlo);
-      Cmp = DAG.getNode(Z80ISD::CMPC, DL, MVT::Glue, LHShi, RHShi, Cmp);
-    }
-  } else if (VT == MVT::i64) {
-    SDValue LHS_0 = DAG.getNode(ISD::EXTRACT_ELEMENT, DL, MVT::i32, LHS,
-                                DAG.getIntPtrConstant(0, DL));
-    SDValue LHS_1 = DAG.getNode(ISD::EXTRACT_ELEMENT, DL, MVT::i32, LHS,
-                                DAG.getIntPtrConstant(1, DL));
-
-    SDValue LHS0 = DAG.getNode(ISD::EXTRACT_ELEMENT, DL, MVT::i16, LHS_0,
-                               DAG.getIntPtrConstant(0, DL));
-    SDValue LHS1 = DAG.getNode(ISD::EXTRACT_ELEMENT, DL, MVT::i16, LHS_0,
-                               DAG.getIntPtrConstant(1, DL));
-    SDValue LHS2 = DAG.getNode(ISD::EXTRACT_ELEMENT, DL, MVT::i16, LHS_1,
-                               DAG.getIntPtrConstant(0, DL));
-    SDValue LHS3 = DAG.getNode(ISD::EXTRACT_ELEMENT, DL, MVT::i16, LHS_1,
-                               DAG.getIntPtrConstant(1, DL));
-
-    SDValue RHS_0 = DAG.getNode(ISD::EXTRACT_ELEMENT, DL, MVT::i32, RHS,
-                                DAG.getIntPtrConstant(0, DL));
-    SDValue RHS_1 = DAG.getNode(ISD::EXTRACT_ELEMENT, DL, MVT::i32, RHS,
-                                DAG.getIntPtrConstant(1, DL));
-
-    SDValue RHS0 = DAG.getNode(ISD::EXTRACT_ELEMENT, DL, MVT::i16, RHS_0,
-                               DAG.getIntPtrConstant(0, DL));
-    SDValue RHS1 = DAG.getNode(ISD::EXTRACT_ELEMENT, DL, MVT::i16, RHS_0,
-                               DAG.getIntPtrConstant(1, DL));
-    SDValue RHS2 = DAG.getNode(ISD::EXTRACT_ELEMENT, DL, MVT::i16, RHS_1,
-                               DAG.getIntPtrConstant(0, DL));
-    SDValue RHS3 = DAG.getNode(ISD::EXTRACT_ELEMENT, DL, MVT::i16, RHS_1,
-                               DAG.getIntPtrConstant(1, DL));
-
-    if (UseTest) {
-      // When using tst we only care about the highest part.
-      SDValue Top = DAG.getNode(ISD::EXTRACT_ELEMENT, DL, MVT::i8, LHS3,
-                                DAG.getIntPtrConstant(1, DL));
-      Cmp = DAG.getNode(Z80ISD::TST, DL, MVT::Glue, Top);
-    } else {
-      Cmp = DAG.getNode(Z80ISD::CMP, DL, MVT::Glue, LHS0, RHS0);
-      Cmp = DAG.getNode(Z80ISD::CMPC, DL, MVT::Glue, LHS1, RHS1, Cmp);
-      Cmp = DAG.getNode(Z80ISD::CMPC, DL, MVT::Glue, LHS2, RHS2, Cmp);
-      Cmp = DAG.getNode(Z80ISD::CMPC, DL, MVT::Glue, LHS3, RHS3, Cmp);
-    }
-  } else */if (VT == MVT::i8 || VT == MVT::i16) {
-    if (UseTest) {
-      // When using tst we only care about the highest part.
-      Cmp = DAG.getNode(Z80ISD::TST, DL, MVT::Glue,
-                        (VT == MVT::i8)
-                            ? LHS
-                            : DAG.getNode(ISD::EXTRACT_ELEMENT, DL, MVT::i8,
-                                          LHS, DAG.getIntPtrConstant(1, DL)));
-    } else {
-      Cmp = DAG.getNode(Z80ISD::CP, DL, MVT::Glue, LHS, RHS);
-    }
+  if (VT == MVT::i8 || VT == MVT::i16) {
+    Cmp = DAG.getNode(Z80ISD::CP, DL, MVT::Glue, LHS, RHS);
   } else {
-    llvm_unreachable("Invalid comparison size");
+    llvm_unreachable("Only i8 or i16 values can be compared");
   }
 
-  // When using a test instruction Z80cc is already set.
-  if (!UseTest) {
-    Z80cc = DAG.getConstant(intCCToZ80CC(CC), DL, MVT::i8);
-  }
+  Z80cc = DAG.getConstant(intCCToZ80CC(CC), DL, MVT::i8);
 
   return Cmp;
 }
@@ -631,24 +560,24 @@ SDValue Z80TargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const {
   switch (Op.getOpcode()) {
   default:
     llvm_unreachable("Don't know how to custom lower this!");
-//  case ISD::SHL:
-//  case ISD::SRA:
+    //  case ISD::SHL:
+    //  case ISD::SRA:
   case ISD::SRL:
-//  case ISD::ROTL:
-//  case ISD::ROTR:
+    //  case ISD::ROTL:
+    //  case ISD::ROTR:
     return LowerShifts(Op, DAG);
   case ISD::GlobalAddress:
     return LowerGlobalAddress(Op, DAG);
-//  case ISD::BlockAddress:
-//    return LowerBlockAddress(Op, DAG);
+    //  case ISD::BlockAddress:
+    //    return LowerBlockAddress(Op, DAG);
   case ISD::BR_CC:
     return LowerBR_CC(Op, DAG);
   case ISD::SELECT_CC:
     return LowerSELECT_CC(Op, DAG);
   case ISD::SETCC:
     return LowerSETCC(Op, DAG);
-//  case ISD::VASTART:
-//    return LowerVASTART(Op, DAG);
+    //  case ISD::VASTART:
+    //    return LowerVASTART(Op, DAG);
   }
 
   return SDValue();
@@ -688,7 +617,8 @@ void Z80TargetLowering::ReplaceNodeResults(SDNode *N,
 /// by AM is legal for this target, for a load/store of the specified type.
 bool Z80TargetLowering::isLegalAddressingMode(const DataLayout &DL,
                                               const AddrMode &AM, Type *Ty,
-                                              unsigned AS, Instruction *I) const {
+                                              unsigned AS,
+                                              Instruction *I) const {
   int64_t Offs = AM.BaseOffs;
 
   // Allow absolute addresses.
@@ -719,53 +649,52 @@ bool Z80TargetLowering::getPreIndexedAddressParts(SDNode *N, SDValue &Base,
                                                   ISD::MemIndexedMode &AM,
                                                   SelectionDAG &DAG) const {
   llvm_unreachable("Z80TargetLowering::getPreIndexedAddressParts");
- /* EVT VT;
-  const SDNode *Op;
-  SDLoc DL(N);
+  /* EVT VT;
+   const SDNode *Op;
+   SDLoc DL(N);
 
-  if (const LoadSDNode *LD = dyn_cast<LoadSDNode>(N)) {
-    VT = LD->getMemoryVT();
-    Op = LD->getBasePtr().getNode();
-    if (LD->getExtensionType() != ISD::NON_EXTLOAD)
-      return false;
-    if (Z80::isProgramMemoryAccess(LD)) {
-      return false;
-    }
-  } else if (const StoreSDNode *ST = dyn_cast<StoreSDNode>(N)) {
-    VT = ST->getMemoryVT();
-    Op = ST->getBasePtr().getNode();
-    if (Z80::isProgramMemoryAccess(ST)) {
-      return false;
-    }
-  } else {
-    return false;
-  }
+   if (const LoadSDNode *LD = dyn_cast<LoadSDNode>(N)) {
+     VT = LD->getMemoryVT();
+     Op = LD->getBasePtr().getNode();
+     if (LD->getExtensionType() != ISD::NON_EXTLOAD)
+       return false;
+     if (Z80::isProgramMemoryAccess(LD)) {
+       return false;
+     }
+   } else if (const StoreSDNode *ST = dyn_cast<StoreSDNode>(N)) {
+     VT = ST->getMemoryVT();
+     Op = ST->getBasePtr().getNode();
+     if (Z80::isProgramMemoryAccess(ST)) {
+       return false;
+     }
+   } else {
+     return false;
+   }
 
-  if (VT != MVT::i8 && VT != MVT::i16) {
-    return false;
-  }
+   if (VT != MVT::i8 && VT != MVT::i16) {
+     return false;
+   }
 
-  if (Op->getOpcode() != ISD::ADD && Op->getOpcode() != ISD::SUB) {
-    return false;
-  }
+   if (Op->getOpcode() != ISD::ADD && Op->getOpcode() != ISD::SUB) {
+     return false;
+   }
 
-  if (const ConstantSDNode *RHS = dyn_cast<ConstantSDNode>(Op->getOperand(1))) {
-    int RHSC = RHS->getSExtValue();
-    if (Op->getOpcode() == ISD::SUB)
-      RHSC = -RHSC;
+   if (const ConstantSDNode *RHS = dyn_cast<ConstantSDNode>(Op->getOperand(1)))
+   { int RHSC = RHS->getSExtValue(); if (Op->getOpcode() == ISD::SUB) RHSC =
+   -RHSC;
 
-    if ((VT == MVT::i16 && RHSC != -2) || (VT == MVT::i8 && RHSC != -1)) {
-      return false;
-    }
+     if ((VT == MVT::i16 && RHSC != -2) || (VT == MVT::i8 && RHSC != -1)) {
+       return false;
+     }
 
-    Base = Op->getOperand(0);
-    Offset = DAG.getConstant(RHSC, DL, MVT::i8);
-    AM = ISD::PRE_DEC;
+     Base = Op->getOperand(0);
+     Offset = DAG.getConstant(RHSC, DL, MVT::i8);
+     AM = ISD::PRE_DEC;
 
-    return true;
-  }
+     return true;
+   }
 
-  return false;*/
+   return false;*/
 }
 
 /// Returns true by value, base pointer and
@@ -879,10 +808,11 @@ analyzeArguments(TargetLowering::CallLoweringInfo *CLI, const Function *F,
 
 /// Count the total number of bytes needed to pass or return these arguments.
 template <typename ArgT>
-static unsigned getTotalArgumentsSizeInBytes(const SmallVectorImpl<ArgT> &Args) {
+static unsigned
+getTotalArgumentsSizeInBytes(const SmallVectorImpl<ArgT> &Args) {
   unsigned TotalBytes = 0;
 
-  for (const ArgT& Arg : Args) {
+  for (const ArgT &Arg : Args) {
     TotalBytes += Arg.VT.getStoreSize();
   }
   return TotalBytes;
@@ -897,7 +827,8 @@ static void analyzeReturnValues(const SmallVectorImpl<ArgT> &Args,
   unsigned NumArgs = Args.size();
   unsigned TotalBytes = getTotalArgumentsSizeInBytes(Args);
   // CanLowerReturn() guarantees this assertion.
-  assert(TotalBytes <= 4 && "return values greater than 4 bytes cannot be lowered");
+  assert(TotalBytes <= 4 &&
+         "return values greater than 4 bytes cannot be lowered");
 
   // GCC-ABI says that the size is rounded up to the next even number,
   // but actually once it is more than 4 it will always round up to 8.
@@ -925,13 +856,16 @@ static void analyzeReturnValues(const SmallVectorImpl<ArgT> &Args,
     CCInfo.addLoc(CCValAssign::getReg(0, VT, Reg, VT, CCValAssign::Full));
   } else {
     assert(NumArgs == 2 && "Too much return values");
-    assert(Args[0].VT == MVT::i16 && Args[1].VT == MVT::i16 && "i32 return as two i16 only");
+    assert(Args[0].VT == MVT::i16 && Args[1].VT == MVT::i16 &&
+           "i32 return as two i16 only");
     Reg = CCInfo.AllocateReg(Z80::HL);
     assert(Reg && "register not available in calling convention");
-    CCInfo.addLoc(CCValAssign::getReg(0, Args[0].VT, Reg, Args[0].VT, CCValAssign::Full));
+    CCInfo.addLoc(
+        CCValAssign::getReg(0, Args[0].VT, Reg, Args[0].VT, CCValAssign::Full));
     Reg = CCInfo.AllocateReg(Z80::DE);
     assert(Reg && "register not available in calling convention");
-    CCInfo.addLoc(CCValAssign::getReg(1, Args[1].VT, Reg, Args[1].VT, CCValAssign::Full));
+    CCInfo.addLoc(
+        CCValAssign::getReg(1, Args[1].VT, Reg, Args[1].VT, CCValAssign::Full));
   }
 }
 
@@ -1013,9 +947,8 @@ SDValue Z80TargetLowering::LowerFormalArguments(
       // Create the SelectionDAG nodes corresponding to a load
       // from this parameter.
       SDValue FIN = DAG.getFrameIndex(FI, getPointerTy(DL));
-      InVals.push_back(DAG.getLoad(LocVT, dl, Chain, FIN,
-                                   MachinePointerInfo::getFixedStack(MF, FI),
-                                   0));
+      InVals.push_back(DAG.getLoad(
+          LocVT, dl, Chain, FIN, MachinePointerInfo::getFixedStack(MF, FI), 0));
     }
   }
 
@@ -1074,11 +1007,15 @@ SDValue Z80TargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
                                          getPointerTy(DAG.getDataLayout()));
   }
 
-  // Variadic functions do not need all the analysis below.
-  if (isVarArg) {
-    CCInfo.AnalyzeCallOperands(Outs, ArgCC_Z80_Vararg);
+  if (CallConv == CallingConv::Z80_BUILTIN){
+    CCInfo.AnalyzeCallOperands(Outs, ArgCC_Z80_Builtin);
   } else {
-    analyzeArguments(&CLI, F, &DAG.getDataLayout(), Outs, ArgLocs, CCInfo);
+    // Variadic functions do not need all the analysis below.
+    if (isVarArg) {
+      CCInfo.AnalyzeCallOperands(Outs, ArgCC_Z80_Vararg);
+    } else {
+      analyzeArguments(&CLI, F, &DAG.getDataLayout(), Outs, ArgLocs, CCInfo);
+    }
   }
 
   // Get a count of how many bytes are to be pushed on the stack.
@@ -1146,10 +1083,9 @@ SDValue Z80TargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
           DAG.getRegister(Z80::IX, getPointerTy(DAG.getDataLayout())),
           DAG.getIntPtrConstant(VA.getLocMemOffset() /*+ 1*/, DL));
 
-      Chain =
-          DAG.getStore(Chain, DL, Arg, PtrOff,
-                       MachinePointerInfo::getStack(MF, VA.getLocMemOffset()),
-                       0);
+      Chain = DAG.getStore(
+          Chain, DL, Arg, PtrOff,
+          MachinePointerInfo::getStack(MF, VA.getLocMemOffset()), 0);
     }
   }
 
@@ -1207,8 +1143,8 @@ SDValue Z80TargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
 ///
 SDValue Z80TargetLowering::LowerCallResult(
     SDValue Chain, SDValue InFlag, CallingConv::ID CallConv, bool isVarArg,
-    const SmallVectorImpl<ISD::InputArg> &Ins, const SDLoc &dl, SelectionDAG &DAG,
-    SmallVectorImpl<SDValue> &InVals) const {
+    const SmallVectorImpl<ISD::InputArg> &Ins, const SDLoc &dl,
+    SelectionDAG &DAG, SmallVectorImpl<SDValue> &InVals) const {
   // Assign locations to each value returned by this call.
   SmallVector<CCValAssign, 16> RVLocs;
   CCState CCInfo(CallConv, isVarArg, DAG.getMachineFunction(), RVLocs,
@@ -1240,11 +1176,11 @@ SDValue Z80TargetLowering::LowerCallResult(
 bool Z80TargetLowering::CanLowerReturn(
     CallingConv::ID CallConv, MachineFunction &MF, bool isVarArg,
     const SmallVectorImpl<ISD::OutputArg> &Outs, LLVMContext &Context) const {
-  /*if (CallConv == CallingConv::Z80_BUILTIN) {
+  if (CallConv == CallingConv::Z80_BUILTIN) {
     SmallVector<CCValAssign, 16> RVLocs;
     CCState CCInfo(CallConv, isVarArg, MF, RVLocs, Context);
     return CCInfo.CheckReturn(Outs, RetCC_Z80_BUILTIN);
-  }*/
+  }
 
   unsigned TotalBytes = getTotalArgumentsSizeInBytes(Outs);
   return TotalBytes <= 4;
@@ -1266,11 +1202,11 @@ Z80TargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
   MachineFunction &MF = DAG.getMachineFunction();
 
   // Analyze return values.
-  /*if (CallConv == CallingConv::Z80_BUILTIN) {
+  if (CallConv == CallingConv::Z80_BUILTIN) {
     CCInfo.AnalyzeReturn(Outs, RetCC_Z80_BUILTIN);
-  } else {*/
-    analyzeReturnValues(Outs, CCInfo);
-  //}
+  } else {
+  analyzeReturnValues(Outs, CCInfo);
+  }
 
   SDValue Flag;
   SmallVector<SDValue, 4> RetOps(1, Chain);
@@ -1296,9 +1232,10 @@ Z80TargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
   const Z80MachineFunctionInfo *AFI = MF.getInfo<Z80MachineFunctionInfo>();
 
   unsigned RetOpc =
-    /*AFI->isInterruptOrSignalHandler()
-        ? Z80ISD::RETI_FLAG
-        :*/ Z80ISD::RET_FLAG;
+      /*AFI->isInterruptOrSignalHandler()
+          ? Z80ISD::RETI_FLAG
+          :*/
+      Z80ISD::RET_FLAG;
 
   RetOps[0] = Chain; // Update chain.
 
@@ -1467,7 +1404,7 @@ Z80TargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
     return insertShift(MI, MBB);
   }*/
 
-  assert((/*Opc == Z80::Select16 || */Opc == Z80::Select8) &&
+  assert((Opc == Z80::Select16 || Opc == Z80::Select8) &&
          "Unexpected instr type to insert");
 
   const Z80InstrInfo &TII = (const Z80InstrInfo &)*MI.getParent()
@@ -1497,8 +1434,10 @@ Z80TargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
   MachineBasicBlock *falseMBB = MF->CreateMachineBasicBlock(LLVM_BB);
 
   MachineFunction::iterator I;
-  for (I = MF->begin(); I != MF->end() && &(*I) != MBB; ++I);
-  if (I != MF->end()) ++I;
+  for (I = MF->begin(); I != MF->end() && &(*I) != MBB; ++I)
+    ;
+  if (I != MF->end())
+    ++I;
   MF->insert(I, trueMBB);
   MF->insert(I, falseMBB);
 
@@ -1520,11 +1459,12 @@ Z80TargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
   falseMBB->addSuccessor(trueMBB);
 
   // Set up the Phi node to determine where we came from
-  BuildMI(*trueMBB, trueMBB->begin(), dl, TII.get(Z80::PHI), MI.getOperand(0).getReg())
-    .addReg(MI.getOperand(1).getReg())
-    .addMBB(MBB)
-    .addReg(MI.getOperand(2).getReg())
-    .addMBB(falseMBB) ;
+  BuildMI(*trueMBB, trueMBB->begin(), dl, TII.get(Z80::PHI),
+          MI.getOperand(0).getReg())
+      .addReg(MI.getOperand(1).getReg())
+      .addMBB(MBB)
+      .addReg(MI.getOperand(2).getReg())
+      .addMBB(falseMBB);
 
   MI.eraseFromParent(); // The pseudo instruction is gone now.
   return trueMBB;
@@ -1858,7 +1798,8 @@ void Z80TargetLowering::LowerAsmOperandForConstraint(SDValue Op,
     return;
   }
 
-  return TargetLowering::LowerAsmOperandForConstraint(Op, Constraint, Ops, DAG);*/
+  return TargetLowering::LowerAsmOperandForConstraint(Op, Constraint, Ops,
+  DAG);*/
 }
 
 Register Z80TargetLowering::getRegisterByName(const char *RegName, LLT VT,
