@@ -76,14 +76,11 @@ def SP     : Z80Reg<3, "sp">, DwarfRegNum<[88]>;
 def GPR8 : RegisterClass<"Z80", [i8], 8,
   (
     add A, B, C, D, E, H, L
+  )>;
 
-    // Return value and argument registers.
-    // add R24, R25, R18, R19, R20, R21, R22, R23,
-    // Scratch registers.
-    // R30, R31, R26, R27,
-    // Callee saved registers.
-    // R28, R29, R17, R16, R15, R14, R13, R12, R11, R10,
-    // R9, R8, R7, R6, R5, R4, R3, R2, R0, R1
+def GPR8ANDXY : RegisterClass<"Z80", [i8], 8,
+  (
+    add A, B, C, D, E, H, L, XL, XH, YL, YH
   )>;
 
 def ACC : RegisterClass<"Z80", [i8], 8, (add A)>;
@@ -114,6 +111,7 @@ def ACC : RegisterClass<"Z80", [i8], 8, (add A)>;
 // Main 16-bit pair register class.
 def DREGS : RegisterClass<"Z80", [i16], 8, ( add BC, DE, HL, SP )>;
 
+let CopyCost = 3 in
 def XDREGS : RegisterClass<"Z80", [i16], 8, ( add IX, IY )>;
 
 def SPLITTABLEDREGS : RegisterClass<"Z80", [i16], 8, ( add BC, DE, HL, IX, IY )>;
@@ -121,6 +119,8 @@ def SPLITTABLEDREGS : RegisterClass<"Z80", [i16], 8, ( add BC, DE, HL, IX, IY )>
 def DREGSTOSTACK : RegisterClass<"Z80", [i16], 8, ( add BC, DE, HL, IX, IY )>;
 
 def INCDECDREGS : RegisterClass<"Z80", [i16], 8, ( add BC, DE, HL, IX, IY )>;
+
+def LDITARGETREGS : RegisterClass<"Z80", [i16], 8, ( add BC, DE, HL, IX, IY )>;
 
 // 16-bit pair register class for movw
 //def DREGSMOVW : RegisterClass<"Z80", [i16], 8,
@@ -178,15 +178,18 @@ def INCDECDREGS : RegisterClass<"Z80", [i16], 8, ( add BC, DE, HL, IX, IY )>;
 
 // 16-bit register class for the ld and st instructions.
 // AKA HL,IX, and IY
+let CopyCost = 3 in
 def PTRREGS : RegisterClass<"Z80", [i16], 8, ( add HL, IX, IY ), ptr>;
 
 // 16-bit register class for the ldd and std instructions.
 // AKA IX and IY.
+let CopyCost = 10 in
 def PTRDISPREGS : RegisterClass<"Z80", [i16], 8, ( add IX, IY ), ptr>;
 
 def HLREG : RegisterClass<"Z80", [i16], 8, (add HL)>;
 def SPREG : RegisterClass<"Z80", [i16], 8, (add SP)>;
 
+let CopyCost = 3 in
 def HLIXIYREGS : RegisterClass<"Z80", [i16], 8, (add HL, IX, IY)>;
 
 // Status register.

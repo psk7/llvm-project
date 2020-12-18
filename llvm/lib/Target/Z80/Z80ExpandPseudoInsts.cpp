@@ -261,7 +261,7 @@ bool Z80ExpandPseudo::expand<Z80::ADDWRdRr>(Block &MBB, BlockIt MBBI) {
     MIBHI->getOperand(3).setIsDead();
 
   // SREG is always implicitly killed
-  MIBHI.addReg(Z80::SREG, RegState::ImplicitKill);
+  //MIBHI.addReg(Z80::SREG, RegState::ImplicitKill);
 
   MI.eraseFromParent();
   return true;
@@ -649,24 +649,53 @@ bool Z80ExpandPseudo::expand<Z80::LDDWRdPtrQ>(Block &MBB, BlockIt MBBI) {
   bool SrcIsKill = MI.getOperand(1).isKill();
   TRI->splitReg(DstReg, DstLoReg, DstHiReg);
 
-  if (Imm > 0)
+  bool NeedAcc = Z80::IX == DstReg || Z80::IY == DstReg;
+
+  if (Imm != 0)
     assert(SrcReg == Z80::IX || SrcReg == Z80::IY && "Only IX or IY can has displacement");
 
   // Since we add 1 to the Imm value for the high byte below, and 63 is the highest Imm value
   // allowed for the instruction, 126 is the limit here.
   assert(Imm <= 126 && "Offset is out of range");
 
-  // Load low byte.
-  auto MIBLO = buildMI(MBB, MBBI, Z80::LDDRdPtrQ)
-    .addReg(DstLoReg, RegState::Define)
-    .addReg(SrcReg)
-    .addImm(Imm);
+  MachineInstrBuilder MIBLO, MIBHI;
 
-  // Load high byte.
-  auto MIBHI = buildMI(MBB, MBBI, Z80::LDDRdPtrQ)
-    .addReg(DstHiReg, RegState::Define)
-    .addReg(SrcReg, getKillRegState(SrcIsKill))
-    .addImm(Imm + 1);
+  if (NeedAcc) {
+    Register TmpReg = scavengeGPR8(MI);
+
+    // Load low byte.
+    MIBLO = buildMI(MBB, MBBI, Z80::LDDRdPtrQ)
+        .addReg(TmpReg, RegState::Define)
+        .addReg(SrcReg)
+        .addImm(Imm);
+
+    buildMI(MBB, MI, Z80::LDRdRr8)
+        .addReg(DstLoReg, RegState::Define)
+        .addReg(TmpReg, RegState::Kill);
+
+    // Load high byte.
+    MIBHI = buildMI(MBB, MBBI, Z80::LDDRdPtrQ)
+        .addReg(TmpReg, RegState::Define)
+        .addReg(SrcReg, getKillRegState(SrcIsKill))
+        .addImm(Imm + 1);
+
+    buildMI(MBB, MI, Z80::LDRdRr8)
+        .addReg(DstHiReg, RegState::Define)
+        .addReg(TmpReg, RegState::Kill);
+
+  } else {
+    // Load low byte.
+    MIBLO = buildMI(MBB, MBBI, Z80::LDDRdPtrQ)
+                .addReg(DstLoReg, RegState::Define)
+                .addReg(SrcReg)
+                .addImm(Imm);
+
+    // Load high byte.
+    MIBHI = buildMI(MBB, MBBI, Z80::LDDRdPtrQ)
+                .addReg(DstHiReg, RegState::Define)
+                .addReg(SrcReg, getKillRegState(SrcIsKill))
+                .addImm(Imm + 1);
+  }
 
   MIBLO.setMemRefs(MI.memoperands());
   MIBHI.setMemRefs(MI.memoperands());
@@ -746,7 +775,7 @@ bool Z80ExpandPseudo::expand<Z80::STSWKRr>(Block &MBB, BlockIt MBBI) {
   MI.eraseFromParent();
   return true;
 }
-/*
+
 template <>
 bool Z80ExpandPseudo::expand<Z80::STWPtrRr>(Block &MBB, BlockIt MBBI) {
   MachineInstr &MI = *MBBI;
@@ -754,16 +783,14 @@ bool Z80ExpandPseudo::expand<Z80::STWPtrRr>(Block &MBB, BlockIt MBBI) {
   Register DstReg = MI.getOperand(0).getReg();
   Register SrcReg = MI.getOperand(1).getReg();
   bool SrcIsKill = MI.getOperand(1).isKill();
-  unsigned OpLo = Z80::STPtrRr;
-  unsigned OpHi = Z80::STDPtrQRr;
   TRI->splitReg(SrcReg, SrcLoReg, SrcHiReg);
 
-  //:TODO: need to reverse this order like inw and stsw?
-  auto MIBLO = buildMI(MBB, MBBI, OpLo)
+  auto MIBLO = buildMI(MBB, MBBI, Z80::STDPtrQRr)
     .addReg(DstReg)
+    .addImm(0)
     .addReg(SrcLoReg, getKillRegState(SrcIsKill));
 
-  auto MIBHI = buildMI(MBB, MBBI, OpHi)
+  auto MIBHI = buildMI(MBB, MBBI, Z80::STDPtrQRr)
     .addReg(DstReg)
     .addImm(1)
     .addReg(SrcHiReg, getKillRegState(SrcIsKill));
@@ -774,7 +801,7 @@ bool Z80ExpandPseudo::expand<Z80::STWPtrRr>(Block &MBB, BlockIt MBBI) {
   MI.eraseFromParent();
   return true;
 }
-
+/*
 template <>
 bool Z80ExpandPseudo::expand<Z80::STWPtrPiRr>(Block &MBB, BlockIt MBBI) {
   MachineInstr &MI = *MBBI;
@@ -849,26 +876,50 @@ bool Z80ExpandPseudo::expand<Z80::STDWPtrQRr>(Block &MBB, BlockIt MBBI) {
   Register SrcLoReg, SrcHiReg;
   Register DstReg = MI.getOperand(0).getReg();
   Register SrcReg = MI.getOperand(2).getReg();
-  unsigned Imm = MI.getOperand(1).getImm();
+  int Imm = MI.getOperand(1).getImm();
   bool DstIsKill = MI.getOperand(0).isKill();
   bool SrcIsKill = MI.getOperand(2).isKill();
   TRI->splitReg(SrcReg, SrcLoReg, SrcHiReg);
+  bool NeedAcc = Z80::IX == SrcReg || Z80::IY == SrcReg;
+  Register TmpReg;
+  auto SrcKillState = getKillRegState(SrcIsKill);
 
   // Since we add 1 to the Imm value for the high byte below, and 63 is the highest Imm value
   // allowed for the instruction, 62 is the limit here.
-  assert(Imm <= 126 && "Offset is out of range");
+  assert(Imm <= 126 && Imm >= -126 && "Offset is out of range");
 
   assert(DstReg == Z80::IX || DstReg == Z80::IY);
+
+  if (NeedAcc) {
+    TmpReg = scavengeGPR8(MI);
+    buildMI(MBB, MI, Z80::LDRdRr8)
+        .addReg(TmpReg, RegState::Define)
+        .addReg(SrcLoReg, SrcKillState);
+
+    SrcLoReg = TmpReg;
+    SrcKillState = getKillRegState(true);
+  }
 
   auto MIBLO = buildMI(MBB, MBBI, Z80::STDPtrQRr)
     .addReg(DstReg)
     .addImm(Imm)
-    .addReg(SrcLoReg, getKillRegState(SrcIsKill));
+    .addReg(SrcLoReg, SrcKillState);
+
+  if (NeedAcc) {
+    SrcKillState = getKillRegState(SrcIsKill);
+
+    buildMI(MBB, MI, Z80::LDRdRr8)
+        .addReg(TmpReg, RegState::Define)
+        .addReg(SrcHiReg, SrcKillState);
+
+    SrcHiReg = TmpReg;
+    SrcKillState = getKillRegState(true);
+  }
 
   auto MIBHI = buildMI(MBB, MBBI, Z80::STDPtrQRr)
     .addReg(DstReg, getKillRegState(DstIsKill))
     .addImm(Imm + 1)
-    .addReg(SrcHiReg, getKillRegState(SrcIsKill));
+    .addReg(SrcHiReg, SrcKillState);
 
   MIBLO.setMemRefs(MI.memoperands());
   MIBHI.setMemRefs(MI.memoperands());
@@ -1315,7 +1366,7 @@ bool Z80ExpandPseudo::expandMI(Block &MBB, BlockIt MBBI) {
   case Z80::LDDWRdYQ: //:FIXME: remove this once PR13375 gets fixed
     EXPAND(Z80::LDDWRdPtrQ);
     EXPAND(Z80::STSWKRr);
-//    EXPAND(Z80::STWPtrRr);
+    EXPAND(Z80::STWPtrRr);
 //    EXPAND(Z80::STWPtrPiRr);
 //    EXPAND(Z80::STWPtrPdRr);
     EXPAND(Z80::STDWPtrQRr);

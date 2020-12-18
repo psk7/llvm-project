@@ -356,7 +356,7 @@ Defs = [SREG] in
                          (outs ACC:$rd), (ins ACC:$src, GPR8:$rr), "add  $rd, $rr",
                          [(set i8:$rd, (add i8:$src, i8:$rr)), (implicit SREG)]>;
 
-    def ADDRdRr16 : FormC<0b00001001, (outs HLREG:$rd), (ins HLREG:$src, DREGS:$rr), "add  $rd, $rr", []>;
+    def ADDRdRr16 : FormC<0b00001001, (outs HLIXIYREGS:$rd), (ins HLIXIYREGS:$src, DREGS:$rr), "add  $rd, $rr", []>;
 
 //  // ADD Rd, Rr
 //  // Adds two 8-bit registers.
@@ -952,7 +952,7 @@ Uses = [SREG] in
 // 8 and 16-bit register move instructions.
 let hasSideEffects = 0 in
 {
-    def LDRdRr8 : FormG<0x40, (outs GPR8:$rd), (ins GPR8:$rr), "ld   $rd, $rr", []>;
+    def LDRdRr8 : FormG<0x40, (outs GPR8ANDXY:$rd), (ins GPR8ANDXY:$rr), "ld   $rd, $rr", []>;
 
     def LDSP : FormA<0xf9, (outs SPREG:$rd), (ins HLIXIYREGS:$rr), "ld   sp, $rr", []>;
 
@@ -973,12 +973,12 @@ let hasSideEffects = 0 in
 // Load immediate values into registers.
 let isReMaterializable = 1 in
 {
-  def LDI16: FormE<0x01, (outs DREGS:$rd), (ins i16imm:$d16), "ld   $rd, $d16", []>;
+  def LDI16: FormE<0x01, (outs LDITARGETREGS:$rd), (ins i16imm:$d16), "ld   $rd, $d16", []>;
 
-  def LDIRdK : FormD<0x06, (outs GPR8:$rd), (ins imm_ldi8:$d8), "ld   $rd, $d8",
+  def LDIRdK : FormD<0x06, (outs GPR8ANDXY:$rd), (ins imm_ldi8:$d8), "ld   $rd, $d8",
        [(set i8:$rd, imm:$d8)]>;
 
-  def LDIWRdK : Pseudo<(outs DREGS:$dst), (ins i16imm:$src), "LDIWRdK\t$dst, $src",
+  def LDIWRdK : Pseudo<(outs LDITARGETREGS:$dst), (ins i16imm:$src), "LDIWRdK\t$dst, $src",
                        [(set i16:$dst, imm:$src)]>;
 }
 
@@ -1040,18 +1040,15 @@ def STPtrRr : FormB<0x70, (outs), (ins HLIXIYREGS:$ptrreg, GPR8:$rr),
                     "ld   ($ptrreg), $rr",
                     [(store GPR8:$rr, i16:$ptrreg)]>;
 
-//// STW P, Rr+1:Rr
-//// Stores the value of Rr into the location addressed by pointer P.
-////
-//// Expands to:
-//// st P, Rr
-//// std P+1, Rr+1
-//def STWPtrRr : Pseudo<(outs),
-//                      (ins PTRDISPREGS:$ptrreg, DREGS:$reg),
-//                      "stw\t$ptrreg, $reg",
-//                      [(store i16:$reg, i16:$ptrreg)]>,
-//               Requires<[HasSRAM]>;
+// STW P, Rr+1:Rr
+// Stores the value of Rr into the location addressed by pointer P.
 //
+// Expands to:
+// st P, Rr
+// std P+1, Rr+1
+def STWPtrRr : Pseudo<(outs), (ins PTRDISPREGS:$ptrreg, DREGS:$reg), "stw  $ptrreg, $reg",
+                     [(store i16:$reg, i16:$ptrreg)]>;
+
 //// Indirect stores (with postincrement or predecrement).
 //let Constraints = "$ptrreg = $base_wb,@earlyclobber $base_wb" in
 //{
@@ -1663,3 +1660,5 @@ def : Pat<(i16 (Z80Wrapper tblockaddress:$dst)),
 //
 
 def : Pat<(Z80cp i8:$rd, 0), (ORrr8 GPR8:$rd, GPR8:$rd)>;
+def : Pat<(Z80cp i16:$rd, 0), (ORrr8 (EXTRACT_SUBREG $rd, sub_lo), (EXTRACT_SUBREG $rd, sub_hi))>;
+

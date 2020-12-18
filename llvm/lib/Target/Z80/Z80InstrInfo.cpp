@@ -65,7 +65,8 @@ void Z80InstrInfo::copyPhysReg(MachineBasicBlock &MBB,
     return;
   }
 
-  if (Z80::XDREGSRegClass.contains(DestReg) && Z80::DREGSRegClass.contains(SrcReg))
+  if ((Z80::XDREGSRegClass.contains(DestReg) && Z80::DREGSRegClass.contains(SrcReg))
+   || (Z80::XDREGSRegClass.contains(SrcReg) && Z80::DREGSRegClass.contains(DestReg)))
   {
     BuildMI(MBB, MI, DL, get(Z80::PUSHRr))
         .addReg(SrcReg, getKillRegState(KillSrc));
