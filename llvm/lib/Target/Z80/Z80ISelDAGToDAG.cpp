@@ -303,17 +303,16 @@ template <> bool Z80DAGToDAGISel::select<Z80ISD::CALL>(SDNode *N) {
     return false;
   }
 
-  llvm_unreachable("Z80DAGToDAGISel::select<Z80ISD::CALL>");
-
-  /*// Skip the incoming flag if present
+  // Skip the incoming flag if present
   if (N->getOperand(LastOpNum).getValueType() == MVT::Glue) {
     --LastOpNum;
   }
 
   SDLoc DL(N);
-  Chain = CurDAG->getCopyToReg(Chain, DL, Z80::R31R30, Callee, InFlag);
+  Chain = CurDAG->getCopyToReg(Chain, DL, Z80::HL, Callee, InFlag);
   SmallVector<SDValue, 8> Ops;
-  Ops.push_back(CurDAG->getRegister(Z80::R31R30, MVT::i16));
+  //Ops.push_back(CurDAG->getRegister(Z80::HL, MVT::i16));
+  Ops.push_back(CurDAG->getTargetExternalSymbol("_ICALL_TRAMPOLINE", MVT::i16));
 
   // Map all operands into the new node.
   for (unsigned i = 2, e = LastOpNum + 1; i != e; ++i) {
@@ -330,7 +329,7 @@ template <> bool Z80DAGToDAGISel::select<Z80ISD::CALL>(SDNode *N) {
   ReplaceUses(SDValue(N, 1), SDValue(ResNode, 1));
   CurDAG->RemoveDeadNode(N);
 
-  return true;*/
+  return true;
 }
 
 template <> bool Z80DAGToDAGISel::select<ISD::BRIND>(SDNode *N) {

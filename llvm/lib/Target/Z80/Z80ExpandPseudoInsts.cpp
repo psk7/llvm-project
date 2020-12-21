@@ -591,52 +591,30 @@ bool Z80ExpandPseudo::expand<Z80::LDSWRdK>(Block &MBB, BlockIt MBBI) {
 
 template <>
 bool Z80ExpandPseudo::expand<Z80::LDWRdPtr>(Block &MBB, BlockIt MBBI) {
-  llvm_unreachable("Z80ExpandPseudo::expand<Z80::LDWRdPtr>");
-  /*MachineInstr &MI = *MBBI;
+  MachineInstr &MI = *MBBI;
   Register DstLoReg, DstHiReg;
   Register DstReg = MI.getOperand(0).getReg();
-  Register TmpReg = 0; // 0 for no temporary register
   Register SrcReg = MI.getOperand(1).getReg();
   bool SrcIsKill = MI.getOperand(1).isKill();
-  unsigned OpLo = Z80::LDRdPtr;
-  unsigned OpHi = Z80::LDDRdPtrQ;
   TRI->splitReg(DstReg, DstLoReg, DstHiReg);
 
-  // Use a temporary register if src and dst registers are the same.
-  if (DstReg == SrcReg)
-    TmpReg = scavengeGPR8(MI);
-
-  Register CurDstLoReg = (DstReg == SrcReg) ? TmpReg : DstLoReg;
-  Register CurDstHiReg = (DstReg == SrcReg) ? TmpReg : DstHiReg;
-
   // Load low byte.
-  auto MIBLO = buildMI(MBB, MBBI, OpLo)
-                   .addReg(CurDstLoReg, RegState::Define)
-                   .addReg(SrcReg);
-
-  // Push low byte onto stack if necessary.
-  if (TmpReg)
-    buildMI(MBB, MBBI, Z80::PUSHRr).addReg(TmpReg);
+  auto MIBLO = buildMI(MBB, MBBI, Z80::LDDRdPtrQ)
+                   .addReg(DstLoReg, RegState::Define)
+                   .addReg(SrcReg)
+                   .addImm(0);
 
   // Load high byte.
-  auto MIBHI = buildMI(MBB, MBBI, OpHi)
-    .addReg(CurDstHiReg, RegState::Define)
+  auto MIBHI = buildMI(MBB, MBBI, Z80::LDDRdPtrQ)
+    .addReg(DstHiReg, RegState::Define)
     .addReg(SrcReg, getKillRegState(SrcIsKill))
     .addImm(1);
-
-  if (TmpReg) {
-    // Move the high byte into the final destination.
-    buildMI(MBB, MBBI, Z80::MOVRdRr).addReg(DstHiReg).addReg(TmpReg);
-
-    // Move the low byte from the scratch space into the final destination.
-    buildMI(MBB, MBBI, Z80::POPRd).addReg(DstLoReg);
-  }
 
   MIBLO.setMemRefs(MI.memoperands());
   MIBHI.setMemRefs(MI.memoperands());
 
   MI.eraseFromParent();
-  return true;*/
+  return true;
 }
 
 template <>

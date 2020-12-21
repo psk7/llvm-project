@@ -81,12 +81,12 @@ Z80TargetLowering::Z80TargetLowering(const Z80TargetMachine &TM,
   // our shift instructions are only able to shift 1 bit at a time, so handle
   // this in a custom way.
   //  setOperationAction(ISD::SRA, MVT::i8, Custom);
-  //  setOperationAction(ISD::SHL, MVT::i8, Custom);
+  setOperationAction(ISD::SHL, MVT::i8, Custom);
   setOperationAction(ISD::SRL, MVT::i8, Custom);
   //  setOperationAction(ISD::SRA, MVT::i16, Custom);
-  //  setOperationAction(ISD::SHL, MVT::i16, Custom);
+  setOperationAction(ISD::SHL, MVT::i16, Custom);
   setOperationAction(ISD::SRL, MVT::i16, Custom);
-  //  setOperationAction(ISD::SHL_PARTS, MVT::i16, Expand);
+  setOperationAction(ISD::SHL_PARTS, MVT::i16, Expand);
   //  setOperationAction(ISD::SRA_PARTS, MVT::i16, Expand);
   //  setOperationAction(ISD::SRL_PARTS, MVT::i16, Expand);
 
@@ -313,6 +313,9 @@ SDValue Z80TargetLowering::LowerShifts(SDValue Op, SelectionDAG &DAG) const {
   switch (Op.getOpcode()) {
   case ISD::SRL:
     ROT = Z80II::ROT_SRL;
+    break;
+  case ISD::SHL:
+    ROT = Z80II::ROT_SLA;
     break;
   /*case ISD::SRA:
     Opc8 = Z80ISD::SRA;
@@ -560,7 +563,7 @@ SDValue Z80TargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const {
   switch (Op.getOpcode()) {
   default:
     llvm_unreachable("Don't know how to custom lower this!");
-    //  case ISD::SHL:
+  case ISD::SHL:
     //  case ISD::SRA:
   case ISD::SRL:
     //  case ISD::ROTL:
@@ -1080,7 +1083,7 @@ SDValue Z80TargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
       // SP points to one stack slot further so add one to adjust it.
       SDValue PtrOff = DAG.getNode(
           ISD::ADD, DL, getPointerTy(DAG.getDataLayout()),
-          DAG.getRegister(Z80::IX, getPointerTy(DAG.getDataLayout())),
+          DAG.getRegister(Z80::IY, getPointerTy(DAG.getDataLayout())),
           DAG.getIntPtrConstant(VA.getLocMemOffset() /*+ 1*/, DL));
 
       Chain = DAG.getStore(

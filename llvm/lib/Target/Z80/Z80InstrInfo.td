@@ -227,6 +227,10 @@ def condcode : Operand<i8>
 }
 
 // The target of a 22 or 16-bit call/jmp instruction.
+def icall_target : Operand<iPTR>
+{
+}
+
 def call_target : Operand<iPTR>
 {
     let EncoderMethod = "encodeCallTarget";
@@ -796,6 +800,11 @@ let isCall = 1 in
 {
   // SP is marked as a use to prevent stack-pointer assignments that appear
   // immediately before calls from potentially appearing dead.
+  let Uses = [SP, HL] in
+  def ICALL : FormF<0xcd, (outs), (ins icall_target:$k), "call $k", []>;
+
+  // SP is marked as a use to prevent stack-pointer assignments that appear
+  // immediately before calls from potentially appearing dead.
   let Uses = [SP] in
   def CALLk : FormF<0xcd, (outs), (ins call_target:$k), "call $k", [(Z80call imm:$k)]>;
 }
@@ -1003,7 +1012,7 @@ isReMaterializable = 1 in
                       [(set i8:$rd, (load i16:$ptrreg))]>;
 
   let Constraints = "@earlyclobber $reg" in
-  def LDWRdPtr : Pseudo<(outs DREGS:$reg), (ins HLIXIYREGS:$ptrreg), "ldw  $reg, $ptrreg",
+  def LDWRdPtr : Pseudo<(outs DREGS:$reg), (ins PTRDISPREGS:$ptrreg), "ldw  $reg, ($ptrreg)",
                         [(set i16:$reg, (load i16:$ptrreg))]>;
 }
 
@@ -1462,7 +1471,7 @@ def STDSPQRr : StorePseudo<(outs), (ins memspi:$dst, GPR8:$src), "stdstk\t$dst, 
 
 // This pseudo is either converted to a regular store or a push which clobbers
 // SP.
-def STDWSPQRr : StorePseudo<(outs), (ins memspi:$dst, DREGS:$src), "stdwstk\t$dst, $src",
+def STDWSPQRr : StorePseudo<(outs), (ins memri:$dst, DREGS:$src), "stdwstk\t$dst, $src",
                             [(store i16:$src, addr:$dst)]>;
 
 def Select8 : SelectPseudo<(outs GPR8:$dst), (ins GPR8:$src, GPR8:$src2, i8imm:$cc),
@@ -1662,3 +1671,5 @@ def : Pat<(i16 (Z80Wrapper tblockaddress:$dst)),
 def : Pat<(Z80cp i8:$rd, 0), (ORrr8 GPR8:$rd, GPR8:$rd)>;
 def : Pat<(Z80cp i16:$rd, 0), (ORrr8 (EXTRACT_SUBREG $rd, sub_lo), (EXTRACT_SUBREG $rd, sub_hi))>;
 
+//def : Pat<(add i16:$a, (zext i8:$b)), (ADDWRdRr $a,
+// (INSERT_SUBREG (INSERT_SUBREG (i16 (IMPLICIT_DEF)), (LDIRdK (i8 0)), sub_hi), $b, sub_lo))>;

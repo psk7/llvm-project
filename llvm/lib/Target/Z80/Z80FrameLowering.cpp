@@ -400,7 +400,7 @@ MachineBasicBlock::iterator Z80FrameLowering::eliminateCallFramePseudoInstr(
 
       // Make sure the remaining stack stores are converted to real store
       // instructions.
-      fixStackStores(MBB, MI, TII, Z80::IX);
+      fixStackStores(MBB, MI, TII, Z80::IY);
     } else {
       assert(Opcode == TII.getCallFrameDestroyOpcode());
 
