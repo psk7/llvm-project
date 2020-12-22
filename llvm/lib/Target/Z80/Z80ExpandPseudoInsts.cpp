@@ -399,7 +399,34 @@ template <>
 bool Z80ExpandPseudo::expand<Z80::ANDIWRdK>(Block &MBB, BlockIt MBBI) {
   return expandLogicImm(Z80::ANDIRdK, MBB, MBBI);
 }
+*/
+template <>
+bool Z80ExpandPseudo::expand<Z80::ANDIWRdK_RESBIT>(Block &MBB, BlockIt MBBI) {
+  MachineInstr &MI = *MBBI;
+  Register DstLoReg, DstHiReg;
+  Register DstReg = MI.getOperand(0).getReg();
+  Register SrcReg = MI.getOperand(1).getReg();
+  bool DstIsDead = MI.getOperand(0).isDead();
+  bool SrcIsKill = MI.getOperand(1).isKill();
+  unsigned Imm = MI.getOperand(2).getImm();
+  TRI->splitReg(DstReg, DstLoReg, DstHiReg);
 
+  assert(SrcReg == DstReg && "SrcReg and DstReg must be same");
+  assert(Imm >= 0 && Imm <= 15 && "Wrong bit position");
+
+  auto reg = Imm >= 0 && Imm <= 7 ? DstLoReg : DstHiReg;
+  if (Imm > 7)
+    Imm -= 8;
+
+  buildMI(MBB, MBBI, Z80::RESBIT)
+      .addReg(reg, RegState::Define | getDeadRegState(DstIsDead))
+      .addReg(reg, getKillRegState(SrcIsKill))
+      .addImm(Imm);
+
+  MI.eraseFromParent();
+  return true;
+}
+/*
 template <>
 bool Z80ExpandPseudo::expand<Z80::ORWRdRr>(Block &MBB, BlockIt MBBI) {
   return expandLogic(Z80::ORRdRr, MBB, MBBI);
@@ -409,7 +436,34 @@ template <>
 bool Z80ExpandPseudo::expand<Z80::ORIWRdK>(Block &MBB, BlockIt MBBI) {
   return expandLogicImm(Z80::ORIRdK, MBB, MBBI);
 }
+*/
+template <>
+bool Z80ExpandPseudo::expand<Z80::ORIWRdK_SETBIT>(Block &MBB, BlockIt MBBI) {
+  MachineInstr &MI = *MBBI;
+  Register DstLoReg, DstHiReg;
+  Register DstReg = MI.getOperand(0).getReg();
+  Register SrcReg = MI.getOperand(1).getReg();
+  bool DstIsDead = MI.getOperand(0).isDead();
+  bool SrcIsKill = MI.getOperand(1).isKill();
+  unsigned Imm = MI.getOperand(2).getImm();
+  TRI->splitReg(DstReg, DstLoReg, DstHiReg);
 
+  assert(SrcReg == DstReg && "SrcReg and DstReg must be same");
+  assert(Imm >= 0 && Imm <= 15 && "Wrong bit position");
+
+  auto reg = Imm >= 0 && Imm <= 7 ? DstLoReg : DstHiReg;
+  if (Imm > 7)
+    Imm -= 8;
+
+  buildMI(MBB, MBBI, Z80::SETBIT)
+      .addReg(reg, RegState::Define | getDeadRegState(DstIsDead))
+      .addReg(reg, getKillRegState(SrcIsKill))
+      .addImm(Imm);
+
+  MI.eraseFromParent();
+  return true;
+}
+/*
 template <>
 bool Z80ExpandPseudo::expand<Z80::EORWRdRr>(Block &MBB, BlockIt MBBI) {
   return expandLogic(Z80::EORRdRr, MBB, MBBI);
@@ -1332,8 +1386,10 @@ bool Z80ExpandPseudo::expandMI(Block &MBB, BlockIt MBBI) {
 //    EXPAND(Z80::SBCIWRdK);
 //    EXPAND(Z80::ANDWRdRr);
 //    EXPAND(Z80::ANDIWRdK);
+    EXPAND(Z80::ANDIWRdK_RESBIT);
 //    EXPAND(Z80::ORWRdRr);
 //    EXPAND(Z80::ORIWRdK);
+    EXPAND(Z80::ORIWRdK_SETBIT);
 //    EXPAND(Z80::EORWRdRr);
 //    EXPAND(Z80::COMWRd);
     EXPAND(Z80::CPWRdRr);

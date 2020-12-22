@@ -151,6 +151,18 @@ def iobitposn8_XFORM : SDNodeXForm<imm,
                                    SDLoc(N), MVT::i8);
 }]>;
 
+def iobitpos16_XFORM : SDNodeXForm<imm,
+[{
+  return CurDAG->getTargetConstant(Log2_32(uint16_t(N->getZExtValue())),
+                                   SDLoc(N), MVT::i8);
+}]>;
+
+def iobitposn16_XFORM : SDNodeXForm<imm,
+[{
+  return CurDAG->getTargetConstant(Log2_32(uint16_t(~N->getZExtValue())),
+                                   SDLoc(N), MVT::i8);
+}]>;
+
 //def ioaddr8 : PatLeaf<(imm),
 //[{
 //  uint8_t offset = Subtarget->getIORegisterOffset();
@@ -181,6 +193,16 @@ def iobitposn8 : PatLeaf<(imm),
 [{
   return isPowerOf2_32(uint8_t(~N->getZExtValue()));
 }], iobitposn8_XFORM>;
+
+def iobitpos16 : PatLeaf<(imm),
+[{
+  return isPowerOf2_32(uint16_t(N->getZExtValue()));
+}], iobitpos16_XFORM>;
+
+def iobitposn16 : PatLeaf<(imm),
+[{
+  return isPowerOf2_32(uint16_t(~N->getZExtValue()));
+}], iobitposn16_XFORM>;
 
 def MemriAsmOperand : AsmOperandClass {
   let Name = "Memri";
@@ -580,6 +602,18 @@ def SETBITPTRE : FormH<0xC6, (outs GPR8:$o), (ins memri:$addr, i8imm:$rd), "ld  
 def RESBITPTR : FormH<0x86, (outs), (ins memri:$addr, i8imm:$rd), "res  $rd, $addr",
                       [(store (i8 (and (i8 (load addr:$addr)), iobitposn8:$rd)), addr:$addr)]>, IsPtrInstr, CB;
 
+let Constraints = "$dst = $rr" in
+def RESBIT : FormG<0x80, (outs GPR8:$dst), (ins GPR8:$rr, i16imm:$rd), "res  $rd, $rr", []>, CB;
+
+let Constraints = "$dst = $rr" in
+def SETBIT : FormG<0xC0, (outs GPR8:$dst), (ins GPR8:$rr, i16imm:$rd), "set  $rd, $rr", []>, CB;
+
+//def : Pat<(i16 (and i16:$rr, iobitposn16h:$rd)),
+//            (INSERT_SUBREG
+//                (INSERT_SUBREG (i16 (IMPLICIT_DEF)), (RESBIT (EXTRACT_SUBREG $rr, sub_hi), (i16 iobitposn16h:$rd) ), sub_hi),
+//                (i8 (EXTRACT_SUBREG $rr, sub_lo)),
+//                sub_lo)>;
+
 let Constraints = "$src = $rd",
 Defs = [SREG] in
 {
@@ -673,7 +707,7 @@ Defs = [SREG] in
 //                          "eorw\t$rd, $rr",
 //                          [(set i16:$rd, (xor i16:$src, i16:$rr)),
 //                           (implicit SREG)]>;
-  }
+  } // let isCommutable = 0 in
 //
 //  def ANDIRdK : FRdK<0b0111,
 //                     (outs LD8:$rd),
@@ -710,6 +744,15 @@ Defs = [SREG] in
 //                       "oriw\t$rd, $rr",
 //                       [(set i16:$rd, (or i16:$src, imm:$rr)),
 //                        (implicit SREG)]>;
+} // let Constraints = "$src = $rd", Defs = [SREG] in
+
+let Constraints = "$src = $rd" in
+{
+  def ANDIWRdK_RESBIT : Pseudo<(outs DREGS:$rd), (ins DREGS:$src, i16imm:$k), "andiw $rd, $k",
+                               [(set i16:$rd, (and i16:$src, iobitposn16:$k))]>;
+
+  def ORIWRdK_SETBIT : Pseudo<(outs DREGS:$rd), (ins DREGS:$src, i16imm:$k), "oriw $rd, $k",
+                              [(set i16:$rd, (or i16:$src, iobitpos16:$k))]>;
 }
 
 ////===----------------------------------------------------------------------===//
