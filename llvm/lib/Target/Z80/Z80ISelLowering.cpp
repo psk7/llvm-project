@@ -80,15 +80,15 @@ Z80TargetLowering::Z80TargetLowering(const Z80TargetMachine &TM,
 
   // our shift instructions are only able to shift 1 bit at a time, so handle
   // this in a custom way.
-  //  setOperationAction(ISD::SRA, MVT::i8, Custom);
+  setOperationAction(ISD::SRA, MVT::i8, Custom);
   setOperationAction(ISD::SHL, MVT::i8, Custom);
   setOperationAction(ISD::SRL, MVT::i8, Custom);
-  //  setOperationAction(ISD::SRA, MVT::i16, Custom);
+  setOperationAction(ISD::SRA, MVT::i16, Custom);
   setOperationAction(ISD::SHL, MVT::i16, Custom);
   setOperationAction(ISD::SRL, MVT::i16, Custom);
   setOperationAction(ISD::SHL_PARTS, MVT::i16, Expand);
-  //  setOperationAction(ISD::SRA_PARTS, MVT::i16, Expand);
-  //  setOperationAction(ISD::SRL_PARTS, MVT::i16, Expand);
+  setOperationAction(ISD::SRA_PARTS, MVT::i16, Expand);
+  setOperationAction(ISD::SRL_PARTS, MVT::i16, Expand);
 
   //  setOperationAction(ISD::ROTL, MVT::i8, Custom);
   //  setOperationAction(ISD::ROTL, MVT::i16, Expand);
@@ -308,6 +308,12 @@ SDValue Z80TargetLowering::LowerShifts(SDValue Op, SelectionDAG &DAG) const {
   uint64_t ShiftAmount = cast<ConstantSDNode>(N->getOperand(1))->getZExtValue();
   SDValue Victim = N->getOperand(0);
 
+  if (ISD::SRL == Op.getOpcode() && ShiftAmount == 8)
+    return Op;
+
+  if (ISD::SHL == Op.getOpcode() && ShiftAmount == 8)
+    return Op;
+
   Z80II::Rotation ROT = Z80II::ROT_INVALID;
 
   switch (Op.getOpcode()) {
@@ -317,10 +323,10 @@ SDValue Z80TargetLowering::LowerShifts(SDValue Op, SelectionDAG &DAG) const {
   case ISD::SHL:
     ROT = Z80II::ROT_SLA;
     break;
-  /*case ISD::SRA:
-    Opc8 = Z80ISD::SRA;
+  case ISD::SRA:
+    Opc8 = Z80II::ROT_SRA;
     break;
-  case ISD::ROTL:
+  /*case ISD::ROTL:
     Opc8 = Z80ISD::ROL;
     ShiftAmount = ShiftAmount % VT.getSizeInBits();
     break;
@@ -564,7 +570,7 @@ SDValue Z80TargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const {
   default:
     llvm_unreachable("Don't know how to custom lower this!");
   case ISD::SHL:
-    //  case ISD::SRA:
+  case ISD::SRA:
   case ISD::SRL:
     //  case ISD::ROTL:
     //  case ISD::ROTR:
@@ -767,48 +773,6 @@ EVT Z80TargetLowering::getTypeForExtReturn(LLVMContext &Context, EVT VT,
 
 #include "Z80GenCallingConv.inc"
 
-/// Analyze incoming and outgoing function arguments. We need custom C++ code
-/// to handle special constraints in the ABI.
-/// In addition, all pieces of a certain argument have to be passed either
-/// using registers or the stack but never mixing both.
-template <typename ArgT>
-static void
-analyzeArguments(TargetLowering::CallLoweringInfo *CLI, const Function *F,
-                 const DataLayout *TD, const SmallVectorImpl<ArgT> &Args,
-                 SmallVectorImpl<CCValAssign> &ArgLocs, CCState &CCInfo) {
-  unsigned NumArgs = Args.size();
-
-  for (unsigned i = 0; i != NumArgs;) {
-    MVT VT = Args[i].VT;
-    // We have to count the number of bytes for each function argument, that is
-    // those Args with the same OrigArgIndex. This is important in case the
-    // function takes an aggregate type.
-    // Current argument will be between [i..j).
-    unsigned ArgIndex = Args[i].OrigArgIndex;
-    unsigned TotalBytes = VT.getStoreSize();
-    unsigned j = i + 1;
-    for (; j != NumArgs; ++j) {
-      if (Args[j].OrigArgIndex != ArgIndex)
-        break;
-      TotalBytes += Args[j].VT.getStoreSize();
-    }
-    // Round up to even number of bytes.
-    TotalBytes = alignTo(TotalBytes, 2);
-    // Skip zero sized arguments
-    if (TotalBytes == 0)
-      continue;
-
-    for (; i != j; ++i) {
-      MVT VT = Args[i].VT;
-
-      auto evt = EVT(VT).getTypeForEVT(CCInfo.getContext());
-      unsigned Offset = CCInfo.AllocateStack(TD->getTypeAllocSize(evt),
-                                             TD->getABITypeAlign(evt));
-      CCInfo.addLoc(CCValAssign::getMem(i, VT, Offset, VT, CCValAssign::Full));
-    }
-  }
-}
-
 /// Count the total number of bytes needed to pass or return these arguments.
 template <typename ArgT>
 static unsigned
@@ -819,57 +783,6 @@ getTotalArgumentsSizeInBytes(const SmallVectorImpl<ArgT> &Args) {
     TotalBytes += Arg.VT.getStoreSize();
   }
   return TotalBytes;
-}
-
-/// Analyze incoming and outgoing value of returning from a function.
-/// The algorithm is similar to analyzeArguments, but there can only be
-/// one value, possibly an aggregate, and it is limited to 8 bytes.
-template <typename ArgT>
-static void analyzeReturnValues(const SmallVectorImpl<ArgT> &Args,
-                                CCState &CCInfo) {
-  unsigned NumArgs = Args.size();
-  unsigned TotalBytes = getTotalArgumentsSizeInBytes(Args);
-  // CanLowerReturn() guarantees this assertion.
-  assert(TotalBytes <= 4 &&
-         "return values greater than 4 bytes cannot be lowered");
-
-  // GCC-ABI says that the size is rounded up to the next even number,
-  // but actually once it is more than 4 it will always round up to 8.
-  if (TotalBytes > 4) {
-    TotalBytes = 8;
-  } else {
-    TotalBytes = alignTo(TotalBytes, 2);
-  }
-
-  unsigned Reg;
-
-  if (NumArgs == 0) {
-    return;
-  } else if (NumArgs == 1) {
-    MVT VT = Args[0].VT;
-    if (VT == MVT::i8) {
-      Reg = CCInfo.AllocateReg(Z80::L);
-    } else if (VT == MVT::i16) {
-      Reg = CCInfo.AllocateReg(Z80::HL);
-    } else {
-      llvm_unreachable("calling convention can only manage i8 and i16 types");
-    }
-
-    assert(Reg && "register not available in calling convention");
-    CCInfo.addLoc(CCValAssign::getReg(0, VT, Reg, VT, CCValAssign::Full));
-  } else {
-    assert(NumArgs == 2 && "Too much return values");
-    assert(Args[0].VT == MVT::i16 && Args[1].VT == MVT::i16 &&
-           "i32 return as two i16 only");
-    Reg = CCInfo.AllocateReg(Z80::HL);
-    assert(Reg && "register not available in calling convention");
-    CCInfo.addLoc(
-        CCValAssign::getReg(0, Args[0].VT, Reg, Args[0].VT, CCValAssign::Full));
-    Reg = CCInfo.AllocateReg(Z80::DE);
-    assert(Reg && "register not available in calling convention");
-    CCInfo.addLoc(
-        CCValAssign::getReg(1, Args[1].VT, Reg, Args[1].VT, CCValAssign::Full));
-  }
 }
 
 SDValue Z80TargetLowering::LowerFormalArguments(
@@ -885,11 +798,15 @@ SDValue Z80TargetLowering::LowerFormalArguments(
   CCState CCInfo(CallConv, isVarArg, DAG.getMachineFunction(), ArgLocs,
                  *DAG.getContext());
 
-  // Variadic functions do not need all the analysis below.
-  if (isVarArg) {
-    CCInfo.AnalyzeFormalArguments(Ins, ArgCC_Z80_Vararg);
+  if (CallConv == CallingConv::Z80_BUILTIN){
+    CCInfo.AnalyzeFormalArguments(Ins, ArgCC_Z80_Builtin);
   } else {
-    analyzeArguments(nullptr, &MF.getFunction(), &DL, Ins, ArgLocs, CCInfo);
+    // Variadic functions do not need all the analysis below.
+    if (isVarArg) {
+      CCInfo.AnalyzeFormalArguments(Ins, ArgCC_Z80_Vararg);
+    } else {
+      CCInfo.AnalyzeFormalArguments(Ins, ArgCC_Z80_C);
+    }
   }
 
   SDValue ArgValue;
@@ -1017,7 +934,7 @@ SDValue Z80TargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
     if (isVarArg) {
       CCInfo.AnalyzeCallOperands(Outs, ArgCC_Z80_Vararg);
     } else {
-      analyzeArguments(&CLI, F, &DAG.getDataLayout(), Outs, ArgLocs, CCInfo);
+      CCInfo.AnalyzeCallOperands(Outs, ArgCC_Z80_C);
     }
   }
 
@@ -1157,7 +1074,7 @@ SDValue Z80TargetLowering::LowerCallResult(
   if (CallConv == CallingConv::Z80_BUILTIN) {
     CCInfo.AnalyzeCallResult(Ins, RetCC_Z80_BUILTIN);
   } else {
-    analyzeReturnValues(Ins, CCInfo);
+    CCInfo.AnalyzeCallResult(Ins, RetCC_Z80_BUILTIN);
   }
 
   // Copy all of the result registers out of their specified physreg.
@@ -1208,7 +1125,7 @@ Z80TargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
   if (CallConv == CallingConv::Z80_BUILTIN) {
     CCInfo.AnalyzeReturn(Outs, RetCC_Z80_BUILTIN);
   } else {
-  analyzeReturnValues(Outs, CCInfo);
+    CCInfo.AnalyzeReturn(Outs, RetCC_Z80_C);
   }
 
   SDValue Flag;

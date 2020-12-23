@@ -20,6 +20,12 @@ def RetCC_Z80_BUILTIN : CallingConv
   CCIfType<[i16], CCAssignToReg<[HL, DE, BC]>>
 ]>;
 
+def RetCC_Z80_C : CallingConv
+<[
+  CCIfType<[i8], CCAssignToReg<[L, H, E, D, C, B]>>,
+  CCIfType<[i16], CCAssignToReg<[HL, DE, BC]>>
+]>;
+
 //===----------------------------------------------------------------------===//
 // Z80 Argument Calling Conventions
 //===----------------------------------------------------------------------===//
@@ -31,7 +37,13 @@ def ArgCC_Z80_Builtin : CallingConv
   CCIfType<[i16], CCAssignToReg<[HL, DE, BC]>>
 ]>;
 
-// The calling conventions are implemented in custom C++ code
+def ArgCC_Z80_C : CallingConv
+<[
+  CCIfType<[i8], CCAssignToReg<[E, D, C, B]>>,
+  CCIfType<[i16], CCAssignToReg<[DE, BC]>>,
+  CCIfType<[i16], CCAssignToStack<2, 1>>,
+  CCIfType<[i8], CCAssignToStack<1, 1>>
+]>;
 
 // Calling convention for variadic functions.
 def ArgCC_Z80_Vararg : CallingConv

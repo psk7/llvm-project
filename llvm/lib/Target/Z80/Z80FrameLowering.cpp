@@ -378,15 +378,15 @@ MachineBasicBlock::iterator Z80FrameLowering::eliminateCallFramePseudoInstr(
       // (in the right order, possibly skipping some empty space for undef
       // values, etc) is tricky and thus left to be optimized in the future.
 
-      BuildMI(MBB, MI, DL, TII.get(Z80::LDIWRdK), Z80::IX)
+      BuildMI(MBB, MI, DL, TII.get(Z80::LDIWRdK), Z80::IY)
           .addImm(-Amount);
 
-      BuildMI(MBB, MI, DL, TII.get(Z80::ADDRdRr16), Z80::IX)
-          .addReg(Z80::IX)
+      BuildMI(MBB, MI, DL, TII.get(Z80::ADDRdRr16), Z80::IY)
+          .addReg(Z80::IY)
           .addReg(Z80::SP, RegState::Kill);
 
       BuildMI(MBB, MI, DL, TII.get(Z80::LDSP), Z80::SP)
-          .addReg(Z80::IX);
+          .addReg(Z80::IY);
 
       /*BuildMI(MBB, MI, DL, TII.get(Z80::SPREAD), Z80::IX).addReg(Z80::SP);
 
@@ -482,10 +482,10 @@ struct Z80FrameAnalyzer : public MachineFunctionPass {
       for (const MachineInstr &MI : BB) {
         int Opcode = MI.getOpcode();
 
-        /*if ((Opcode != Z80::LDDRdPtrQ) && (Opcode != Z80::LDDWRdPtrQ) &&
+        if ((Opcode != Z80::LDDRdPtrQ) && (Opcode != Z80::LDDWRdPtrQ) &&
             (Opcode != Z80::STDPtrQRr) && (Opcode != Z80::STDWPtrQRr)) {
           continue;
-        }*/
+        }
 
         for (const MachineOperand &MO : MI.operands()) {
           if (!MO.isFI()) {

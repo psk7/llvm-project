@@ -1231,9 +1231,8 @@ hasSideEffects = 0 in
 let Constraints = "$src = $rr",
 Defs = [SREG] in
 {
-  def ROT16 : Pseudo<(outs DREGS:$rr), (ins DREGS:$src, Operand<i8>:$rot), "#ROT16 $rr",
+  def ROT16 : Pseudo<(outs DREGS:$rr), (ins DREGS:$src, Operand<i8>:$rot), "#ROT16 $rr, $rot",
                      [(set i16:$rr, (Z80rotshift i16:$src, rot:$rot)), (implicit SREG)]>;
-
 
   def SRLRd : FormB<0x38, (outs GPR8:$rr), (ins GPR8:$src), "srl  $rr",
                     [(set i8:$rr, (Z80rotshift i8:$src, Z80_ROT_SRL)), (implicit SREG)]>, CB;
@@ -1716,3 +1715,24 @@ def : Pat<(Z80cp i16:$rd, 0), (ORrr8 (EXTRACT_SUBREG $rd, sub_lo), (EXTRACT_SUBR
 
 //def : Pat<(add i16:$a, (zext i8:$b)), (ADDWRdRr $a,
 // (INSERT_SUBREG (INSERT_SUBREG (i16 (IMPLICIT_DEF)), (LDIRdK (i8 0)), sub_hi), $b, sub_lo))>;
+
+// (char)(v >> 8)
+// (char)(v & 255)
+def : Pat<(i8 (trunc (srl i16:$v, (i8 8)))),  (i8 (EXTRACT_SUBREG $v, sub_hi))>;
+def : Pat<(i8 (trunc (and i16:$v, (i16 255)))),  (i8 (EXTRACT_SUBREG $v, sub_lo))>;
+
+// v & 255
+// v % 256
+def : Pat<(i16 (and i16:$v, (i16 255))),
+    (i16 (INSERT_SUBREG (INSERT_SUBREG (i16 (IMPLICIT_DEF)),
+                                    (LDIRdK (i8 0)), sub_hi), (i8 (EXTRACT_SUBREG $v, sub_lo)), sub_lo))>;
+
+// v >> 8
+def : Pat<(i16 (srl i16:$v, (i8 8))),
+    (i16 (INSERT_SUBREG (INSERT_SUBREG (i16 (IMPLICIT_DEF)),
+                                    (LDIRdK (i8 0)), sub_hi), (i8 (EXTRACT_SUBREG $v, sub_hi)), sub_lo))>;
+
+// v << 8
+def : Pat<(i16 (shl i16:$v, (i8 8))),
+    (i16 (INSERT_SUBREG (INSERT_SUBREG (i16 (IMPLICIT_DEF)),
+                                    (i8 (EXTRACT_SUBREG $v, sub_hi)), sub_hi), (LDIRdK (i8 0)), sub_lo))>;
