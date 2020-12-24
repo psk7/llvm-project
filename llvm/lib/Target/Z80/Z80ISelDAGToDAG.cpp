@@ -106,6 +106,11 @@ bool Z80DAGToDAGISel::SelectAddr(SDNode *Op, SDValue N, SDValue &Base,
       return true;
     }
 
+    MemSDNode *mn = dyn_cast<MemSDNode>(Op);
+
+    if (!mn)
+      return false;
+
     // The value type of the memory instruction determines what is the maximum
     // offset allowed.
     MVT VT = cast<MemSDNode>(Op)->getMemoryVT().getSimpleVT();

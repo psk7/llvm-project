@@ -1727,12 +1727,18 @@ def : Pat<(i16 (and i16:$v, (i16 255))),
     (i16 (INSERT_SUBREG (INSERT_SUBREG (i16 (IMPLICIT_DEF)),
                                     (LDIRdK (i8 0)), sub_hi), (i8 (EXTRACT_SUBREG $v, sub_lo)), sub_lo))>;
 
-// v >> 8
-def : Pat<(i16 (srl i16:$v, (i8 8))),
+// (i16)((i32)v >> 8)
+def : Pat<(i16 (or (srl i16:$a, (i8 8)), (shl i16:$b, (i8 8)))),
     (i16 (INSERT_SUBREG (INSERT_SUBREG (i16 (IMPLICIT_DEF)),
-                                    (LDIRdK (i8 0)), sub_hi), (i8 (EXTRACT_SUBREG $v, sub_hi)), sub_lo))>;
+                                    (i8 (EXTRACT_SUBREG $a, sub_hi)), sub_lo),
+                                    (i8 (EXTRACT_SUBREG $b, sub_lo)), sub_hi))>;
 
 // v << 8
 def : Pat<(i16 (shl i16:$v, (i8 8))),
     (i16 (INSERT_SUBREG (INSERT_SUBREG (i16 (IMPLICIT_DEF)),
                                     (i8 (EXTRACT_SUBREG $v, sub_hi)), sub_hi), (LDIRdK (i8 0)), sub_lo))>;
+
+def : Pat<(i16 (zext (i8 (load addr:$a)))),
+           (i16 (INSERT_SUBREG (INSERT_SUBREG (i16 (IMPLICIT_DEF)), (i8 (LDIRdK (i8 0))), sub_hi),
+                                                 (LDDRdPtrQ addr:$a), sub_lo))>;
+
