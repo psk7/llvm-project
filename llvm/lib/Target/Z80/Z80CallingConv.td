@@ -16,14 +16,14 @@
 // Special return value calling convention for runtime functions.
 def RetCC_Z80_BUILTIN : CallingConv
 <[
-  CCIfType<[i8], CCAssignToReg<[L, H, E, D, C, B]>>,
-  CCIfType<[i16], CCAssignToReg<[HL, DE, BC]>>
+  CCIfType<[i8], CCAssignToReg<[L, H]>>,
+  CCIfType<[i16], CCAssignToReg<[HL]>>
 ]>;
 
 def RetCC_Z80_C : CallingConv
 <[
-  CCIfType<[i8], CCAssignToReg<[L, H, E, D, C, B]>>,
-  CCIfType<[i16], CCAssignToReg<[HL, DE, BC]>>
+  CCIfType<[i8], CCAssignToReg<[L, H]>>,
+  CCIfType<[i16], CCAssignToReg<[HL]>>
 ]>;
 
 //===----------------------------------------------------------------------===//
@@ -56,5 +56,5 @@ def ArgCC_Z80_Vararg : CallingConv
 // Callee-saved register lists.
 //===----------------------------------------------------------------------===//
 
-def CSR_Normal : CalleeSavedRegs<(add BC, IX, IY)>;
+def CSR_Normal : CalleeSavedRegs<(add BC, DE, IX, IY)>;
 

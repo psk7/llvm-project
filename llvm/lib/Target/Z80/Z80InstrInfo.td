@@ -82,6 +82,15 @@ def Z80_ROT_SLA : PatLeaf<(i8 4)>;
 def Z80_ROT_SRA : PatLeaf<(i8 5)>;
 def Z80_ROT_SRL : PatLeaf<(i8 7)>;
 
+def Z80_CC_NZ   : PatLeaf<(i8 0)>;
+def Z80_CC_Z    : PatLeaf<(i8 1)>;
+def Z80_CC_NC   : PatLeaf<(i8 2)>;
+def Z80_CC_C    : PatLeaf<(i8 3)>;
+def Z80_CC_PO   : PatLeaf<(i8 4)>;
+def Z80_CC_PE   : PatLeaf<(i8 5)>;
+def Z80_CC_P    : PatLeaf<(i8 6)>;
+def Z80_CC_M    : PatLeaf<(i8 7)>;
+
 //// Pseudo shift nodes for non-constant shift amounts.
 //def Z80lslLoop : SDNode<"Z80ISD::LSLLOOP", SDTIntShiftOp>;
 //def Z80srlLoop : SDNode<"Z80ISD::SRLLOOP", SDTIntShiftOp>;
@@ -562,20 +571,22 @@ Defs = [SREG] in
 //===----------------------------------------------------------------------===//
 // Increment and Decrement
 //===----------------------------------------------------------------------===//
-let Constraints = "$src = $rd",
-Defs = [SREG] in
+let Constraints = "$src = $rd" in
 {
-  def INCRd : FormH<0x04, (outs GPR8:$rd), (ins GPR8:$src), "inc  $rd",
-                    [(set i8:$rd, (add i8:$src, 1)), (implicit SREG)]>;
+  let Defs = [SREG] in
+  {
+    def INCRd : FormH<0x04, (outs GPR8:$rd), (ins GPR8:$src), "inc  $rd",
+                      [(set i8:$rd, (add i8:$src, 1)), (implicit SREG)]>;
 
-  def DECRd : FormH<0x05, (outs GPR8:$rd), (ins GPR8:$src), "dec  $rd",
-                    [(set i8:$rd, (add i8:$src, -1)), (implicit SREG)]>;
+    def DECRd : FormH<0x05, (outs GPR8:$rd), (ins GPR8:$src), "dec  $rd",
+                      [(set i8:$rd, (add i8:$src, -1)), (implicit SREG)]>;
+  }
 
   def INCWRd : FormC<0x03, (outs INCDECDREGS:$rd), (ins INCDECDREGS:$src), "inc  $rd",
-                     [(set i16:$rd, (add i16:$src, 1)), (implicit SREG)]>;
+                     [(set i16:$rd, (add i16:$src, 1))]>;
 
   def DECWRd : FormC<0x0b, (outs INCDECDREGS:$rd), (ins INCDECDREGS:$src), "dec  $rd",
-                     [(set i16:$rd, (add i16:$src, -1)), (implicit SREG)]>;
+                     [(set i16:$rd, (add i16:$src, -1))]>;
 }
 
 let Defs = [SREG], rd = 6 in
@@ -866,6 +877,9 @@ isBarrier = 1 in
 //===----------------------------------------------------------------------===//
 // Compare operations.
 //===----------------------------------------------------------------------===//
+let Defs = [SREG], Uses = [SREG] in
+def CPIMPLICIT : Pseudo<(outs), (ins GPR8:$rr), "cp", []>;
+
 let Defs = [SREG] in
 {
 //  // CPSE Rd, Rr
@@ -1710,7 +1724,10 @@ def : Pat<(i16 (Z80Wrapper tblockaddress:$dst)),
 //          (ADDRdRr GPR8:$rd, GPR8:$rd)>;
 //
 
-def : Pat<(Z80cp i8:$rd, 0), (ORrr8 GPR8:$rd, GPR8:$rd)>;
+def : Pat<(Z80cp (add i8:$v, -1), 0), (CPIMPLICIT (DECRd $v))>;
+def : Pat<(Z80cp (sub i8:$v, 1),  0), (CPIMPLICIT (DECRd $v))>;
+
+def : Pat<(Z80cp i8:$rd, 0), (ORrr8 $rd, $rd)>;
 def : Pat<(Z80cp i16:$rd, 0), (ORrr8 (EXTRACT_SUBREG $rd, sub_lo), (EXTRACT_SUBREG $rd, sub_hi))>;
 
 //def : Pat<(add i16:$a, (zext i8:$b)), (ADDWRdRr $a,

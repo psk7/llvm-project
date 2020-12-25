@@ -1417,6 +1417,9 @@ bool Z80ExpandPseudo::expandMI(Block &MBB, BlockIt MBBI) {
 //    EXPAND(Z80::ASRWRd);
     EXPAND(Z80::SEXT);
     EXPAND(Z80::ZEXT);
+  case Z80::CPIMPLICIT:
+    MI.eraseFromParent();
+    break;
   }
 #undef EXPAND
   return false;
