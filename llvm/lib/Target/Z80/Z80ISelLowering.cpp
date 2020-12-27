@@ -99,7 +99,7 @@ Z80TargetLowering::Z80TargetLowering(const Z80TargetMachine &TM,
   setOperationAction(ISD::BR_CC, MVT::i16, Custom);
   setOperationAction(ISD::BR_CC, MVT::i32, Custom);
   setOperationAction(ISD::BR_CC, MVT::i64, Custom);
-  //  setOperationAction(ISD::BRCOND, MVT::Other, Expand);
+  setOperationAction(ISD::BRCOND, MVT::Other, Expand);
 
   setOperationAction(ISD::SELECT_CC, MVT::i8, Custom);
   setOperationAction(ISD::SELECT_CC, MVT::i16, Custom);
@@ -122,22 +122,22 @@ Z80TargetLowering::Z80TargetLowering(const Z80TargetMachine &TM,
   //  setOperationAction(ISD::VACOPY, MVT::Other, Expand);
 
   // Division/remainder
-  //  setOperationAction(ISD::UDIV, MVT::i8, Expand);
-  //  setOperationAction(ISD::UDIV, MVT::i16, Expand);
-  //  setOperationAction(ISD::UREM, MVT::i8, Expand);
-  //  setOperationAction(ISD::UREM, MVT::i16, Expand);
-  //  setOperationAction(ISD::SDIV, MVT::i8, Expand);
-  //  setOperationAction(ISD::SDIV, MVT::i16, Expand);
-  //  setOperationAction(ISD::SREM, MVT::i8, Expand);
-  //  setOperationAction(ISD::SREM, MVT::i16, Expand);
+  setOperationAction(ISD::UDIV, MVT::i8, Expand);
+  setOperationAction(ISD::UDIV, MVT::i16, Expand);
+  setOperationAction(ISD::UREM, MVT::i8, Expand);
+  setOperationAction(ISD::UREM, MVT::i16, Expand);
+  setOperationAction(ISD::SDIV, MVT::i8, Expand);
+  setOperationAction(ISD::SDIV, MVT::i16, Expand);
+  setOperationAction(ISD::SREM, MVT::i8, Expand);
+  setOperationAction(ISD::SREM, MVT::i16, Expand);
 
   // Make division and modulus custom
-  //  setOperationAction(ISD::UDIVREM, MVT::i8, Custom);
-  //  setOperationAction(ISD::UDIVREM, MVT::i16, Custom);
-  //  setOperationAction(ISD::UDIVREM, MVT::i32, Custom);
-  //  setOperationAction(ISD::SDIVREM, MVT::i8, Custom);
-  //  setOperationAction(ISD::SDIVREM, MVT::i16, Custom);
-  //  setOperationAction(ISD::SDIVREM, MVT::i32, Custom);
+  setOperationAction(ISD::UDIVREM, MVT::i8, Expand);
+  setOperationAction(ISD::UDIVREM, MVT::i16, Expand);
+  setOperationAction(ISD::UDIVREM, MVT::i32, Expand);
+  setOperationAction(ISD::SDIVREM, MVT::i8, Expand);
+  setOperationAction(ISD::SDIVREM, MVT::i16, Expand);
+  setOperationAction(ISD::SDIVREM, MVT::i32, Expand);
 
   // Do not use MUL. The Z80 instructions are closer to SMUL_LOHI &co.
   setOperationAction(ISD::MUL, MVT::i8, Expand);
@@ -193,18 +193,18 @@ Z80TargetLowering::Z80TargetLowering(const Z80TargetMachine &TM,
   setLibcallCallingConv(RTLIB::MUL_I16, CallingConv::Z80_BUILTIN);
 
   // Division and modulus rtlib functions
-  //  setLibcallName(RTLIB::SDIVREM_I8, "__divmodqi4");
-  //  setLibcallName(RTLIB::SDIVREM_I16, "__divmodhi4");
-  //  setLibcallName(RTLIB::SDIVREM_I32, "__divmodsi4");
-  //  setLibcallName(RTLIB::UDIVREM_I8, "__udivmodqi4");
-  //  setLibcallName(RTLIB::UDIVREM_I16, "__udivmodhi4");
-  //  setLibcallName(RTLIB::UDIVREM_I32, "__udivmodsi4");
+  setLibcallName(RTLIB::SDIVREM_I8, "__divmodqi4");
+  setLibcallName(RTLIB::SDIVREM_I16, "__divmodhi4");
+  setLibcallName(RTLIB::SDIVREM_I32, "__divmodsi4");
+  setLibcallName(RTLIB::UDIVREM_I8, "__udivmodqi4");
+  setLibcallName(RTLIB::UDIVREM_I16, "__udivmodhi4");
+  setLibcallName(RTLIB::UDIVREM_I32, "__udivmodsi4");
 
   // Several of the runtime library functions use a special calling conv
-  //  setLibcallCallingConv(RTLIB::SDIVREM_I8, CallingConv::Z80_BUILTIN);
-  //  setLibcallCallingConv(RTLIB::SDIVREM_I16, CallingConv::Z80_BUILTIN);
-  //  setLibcallCallingConv(RTLIB::UDIVREM_I8, CallingConv::Z80_BUILTIN);
-  //  setLibcallCallingConv(RTLIB::UDIVREM_I16, CallingConv::Z80_BUILTIN);
+  setLibcallCallingConv(RTLIB::SDIVREM_I8, CallingConv::Z80_BUILTIN);
+  setLibcallCallingConv(RTLIB::SDIVREM_I16, CallingConv::Z80_BUILTIN);
+  setLibcallCallingConv(RTLIB::UDIVREM_I8, CallingConv::Z80_BUILTIN);
+  setLibcallCallingConv(RTLIB::UDIVREM_I16, CallingConv::Z80_BUILTIN);
 
   // Trigonometric rtlib functions
   //  setLibcallName(RTLIB::SIN_F32, "sin");
@@ -324,7 +324,7 @@ SDValue Z80TargetLowering::LowerShifts(SDValue Op, SelectionDAG &DAG) const {
     ROT = Z80II::ROT_SLA;
     break;
   case ISD::SRA:
-    Opc8 = Z80II::ROT_SRA;
+    ROT = Z80II::ROT_SRA;
     break;
   /*case ISD::ROTL:
     Opc8 = Z80ISD::ROL;
