@@ -1369,6 +1369,69 @@ template <> bool Z80ExpandPseudo::expand<Z80::ZEXT>(Block &MBB, BlockIt MBBI) {
   return true;
 }
 
+template <> bool Z80ExpandPseudo::expand<Z80::ROT16>(Block &MBB, BlockIt MBBI) {
+  MachineInstr &MI = *MBBI;
+  Register DstLoReg, DstHiReg;
+
+  Register DstReg = MI.getOperand(0).getReg();
+  Register SrcReg = MI.getOperand(1).getReg();
+  bool DstIsDead = MI.getOperand(0).isDead();
+  bool SrcIsKill = MI.getOperand(1).isKill();
+  bool ImpIsDead = MI.getOperand(3).isDead();
+  TRI->splitReg(DstReg, DstLoReg, DstHiReg);
+
+  assert(SrcReg == DstReg);
+
+  Z80II::Rotation rot = (Z80II::Rotation)MI.getOperand(2).getImm();
+
+  std::tuple<unsigned, unsigned, bool> ops;
+
+  switch (rot) {
+  default:
+    llvm_unreachable("wrong rotation code");
+
+  case llvm::Z80II::ROT_SRL:
+    ops = {Z80::SRLRd, Z80::RRRd, true};
+    break;
+
+  case llvm::Z80II::ROT_SLA:
+    ops = {Z80::RLRd, Z80::SLARd, false};
+    break;
+
+  case llvm::Z80II::ROT_SRA:
+    ops = {Z80::SRARd, Z80::RRRd, true};
+    break;
+  }
+
+  MachineInstrBuilder hi, lo;
+
+  auto inv = std::get<2>(ops);
+
+  auto ehi = [&](){
+    hi = buildMI(MBB, MBBI, std::get<0>(ops))
+        .addReg(DstHiReg, RegState::Define | getDeadRegState(DstIsDead))
+        .addReg(DstHiReg, getKillRegState(SrcIsKill));
+  };
+
+  if (inv)
+    ehi();
+
+  lo = buildMI(MBB, MBBI, std::get<1>(ops))
+           .addReg(DstLoReg, RegState::Define | getDeadRegState(DstIsDead))
+           .addReg(DstLoReg, getKillRegState(SrcIsKill));
+
+  if (!inv)
+    ehi();
+
+  if (ImpIsDead) {
+    lo->getOperand(2).setIsDead();
+    hi->getOperand(2).setIsDead();
+  }
+
+  MI.eraseFromParent();
+  return true;
+}
+
 bool Z80ExpandPseudo::expandMI(Block &MBB, BlockIt MBBI) {
   MachineInstr &MI = *MBBI;
   int Opcode = MBBI->getOpcode();
@@ -1417,6 +1480,7 @@ bool Z80ExpandPseudo::expandMI(Block &MBB, BlockIt MBBI) {
 //    EXPAND(Z80::ASRWRd);
     EXPAND(Z80::SEXT);
     EXPAND(Z80::ZEXT);
+    EXPAND(Z80::ROT16);
   case Z80::CPIMPLICIT:
     MI.eraseFromParent();
     return true;

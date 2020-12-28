@@ -28,8 +28,8 @@ def SDT_Z80Tst : SDTypeProfile<0, 1, [SDTCisInt<0>]>;
 def SDT_Z80SelectCC : SDTypeProfile<1, 3, [SDTCisSameAs<0, 1>,
                                     SDTCisSameAs<1, 2>, SDTCisVT<3, i8>]>;
 
-def SDT_Z80RotShift : SDTypeProfile<1, 2, [
-  SDTCisInt<0>, SDTCisInt<1> ]>;
+def SDT_Z80RotShift : SDTypeProfile<1, 3, [
+  SDTCisInt<0>, SDTCisInt<1>, SDTCisInt<2> ]>;
 
 //===----------------------------------------------------------------------===//
 // Z80 Specific Node Definitions
@@ -102,7 +102,7 @@ def Z80_CC_M    : PatLeaf<(i8 7)>;
 // Z80 Operands, Complex Patterns and Transformations Definitions.
 //===----------------------------------------------------------------------===//
 
-def rot : PatLeaf<(i8 imm), [{
+def rot : PatLeaf<(i8 timm), [{
    auto r = (Z80II::Rotation)(N->getSExtValue());
    return r != Z80II::ROT_INVALID;
 }]>;
@@ -1241,35 +1241,44 @@ hasSideEffects = 0 in
 //// Bit and bit-test instructions
 ////===----------------------------------------------------------------------===//
 
+def singlerotshift: PatFrag<(ops node:$src, node:$cc), (Z80rotshift node:$src, node:$cc, (i8 1))>;
+
 // Bit shift/rotate operations.
 let Constraints = "$src = $rr",
 Defs = [SREG] in
 {
+  let usesCustomInserter = 1 in
+  def ROT8LOOP : Pseudo<(outs GPR8:$rr), (ins GPR8:$src, Operand<i8>:$rot, ACC:$amt), "#ROT8 $rr, $rot, $amt",
+                        [(set i8:$rr, (Z80rotshift i8:$src, rot:$rot, i8:$amt)), (implicit SREG)]>;
+
+  let usesCustomInserter = 1 in
+  def ROT16LOOP : Pseudo<(outs DREGS:$rr), (ins DREGS:$src, Operand<i8>:$rot, ACC:$amt), "#ROT16 $rr, $rot, $amt", []>;
+
   def ROT16 : Pseudo<(outs DREGS:$rr), (ins DREGS:$src, Operand<i8>:$rot), "#ROT16 $rr, $rot",
-                     [(set i16:$rr, (Z80rotshift i16:$src, rot:$rot)), (implicit SREG)]>;
+                     [(set i16:$rr, (Z80rotshift i16:$src, rot:$rot, (i8 1))), (implicit SREG)]>;
 
   def SRLRd : FormB<0x38, (outs GPR8:$rr), (ins GPR8:$src), "srl  $rr",
-                    [(set i8:$rr, (Z80rotshift i8:$src, Z80_ROT_SRL)), (implicit SREG)]>, CB;
+                    [(set i8:$rr, (singlerotshift i8:$src, Z80_ROT_SRL)), (implicit SREG)]>, CB;
 
   def SRARd : FormB<0x28, (outs GPR8:$rr), (ins GPR8:$src), "sra  $rr",
-                    [(set i8:$rr, (Z80rotshift i8:$src, Z80_ROT_SRA)), (implicit SREG)]>, CB;
+                    [(set i8:$rr, (singlerotshift i8:$src, Z80_ROT_SRA)), (implicit SREG)]>, CB;
 
   def RLCRd : FormB<0x00, (outs GPR8:$rr), (ins GPR8:$src), "rlc  $rr",
-                    [(set i8:$rr, (Z80rotshift i8:$src, Z80_ROT_RLC)), (implicit SREG)]>, CB;
+                    [(set i8:$rr, (singlerotshift i8:$src, Z80_ROT_RLC)), (implicit SREG)]>, CB;
 
   def RRCRd : FormB<0x08, (outs GPR8:$rr), (ins GPR8:$src), "rrc  $rr",
-                    [(set i8:$rr, (Z80rotshift i8:$src, Z80_ROT_RRC)), (implicit SREG)]>, CB;
+                    [(set i8:$rr, (singlerotshift i8:$src, Z80_ROT_RRC)), (implicit SREG)]>, CB;
 
   def SLARd : FormB<0x20, (outs GPR8:$rr), (ins GPR8:$src), "sla  $rr",
-                    [(set i8:$rr, (Z80rotshift i8:$src, Z80_ROT_SLA)), (implicit SREG)]>, CB;
+                    [(set i8:$rr, (singlerotshift i8:$src, Z80_ROT_SLA)), (implicit SREG)]>, CB;
 
   let Uses = [SREG] in
   {
     def RRRd : FormB<0x18, (outs GPR8:$rr), (ins GPR8:$src), "rr   $rr",
-                     [(set i8:$rr, (Z80rotshift i8:$src, Z80_ROT_RR)), (implicit SREG)]>, CB;
+                     [(set i8:$rr, (singlerotshift i8:$src, Z80_ROT_RR)), (implicit SREG)]>, CB;
 
     def RLRd : FormB<0x10, (outs GPR8:$rr), (ins GPR8:$src), "rl   $rr",
-                     [(set i8:$rr, (Z80rotshift i8:$src, Z80_ROT_RL)), (implicit SREG)]>, CB;
+                     [(set i8:$rr, (singlerotshift i8:$src, Z80_ROT_RL)), (implicit SREG)]>, CB;
   }
 
 //  def SRLRd : FormB<0x38, (outs GPR8:$rr), (ins GPR8:$src), "srl  $rr",
@@ -1387,6 +1396,10 @@ Defs = [SREG] in
 //                        [(set i16:$rd, (Z80ror i16:$src)), (implicit SREG)]>;
 //  }
 }
+
+def : Pat<(Z80rotshift i16:$src, rot:$rot, i16:$amt), (ROT16LOOP $src, $rot, (EXTRACT_SUBREG $amt, sub_lo))>;
+def : Pat<(Z80rotshift i16:$src, rot:$rot, i8:$amt), (ROT16LOOP $src, $rot, $amt)>;
+
 
 //def LDRdIXoffs : FormD<0x46, (outs GPR8:$rd), (ins memri:$d8), "ld   $rd, ($d8)",
 //                         [(set i8:$rd, (load addr:$d8))]>;

@@ -273,47 +273,6 @@ SDValue Z80TargetLowering::LowerShifts(SDValue Op, SelectionDAG &DAG) const {
   assert(isPowerOf2_32(VT.getSizeInBits()) &&
          "Expected power-of-2 shift amount");
 
-  // Expand non-constant shifts to loops.
-  if (!isa<ConstantSDNode>(N->getOperand(1))) {
-    llvm_unreachable("Unable to lower non-constant shift");
-    /*switch (Op.getOpcode()) {
-    default:
-      llvm_unreachable("Invalid shift opcode!");
-    case ISD::SHL:
-      return DAG.getNode(Z80ISD::LSLLOOP, dl, VT, N->getOperand(0),
-                         N->getOperand(1));
-    case ISD::SRL:
-      return DAG.getNode(Z80ISD::LSRLOOP, dl, VT, N->getOperand(0),
-                         N->getOperand(1));
-    case ISD::ROTL: {
-      SDValue Amt = N->getOperand(1);
-      EVT AmtVT = Amt.getValueType();
-      Amt = DAG.getNode(ISD::AND, dl, AmtVT, Amt,
-                        DAG.getConstant(VT.getSizeInBits() - 1, dl, AmtVT));
-      return DAG.getNode(Z80ISD::ROLLOOP, dl, VT, N->getOperand(0), Amt);
-    }
-    case ISD::ROTR: {
-      SDValue Amt = N->getOperand(1);
-      EVT AmtVT = Amt.getValueType();
-      Amt = DAG.getNode(ISD::AND, dl, AmtVT, Amt,
-                        DAG.getConstant(VT.getSizeInBits() - 1, dl, AmtVT));
-      return DAG.getNode(Z80ISD::RORLOOP, dl, VT, N->getOperand(0), Amt);
-    }
-    case ISD::SRA:
-      return DAG.getNode(Z80ISD::ASRLOOP, dl, VT, N->getOperand(0),
-                         N->getOperand(1));
-    }*/
-  }
-
-  uint64_t ShiftAmount = cast<ConstantSDNode>(N->getOperand(1))->getZExtValue();
-  SDValue Victim = N->getOperand(0);
-
-  if (ISD::SRL == Op.getOpcode() && ShiftAmount == 8)
-    return Op;
-
-  if (ISD::SHL == Op.getOpcode() && ShiftAmount == 8)
-    return Op;
-
   Z80II::Rotation ROT = Z80II::ROT_INVALID;
 
   switch (Op.getOpcode()) {
@@ -326,28 +285,45 @@ SDValue Z80TargetLowering::LowerShifts(SDValue Op, SelectionDAG &DAG) const {
   case ISD::SRA:
     ROT = Z80II::ROT_SRA;
     break;
-  /*case ISD::ROTL:
-    Opc8 = Z80ISD::ROL;
-    ShiftAmount = ShiftAmount % VT.getSizeInBits();
-    break;
-  case ISD::ROTR:
-    Opc8 = Z80ISD::ROR;
-    ShiftAmount = ShiftAmount % VT.getSizeInBits();
-    break;
-  case ISD::SRL:
-    Opc8 = Z80ISD::SRL;
-    break;
-  case ISD::SHL:
-    Opc8 = Z80ISD::LSL;
-    break;*/
+    /*case ISD::ROTL:
+      Opc8 = Z80ISD::ROL;
+      ShiftAmount = ShiftAmount % VT.getSizeInBits();
+      break;
+    case ISD::ROTR:
+      Opc8 = Z80ISD::ROR;
+      ShiftAmount = ShiftAmount % VT.getSizeInBits();
+      break;
+    case ISD::SRL:
+      Opc8 = Z80ISD::SRL;
+      break;
+    case ISD::SHL:
+      Opc8 = Z80ISD::LSL;
+      break;*/
   default:
     llvm_unreachable("Invalid shift opcode");
   }
 
-  auto RC = DAG.getConstant(ROT, dl, MVT::i8);
+  auto RC = DAG.getTargetConstant(ROT, dl, MVT::i8);
+
+  // Expand non-constant shifts to loops.
+  if (!isa<ConstantSDNode>(N->getOperand(1))) {
+    return DAG.getNode(Z80ISD::ROTSHIFT, dl, VT, N->getOperand(0), RC,
+                       N->getOperand(1));
+  }
+
+  uint64_t ShiftAmount = cast<ConstantSDNode>(N->getOperand(1))->getZExtValue();
+  SDValue Victim = N->getOperand(0);
+
+  if (ISD::SRL == Op.getOpcode() && ShiftAmount == 8)
+    return Op;
+
+  if (ISD::SHL == Op.getOpcode() && ShiftAmount == 8)
+    return Op;
+
+  auto SC = DAG.getTargetConstant(1, dl, MVT::i8);
 
   while (ShiftAmount--) {
-    Victim = DAG.getNode(Z80ISD::ROTSHIFT, dl, VT, Victim, RC);
+    Victim = DAG.getNode(Z80ISD::ROTSHIFT, dl, VT, Victim, RC, SC);
   }
 
   return Victim;
@@ -1172,62 +1148,18 @@ Z80TargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
 
 MachineBasicBlock *Z80TargetLowering::insertShift(MachineInstr &MI,
                                                   MachineBasicBlock *BB) const {
-  llvm_unreachable("Z80TargetLowering::insertShift");
-  /*unsigned Opc;
+  unsigned Opc;
   const TargetRegisterClass *RC;
-  bool HasRepeatedOperand = false;
   MachineFunction *F = BB->getParent();
   MachineRegisterInfo &RI = F->getRegInfo();
   const TargetInstrInfo &TII = *Subtarget.getInstrInfo();
   DebugLoc dl = MI.getDebugLoc();
-
-  switch (MI.getOpcode()) {
-  default:
-    llvm_unreachable("Invalid shift opcode!");
-  case Z80::Lsl8:
-    Opc = Z80::ADDRdRr; // LSL is an alias of ADD Rd, Rd
-    RC = &Z80::GPR8RegClass;
-    HasRepeatedOperand = true;
-    break;
-  case Z80::Lsl16:
-    Opc = Z80::LSLWRd;
-    RC = &Z80::DREGSRegClass;
-    break;
-  case Z80::Asr8:
-    Opc = Z80::ASRRd;
-    RC = &Z80::GPR8RegClass;
-    break;
-  case Z80::Asr16:
-    Opc = Z80::ASRWRd;
-    RC = &Z80::DREGSRegClass;
-    break;
-  case Z80::Lsr8:
-    Opc = Z80::LSRRd;
-    RC = &Z80::GPR8RegClass;
-    break;
-  case Z80::Lsr16:
-    Opc = Z80::LSRWRd;
-    RC = &Z80::DREGSRegClass;
-    break;
-  case Z80::Rol8:
-    Opc = Z80::ROLBRd;
-    RC = &Z80::GPR8RegClass;
-    break;
-  case Z80::Rol16:
-    Opc = Z80::ROLWRd;
-    RC = &Z80::DREGSRegClass;
-    break;
-  case Z80::Ror8:
-    Opc = Z80::RORBRd;
-    RC = &Z80::GPR8RegClass;
-    break;
-  case Z80::Ror16:
-    Opc = Z80::RORWRd;
-    RC = &Z80::DREGSRegClass;
-    break;
-  }
+  Z80II::Rotation rot = (Z80II::Rotation)MI.getOperand(2).getImm();
 
   const BasicBlock *LLVM_BB = BB->getBasicBlock();
+
+  RC = (MI.getOpcode() == Z80::ROT16LOOP) ? &Z80::DREGSRegClass
+                                          : &Z80::GPR8RegClass;
 
   MachineFunction::iterator I;
   for (I = BB->getIterator(); I != F->end() && &(*I) != BB; ++I);
@@ -1252,19 +1184,25 @@ MachineBasicBlock *Z80TargetLowering::insertShift(MachineInstr &MI,
   LoopBB->addSuccessor(RemBB);
   LoopBB->addSuccessor(LoopBB);
 
-  Register ShiftAmtReg = RI.createVirtualRegister(&Z80::LD8RegClass);
-  Register ShiftAmtReg2 = RI.createVirtualRegister(&Z80::LD8RegClass);
+  Register ShiftAmtReg = RI.createVirtualRegister(&Z80::ACCRegClass);
+  Register ShiftAmtReg2 = RI.createVirtualRegister(&Z80::ACCRegClass);
+  Register ShiftAmtReg3 = RI.createVirtualRegister(&Z80::ACCRegClass);
+  Register ShiftAmtReg8 = RI.createVirtualRegister(&Z80::ACCRegClass);
   Register ShiftReg = RI.createVirtualRegister(RC);
   Register ShiftReg2 = RI.createVirtualRegister(RC);
-  Register ShiftAmtSrcReg = MI.getOperand(2).getReg();
+  Register ShiftAmtSrcReg = MI.getOperand(3).getReg();
   Register SrcReg = MI.getOperand(1).getReg();
   Register DstReg = MI.getOperand(0).getReg();
 
   // BB:
-  // cpi N, 0
-  // breq RemBB
-  BuildMI(BB, dl, TII.get(Z80::CPIRdK)).addReg(ShiftAmtSrcReg).addImm(0);
-  BuildMI(BB, dl, TII.get(Z80::BREQk)).addMBB(RemBB);
+  // or N, 0
+  // jr z RemBB
+  BuildMI(BB, dl, TII.get(TargetOpcode::COPY), ShiftAmtReg8)
+      .addReg(ShiftAmtSrcReg);
+  BuildMI(BB, dl, TII.get(Z80::ORrr8), ShiftAmtReg3)
+      .addReg(ShiftAmtReg8)
+      .addReg(ShiftAmtReg8);
+  BuildMI(BB, dl, TII.get(Z80::JRCC)).addMBB(RemBB).addImm(Z80CC::COND_Z);
 
   // LoopBB:
   // ShiftReg = phi [%SrcReg, BB], [%ShiftReg2, LoopBB]
@@ -1277,22 +1215,41 @@ MachineBasicBlock *Z80TargetLowering::insertShift(MachineInstr &MI,
       .addReg(ShiftReg2)
       .addMBB(LoopBB);
   BuildMI(LoopBB, dl, TII.get(Z80::PHI), ShiftAmtReg)
-      .addReg(ShiftAmtSrcReg)
+      .addReg(ShiftAmtReg8)
       .addMBB(BB)
       .addReg(ShiftAmtReg2)
       .addMBB(LoopBB);
 
-  auto ShiftMI = BuildMI(LoopBB, dl, TII.get(Opc), ShiftReg2).addReg(ShiftReg);
-  if (HasRepeatedOperand)
-    ShiftMI.addReg(ShiftReg);
+  if(MI.getOpcode() == Z80::ROT16LOOP) {
+    BuildMI(LoopBB, dl, TII.get(Z80::ROT16), ShiftReg2)
+        .addReg(ShiftReg)
+        .addImm(rot);
+  }
+  else {
+    switch (rot) {
+    default:
+      llvm_unreachable("unable to shift");
+    case Z80II::ROT_SLA:
+      BuildMI(LoopBB, dl, TII.get(Z80::SLARd), ShiftReg2)
+                         .addReg(ShiftReg)
+                         .addImm(rot);
+      break;
+    case Z80II::ROT_SRL:
+      BuildMI(LoopBB, dl, TII.get(Z80::SRLRd), ShiftReg2)
+          .addReg(ShiftReg)
+          .addImm(rot);
+      break;
+    case Z80II::ROT_SRA:
+      BuildMI(LoopBB, dl, TII.get(Z80::SRARd), ShiftReg2)
+          .addReg(ShiftReg)
+          .addImm(rot);
+      break;
+    }
+  }
 
-  BuildMI(LoopBB, dl, TII.get(Z80::SUBIRdK), ShiftAmtReg2)
-      .addReg(ShiftAmtReg)
-      .addImm(1);
-  BuildMI(LoopBB, dl, TII.get(Z80::BRNEk)).addMBB(LoopBB);
+  BuildMI(LoopBB, dl, TII.get(Z80::DECRd), ShiftAmtReg2).addReg(ShiftAmtReg);
+  BuildMI(LoopBB, dl, TII.get(Z80::JRCC)).addMBB(LoopBB).addImm(Z80CC::COND_NZ);
 
-  // RemBB:
-  // DestReg = phi [%SrcReg, BB], [%ShiftReg, LoopBB]
   BuildMI(*RemBB, RemBB->begin(), dl, TII.get(Z80::PHI), DstReg)
       .addReg(SrcReg)
       .addMBB(BB)
@@ -1300,7 +1257,7 @@ MachineBasicBlock *Z80TargetLowering::insertShift(MachineInstr &MI,
       .addMBB(LoopBB);
 
   MI.eraseFromParent(); // The pseudo instruction is gone now.
-  return RemBB;*/
+  return RemBB;
 }
 
 MachineBasicBlock *
@@ -1308,21 +1265,8 @@ Z80TargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
                                                MachineBasicBlock *MBB) const {
   int Opc = MI.getOpcode();
 
-  // Pseudo shift instructions with a non constant shift amount are expanded
-  // into a loop.
-  /*switch (Opc) {
-  case Z80::Lsl8:
-  case Z80::Lsl16:
-  case Z80::Lsr8:
-  case Z80::Lsr16:
-  case Z80::Rol8:
-  case Z80::Rol16:
-  case Z80::Ror8:
-  case Z80::Ror16:
-  case Z80::Asr8:
-  case Z80::Asr16:
+  if (Z80::ROT8LOOP == Opc || Z80::ROT16LOOP == Opc)
     return insertShift(MI, MBB);
-  }*/
 
   assert((Opc == Z80::Select16 || Opc == Z80::Select8) &&
          "Unexpected instr type to insert");
