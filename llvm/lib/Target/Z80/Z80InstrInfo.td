@@ -28,6 +28,11 @@ def SDT_Z80Tst : SDTypeProfile<0, 1, [SDTCisInt<0>]>;
 def SDT_Z80SelectCC : SDTypeProfile<1, 3, [SDTCisSameAs<0, 1>,
                                     SDTCisSameAs<1, 2>, SDTCisVT<3, i8>]>;
 
+def SDT_Z80Outport : SDTypeProfile<0, 2, [SDTCisVT<0, i8>, SDTCisVT<1, i16>]>;
+
+def SDT_Z80Inport : SDTypeProfile<1, 1, [ SDTCisPtrTy<1> ]>;
+
+
 def SDT_Z80RotShift : SDTypeProfile<1, 3, [
   SDTCisInt<0>, SDTCisInt<1>, SDTCisInt<2> ]>;
 
@@ -73,6 +78,9 @@ def Z80rol : SDNode<"Z80ISD::ROL", SDTIntUnaryOp>;
 //def Z80rr : SDNode<"Z80ISD::RR", SDTIntUnaryOp>;
 //def Z80rl : SDNode<"Z80ISD::RL", SDTIntUnaryOp>;
 def Z80rotshift : SDNode<"Z80ISD::ROTSHIFT", SDT_Z80RotShift>;
+
+def outport : SDNode<"Z80ISD::OUTPORT", SDT_Z80Outport, [SDNPHasChain, SDNPMayStore, SDNPMemOperand]>;
+def inport : SDNode<"Z80ISD::INPORT", SDT_Z80Inport, [SDNPHasChain, SDNPMayLoad, SDNPMemOperand]>;
 
 def Z80_ROT_RLC : PatLeaf<(i8 0)>;
 def Z80_ROT_RRC : PatLeaf<(i8 1)>;
@@ -124,6 +132,10 @@ def rot : PatLeaf<(i8 timm), [{
 //}], imm16_neg_XFORM>;
 //
 //def uimm6 : PatLeaf<(imm), [{ return isUInt<6>(N->getZExtValue()); }]>;
+
+def uimm8 : PatLeaf<(imm), [{ return isUInt<8>(N->getZExtValue()); }]>;
+def immzero : PatLeaf<(imm), [{ return N->getZExtValue() == 0; }]>;
+
 //
 //// imm_com8_XFORM - Return the complement of a imm_com8 value
 //def imm_com8_XFORM : SDNodeXForm<imm, [{
@@ -619,6 +631,9 @@ def RESBIT : FormG<0x80, (outs GPR8:$dst), (ins GPR8:$rr, i16imm:$rd), "res  $rd
 let Constraints = "$dst = $rr" in
 def SETBIT : FormG<0xC0, (outs GPR8:$dst), (ins GPR8:$rr, i16imm:$rd), "set  $rd, $rr", []>, CB;
 
+let Constraints = "$dst = $rr", Defs = [SREG] in
+def TESTBIT : FormG<0x40, (outs GPR8:$dst), (ins GPR8:$rr, i8imm:$rd), "bit  $rd, $rr", []>, CB;
+
 //def : Pat<(i16 (and i16:$rr, iobitposn16h:$rd)),
 //            (INSERT_SUBREG
 //                (INSERT_SUBREG (i16 (IMPLICIT_DEF)), (RESBIT (EXTRACT_SUBREG $rr, sub_hi), (i16 iobitposn16h:$rd) ), sub_hi),
@@ -1092,11 +1107,18 @@ isReMaterializable = 1 in
 }
 
 // Indirect store from register to data space.
-def STSKRr : FormF<0x32, (outs), (ins imm16:$d16, ACC:$rd), "ld   ($d16), $rd",
-                   [(store i8:$rd, imm:$d16)]>;
+def STSKRr : FormF<0x32, (outs), (ins imm16:$d16, ACC:$rd), "ld   ($d16), $rd", [(store i8:$rd, imm:$d16)]>;
 
-def STSWKRr : Pseudo<(outs), (ins i16imm:$dst, DREGS:$src), "stsw\t$dst, $src",
-                   [(store i16:$src, imm:$dst)]>;
+def STSWKRr : Pseudo<(outs), (ins i16imm:$dst, DREGS:$src), "stsw\t$dst, $src", [(store i16:$src, imm:$dst)]>;
+
+def OUT16K : FormH<0x41, (outs), (ins BCREG:$port, GPR8:$rd), "out  (c), $rd", [(outport i8:$rd, i16:$port)]>, ED;
+def OUT8K  : FormI<0xd3, (outs), (ins i16imm:$d8, ACC:$rd), "out  ($d8), $rd", [(outport i8:$rd, uimm8:$d8)]>;
+def OUT16Z : FormA<0x71, (outs), (ins BCREG:$port, i8imm:$imm), "out  (c), $imm", [(outport immzero:$imm, i16:$port)]>, ED;
+
+let Defs = [SREG] in
+def IN16K : FormH<0x40, (outs GPR8:$rd), (ins BCREG:$port), "in   $rd, (c)", [(set i8:$rd, (inport i16:$port))]>, ED;
+
+def IN8K  : FormI<0xDB, (outs ACC:$rd), (ins i16imm:$d8), "in   $rd, ($d8)", [(set i8:$rd, (inport uimm8:$d8))]>;
 
 // Indirect stores.
 // ST P, Rr
@@ -1739,6 +1761,11 @@ def : Pat<(i16 (Z80Wrapper tblockaddress:$dst)),
 
 def : Pat<(Z80cp (add i8:$v, -1), 0), (CPIMPLICIT (DECRd $v))>;
 def : Pat<(Z80cp (sub i8:$v, 1),  0), (CPIMPLICIT (DECRd $v))>;
+
+def : Pat<(Z80cp (and i8:$v, iobitposn8:$a),  0), (CPIMPLICIT (TESTBIT $v, iobitposn8:$a))>;
+
+//def : Pat<(Z80cp (and i8:$v, imm:$a),  0), (CPIMPLICIT (ANDimm8 $v, imm:$a))>;
+//def : Pat<(Z80cp (or i8:$v, imm:$a),  0), (CPIMPLICIT (ORimm8 $v, imm:$a))>;
 
 def : Pat<(Z80cp i8:$rd, 0), (ORrr8 $rd, $rd)>;
 def : Pat<(Z80cp i16:$rd, 0), (ORrr8 (EXTRACT_SUBREG $rd, sub_lo), (EXTRACT_SUBREG $rd, sub_hi))>;

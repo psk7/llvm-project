@@ -52,6 +52,9 @@ Z80TargetLowering::Z80TargetLowering(const Z80TargetMachine &TM,
   setOperationAction(ISD::GlobalAddress, MVT::i16, Custom);
   setOperationAction(ISD::BlockAddress, MVT::i16, Custom);
 
+  setOperationAction(ISD::LOAD, MVT::i8, Custom);
+  setOperationAction(ISD::STORE, MVT::i8, Custom);
+
   setOperationAction(ISD::STACKSAVE, MVT::Other, Expand);
   setOperationAction(ISD::STACKRESTORE, MVT::Other, Expand);
   setOperationAction(ISD::DYNAMIC_STACKALLOC, MVT::i8, Expand);
@@ -253,6 +256,8 @@ const char *Z80TargetLowering::getTargetNodeName(unsigned Opcode) const {
 //    NODE(SLA);
 //    NODE(RR);
 //    NODE(RL);
+    NODE(OUTPORT);
+    NODE(INPORT);
 #undef NODE
   }
 }
@@ -561,6 +566,24 @@ SDValue Z80TargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const {
     return LowerSELECT_CC(Op, DAG);
   case ISD::SETCC:
     return LowerSETCC(Op, DAG);
+  case ISD::LOAD: {
+    const MemSDNode *mn = dyn_cast<MemSDNode>(Op);
+    if (mn && Z80::AddressSpace::Ports == mn->getMemOperand()->getAddrSpace()) {
+      SDValue Ops[] = {mn->getOperand(0), mn->getOperand(1)};
+
+      return DAG.getNode(Z80ISD::INPORT, SDLoc(Op), {MVT::i8, MVT::Other}, Ops);
+    }
+    return Op;
+  }
+  case ISD::STORE: {
+    const MemSDNode *mn = dyn_cast<MemSDNode>(Op);
+    if (mn && Z80::AddressSpace::Ports == mn->getMemOperand()->getAddrSpace()) {
+      SDValue Ops[] = {mn->getOperand(0), mn->getOperand(1), mn->getOperand(2)};
+
+      return DAG.getNode(Z80ISD::OUTPORT, SDLoc(Op), MVT::Other, Ops);
+    }
+    return Op;
+  }
     //  case ISD::VASTART:
     //    return LowerVASTART(Op, DAG);
   }

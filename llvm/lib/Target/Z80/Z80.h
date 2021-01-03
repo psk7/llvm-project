@@ -36,6 +36,8 @@ void initializeZ80RelaxMemPass(PassRegistry&);
 /// Contains the Z80 backend.
 namespace Z80 {
 
+enum AddressSpace { DataMemory, Ports = 2 };
+
 } // end of namespace Z80
 
 } // end namespace llvm

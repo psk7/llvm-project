@@ -410,6 +410,33 @@ template <> bool Z80DAGToDAGISel::select<ISD::BRIND>(SDNode *N) {
   return true;*/
 }
 
+template <> bool Z80DAGToDAGISel::select<Z80ISD::CP>(SDNode *N) {
+  auto op0 = N->getOperand(0);
+  auto op0c = op0.getOpcode();
+
+  if (op0->getSimpleValueType(0) != MVT::i8)
+    return false;
+
+  const ConstantSDNode *cn = dyn_cast<ConstantSDNode>(N->getOperand(1));
+
+  if (!cn || cn->getZExtValue() != 0)
+    return false;
+
+  if ((ISD::AND != op0c) && (ISD::OR != op0c) )
+      return false;
+
+  if (ISD::AND == op0c)
+    if (const ConstantSDNode *ac = dyn_cast<ConstantSDNode>(op0->getOperand(1)))
+      if (isPowerOf2_32(uint8_t(~ac->getZExtValue())))
+        return false;
+
+  SDNode *c = CurDAG->getMachineNode(Z80::CPIMPLICIT, SDLoc(N),
+                                     MVT::Glue, op0);
+
+  ReplaceUses(SDValue(N, 0), SDValue(c, 0));
+  CurDAG->RemoveDeadNode(N);
+}
+
 void Z80DAGToDAGISel::Select(SDNode *N) {
   // If we have a custom node, we already have selected!
   if (N->isMachineOpcode()) {
@@ -441,6 +468,8 @@ bool Z80DAGToDAGISel::trySelect(SDNode *N) {
   case Z80ISD::CALL: return select<Z80ISD::CALL>(N);
 
   case ISD::OR: return select<ISD::OR>(N);
+
+  case Z80ISD::CP: return select<Z80ISD::CP>(N);
 
   default:           return false;
   }
