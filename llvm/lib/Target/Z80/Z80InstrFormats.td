@@ -163,6 +163,17 @@ class FormK<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
   let Size = 2;
 }
 
+class FormL<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
+  : FormA<opcode, outs, ins, asmstr, pattern>
+{
+  bits<3> cc;
+  bits<16> d16;
+
+  let Inst{23-8} = d16;
+  let Inst{5-3} = cc;
+  let Size = 3;
+}
+
 // A class for pseudo instructions.
 // Pseudo instructions are not real Z80 instructions. The DAG stores
 // pseudo instructions which are replaced by real Z80 instructions by

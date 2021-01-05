@@ -369,9 +369,11 @@ static Z80CC::CondCodes intCCToZ80CC(ISD::CondCode CC) {
   case ISD::SETNE:
     return Z80CC::COND_NZ;
   case ISD::SETGE:
+    return Z80CC::COND_PO;
   case ISD::SETUGE:
     return Z80CC::COND_NC;
   case ISD::SETLT:
+    return Z80CC::COND_PE;
   case ISD::SETULT:
     return Z80CC::COND_C;
   }
@@ -1336,7 +1338,9 @@ Z80TargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
   trueMBB->transferSuccessorsAndUpdatePHIs(MBB);
 
   Z80CC::CondCodes CC = (Z80CC::CondCodes)MI.getOperand(3).getImm();
-  BuildMI(MBB, dl, TII.get(Z80::JRCC)).addMBB(trueMBB).addImm(CC);
+  auto opc = isUInt<2>(CC) ? Z80::JRCC : Z80::JPCC;
+
+  BuildMI(MBB, dl, TII.get(opc)).addMBB(trueMBB).addImm(CC);
   BuildMI(MBB, dl, TII.get(Z80::JRk)).addMBB(falseMBB);
   MBB->addSuccessor(falseMBB);
   MBB->addSuccessor(trueMBB);

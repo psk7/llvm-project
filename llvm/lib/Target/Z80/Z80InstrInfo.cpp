@@ -464,9 +464,12 @@ unsigned Z80InstrInfo::insertBranch(MachineBasicBlock &MBB,
 
   // Conditional branch.
   unsigned Count = 0;
-  auto &CondMI = *BuildMI(&MBB, DL, get(Z80::JRCC))
+  auto cc = Cond[0].getImm();
+  auto op = isUInt<2>(cc) ? Z80::JRCC : Z80::JPCC;
+
+  auto &CondMI = *BuildMI(&MBB, DL, get(op))
                       .addMBB(TBB)
-                      .addImm(Cond[0].getImm()); /*Z80CC::CondCodes*/
+                      .addImm(cc); /*Z80CC::CondCodes*/
 
   if (BytesAdded) *BytesAdded += getInstSizeInBytes(CondMI);
   ++Count;
@@ -496,7 +499,7 @@ unsigned Z80InstrInfo::removeBranch(MachineBasicBlock &MBB,
     //:TODO: add here the missing jmp instructions once they are implemented
     // like jmp, {e}ijmp, and other cond branches, ...
     auto oc = I->getOpcode();
-    if (oc != Z80::JRk && oc != Z80::JRCC) {
+    if (oc != Z80::JRk && oc != Z80::JRCC && oc != Z80::JPCC) {
       break;
     }
 
@@ -518,6 +521,7 @@ bool Z80InstrInfo::reverseBranchCondition(
   Cond[0].setImm(getOppositeCondition(CC));*/
 
   Z80CC::CondCodes CC = static_cast<Z80CC::CondCodes>(Cond[0].getImm());
+
   Cond[0].setImm(getOppositeCondition(CC));
 
   return false;
@@ -557,6 +561,7 @@ Z80InstrInfo::getBranchDestBlock(const MachineInstr &MI) const {
   default:
     llvm_unreachable("unexpected opcode!");
   case Z80::JRCC:
+  case Z80::JPCC:
   case Z80::JRk:
   case Z80::JMPk:
     return MI.getOperand(0).getMBB();
@@ -591,21 +596,9 @@ bool Z80InstrInfo::isBranchOffsetInRange(unsigned BranchOp,
   case Z80::JRCC:
     return isIntN(8, BrOffset);
   case Z80::JMPk:
+  case Z80::JPCC:
   case Z80::CALLk:
     return true;
-  /*case Z80::RJMPk:
-    return isIntN(13, BrOffset);
-  case Z80::BRBSsk:
-  case Z80::BRBCsk:
-  case Z80::BREQk:
-  case Z80::BRNEk:
-  case Z80::BRSHk:
-  case Z80::BRLOk:
-  case Z80::BRMIk:
-  case Z80::BRPLk:
-  case Z80::BRGEk:
-  case Z80::BRLTk:
-    return isIntN(7, BrOffset);*/
   }
 }
 

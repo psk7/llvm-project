@@ -83,6 +83,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeZ80Target() {
   RegisterTargetMachine<Z80TargetMachine> X(getTheZ80Target());
 
   auto &PR = *PassRegistry::getPassRegistry();
+  initializeZ80BranchRelaxationPass(PR);
   initializeZ80ExpandPseudoPass(PR);
   //initializeZ80RelaxMemPass(PR);
 }
@@ -120,7 +121,8 @@ void Z80PassConfig::addPreSched2() {
 
 void Z80PassConfig::addPreEmitPass() {
   // Must run branch selection immediately preceding the asm printer.
-  addPass(&BranchRelaxationPassID);
+  //addPass(&BranchRelaxationPassID);
+  addPass(createZ80BranchRelaxationPass());
 }
 
 } // end of namespace llvm

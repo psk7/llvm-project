@@ -834,32 +834,7 @@ isBranch = 1,
 isTerminator = 1 in
 {
   def JRk : FormI<0x18, (outs), (ins brtarget_13:$d8), "jr   $d8", [(br bb:$d8)]>;
-
-//  def RJMPk : FBRk<0,
-//                   (outs),
-//                   (ins brtarget_13:$target),
-//                   "rjmp\t$target",
-//                   [(br bb:$target)]>;
-//
-//  let isIndirectBranch = 1,
-//  Uses = [R31R30] in
-//  def IJMP : F16<0b1001010000001001,
-//                 (outs),
-//                 (ins),
-//                 "ijmp",
-//                 []>,
-//             Requires<[HasIJMPCALL]>;
-//
-//  let isIndirectBranch = 1,
-//  Uses = [R31R30] in
-//  def EIJMP : F16<0b1001010000011001,
-//                  (outs),
-//                  (ins),
-//                  "eijmp",
-//                  []>,
-//              Requires<[HasEIJMPCALL]>;
-
-  def JMPk : FormF<0xc3, (outs), (ins call_target:$k), "jmp  $k", []>;
+  def JMPk : FormF<0xc3, (outs), (ins call_target:$k), "jp   $k", []>;
 }
 
 //===----------------------------------------------------------------------===//
@@ -963,68 +938,17 @@ let Defs = [SREG] in
 //===----------------------------------------------------------------------===//
 // Based on status register. We cannot simplify these into instruction aliases
 // because we also need to be able to specify a pattern to match for ISel.
+
+def jrcondcode : PatLeaf<(imm), [{
+    return isUInt<2>(N->getZExtValue());
+}]>;
+
 let isBranch = 1,
 isTerminator = 1,
 Uses = [SREG] in
 {
-  def JRCC : FormJ<0x20, (outs), (ins relbrtarget_7:$d8, condcode:$cc), "jr$cc $d8", [(Z80brcond bb:$d8, imm:$cc)]>;
-
-//  def BREQk : FBRsk<0,
-//                    0b001,
-//                    (outs),
-//                    (ins relbrtarget_7:$target),
-//                    "breq\t$target",
-//                    [(Z80brcond bb:$target, Z80_COND_EQ)]>;
-//
-//  def BRNEk : FBRsk<1,
-//                    0b001,
-//                    (outs),
-//                    (ins relbrtarget_7:$target),
-//                    "brne\t$target",
-//                    [(Z80brcond bb:$target, Z80_COND_NE)]>;
-//
-//
-//  def BRSHk : FBRsk<1,
-//                    0b000,
-//                    (outs),
-//                    (ins relbrtarget_7:$target),
-//                    "brsh\t$target",
-//                    [(Z80brcond bb:$target, Z80_COND_SH)]>;
-//
-//  def BRLOk : FBRsk<0,
-//                    0b000,
-//                    (outs),
-//                    (ins relbrtarget_7:$target),
-//                    "brlo\t$target",
-//                    [(Z80brcond bb:$target, Z80_COND_LO)]>;
-//
-//  def BRMIk : FBRsk<0,
-//                    0b010,
-//                    (outs),
-//                    (ins relbrtarget_7:$target),
-//                    "brmi\t$target",
-//                    [(Z80brcond bb:$target, Z80_COND_MI)]>;
-//
-//  def BRPLk : FBRsk<1,
-//                    0b010,
-//                    (outs),
-//                    (ins relbrtarget_7:$target),
-//                    "brpl\t$target",
-//                    [(Z80brcond bb:$target, Z80_COND_PL)]>;
-//
-//  def BRGEk : FBRsk<1,
-//                    0b100,
-//                    (outs),
-//                    (ins relbrtarget_7:$target),
-//                    "brge\t$target",
-//                    [(Z80brcond bb:$target, Z80_COND_GE)]>;
-//
-//  def BRLTk : FBRsk<0,
-//                    0b100,
-//                    (outs),
-//                    (ins relbrtarget_7:$target),
-//                    "brlt\t$target",
-//                    [(Z80brcond bb:$target, Z80_COND_LT)]>;
+  def JRCC : FormJ<0x20, (outs), (ins relbrtarget_7:$d8, condcode:$cc), "jr   $cc, $d8", [(Z80brcond bb:$d8, jrcondcode:$cc)]>;
+  def JPCC : FormL<0xc2, (outs), (ins call_target:$d16, condcode:$cc), "jp   $cc, $d16", []>;
 }
 
 //===----------------------------------------------------------------------===//

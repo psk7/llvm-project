@@ -172,7 +172,9 @@ void Z80InstPrinter::printPCRelImm(const MCInst *MI, unsigned OpNo,
 
 void Z80InstPrinter::printCondCode(const MCInst *MI, unsigned OpNo,
                                    raw_ostream &O) {
-  assert(MI->getOpcode() == Z80::JRCC && "Opcode MUST BE JRCC");
+  const unsigned opcode = MI->getOpcode();
+  assert((Z80::JRCC == opcode || Z80::JPCC == opcode) &&
+         "Opcode MUST BE JRCC OR JPCC");
 
   auto cc = static_cast<Z80CC::CondCodes>(MI->getOperand(OpNo).getImm());
 
@@ -181,13 +183,13 @@ void Z80InstPrinter::printCondCode(const MCInst *MI, unsigned OpNo,
     O << "nz";
     break;
   case Z80CC::COND_Z:
-    O << "z ";
+    O << "z";
     break;
   case Z80CC::COND_NC:
     O << "nc";
     break;
   case Z80CC::COND_C:
-    O << "c ";
+    O << "c";
     break;
   case Z80CC::COND_PO:
     O << "po";
@@ -196,10 +198,10 @@ void Z80InstPrinter::printCondCode(const MCInst *MI, unsigned OpNo,
     O << "pe";
     break;
   case Z80CC::COND_P:
-    O << "p ";
+    O << "p";
     break;
   case Z80CC::COND_M:
-    O << "m ";
+    O << "m";
     break;
   default:
     llvm_unreachable("wrong cond code");
