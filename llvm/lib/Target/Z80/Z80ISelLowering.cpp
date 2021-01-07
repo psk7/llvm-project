@@ -242,6 +242,7 @@ const char *Z80TargetLowering::getTargetNodeName(unsigned Opcode) const {
     NODE(BRCOND);
     NODE(CMP);
     NODE(CP);
+    NODE(CPS);
     NODE(CMPC);
     NODE(TST);
     NODE(SELECT_CC);
@@ -369,11 +370,11 @@ static Z80CC::CondCodes intCCToZ80CC(ISD::CondCode CC) {
   case ISD::SETNE:
     return Z80CC::COND_NZ;
   case ISD::SETGE:
-    return Z80CC::COND_PO;
+    return Z80CC::COND_P;
   case ISD::SETUGE:
     return Z80CC::COND_NC;
   case ISD::SETLT:
-    return Z80CC::COND_PE;
+    return Z80CC::COND_M;
   case ISD::SETULT:
     return Z80CC::COND_C;
   }
@@ -473,12 +474,16 @@ SDValue Z80TargetLowering::getZ80Cmp(SDValue LHS, SDValue RHS, ISD::CondCode CC,
   }
 
   if (VT == MVT::i8 || VT == MVT::i16) {
-    Cmp = DAG.getNode(Z80ISD::CP, DL, MVT::Glue, LHS, RHS);
+    if (isSignedIntSetCC(CC)) {
+      Cmp = DAG.getNode(Z80ISD::CPS, DL, DAG.getVTList(VT, MVT::Glue), LHS, RHS);
+    } else {
+      Cmp = DAG.getNode(Z80ISD::CP, DL, MVT::Glue, LHS, RHS);
+    }
   } else {
     llvm_unreachable("Only i8 or i16 values can be compared");
   }
 
-  Z80cc = DAG.getConstant(intCCToZ80CC(CC), DL, MVT::i8);
+  Z80cc = DAG.getTargetConstant(intCCToZ80CC(CC), DL, MVT::i8);
 
   return Cmp;
 }
@@ -1285,6 +1290,84 @@ MachineBasicBlock *Z80TargetLowering::insertShift(MachineInstr &MI,
   return RemBB;
 }
 
+MachineBasicBlock *Z80TargetLowering::insertBrcond(MachineInstr &MI,
+                                                  MachineBasicBlock *BB) const {
+
+  const Z80InstrInfo &TII = (const Z80InstrInfo &)*MI.getParent()
+      ->getParent()
+      ->getSubtarget()
+      .getInstrInfo();
+  DebugLoc dl = MI.getDebugLoc();
+
+  MachineRegisterInfo &RI = BB->getParent()->getRegInfo();
+
+  auto CR = MI.getOperand(2);
+
+  MachineFunction *MF = BB->getParent();
+  const BasicBlock *LLVM_BB = BB->getBasicBlock();
+  MachineBasicBlock *FallThrough = BB->getFallThrough();
+
+  if (FallThrough != nullptr) {
+    BuildMI(BB, dl, TII.get(Z80::JRk)).addMBB(FallThrough);
+  }
+
+  MachineBasicBlock *xorMBB = MF->CreateMachineBasicBlock(LLVM_BB);
+  MachineBasicBlock *checkMBB = MF->CreateMachineBasicBlock(LLVM_BB);
+  MachineBasicBlock *trueMBB = MI.getOperand(0).getMBB();
+  MachineBasicBlock *falseMBB = MF->CreateMachineBasicBlock(LLVM_BB);
+
+  MachineFunction::iterator I;
+  for (I = MF->begin(); I != MF->end() && &(*I) != BB; ++I)
+    ;
+  if (I != MF->end())
+    ++I;
+
+  MF->insert(I, xorMBB);
+  MF->insert(I, checkMBB);
+  MF->insert(I, falseMBB);
+
+  falseMBB->splice(falseMBB->begin(), BB,
+                  std::next(MachineBasicBlock::iterator(MI)), BB->end());
+  falseMBB->transferSuccessorsAndUpdatePHIs(BB);
+  falseMBB->removeSuccessor(trueMBB);
+
+  Z80CC::CondCodes CC = (Z80CC::CondCodes)MI.getOperand(1).getImm();
+
+  BuildMI(BB, dl, TII.get(Z80::JPCC)).addMBB(checkMBB).addImm(Z80CC::COND_PO);
+  BuildMI(BB, dl, TII.get(Z80::JRk)).addMBB(xorMBB);
+  BB->addSuccessor(checkMBB);
+  BB->addSuccessor(xorMBB);
+
+  Register tr = CR.getReg();
+
+  auto sz = RI.getTargetRegisterInfo()->getRegSizeInBits(*RI.getRegClass(tr));
+
+  if (sz == 16) {
+    tr = RI.createVirtualRegister(&Z80::ACCRegClass);
+
+    BuildMI(xorMBB, dl, TII.get(Z80::COPY))
+        .addReg(tr, RegState::Define)
+        .addReg(CR.getReg(), RegState::Kill, Z80::sub_hi);
+  }
+
+  BuildMI(xorMBB, dl, TII.get(Z80::XORimm8))
+      .addReg(RI.createVirtualRegister(&Z80::ACCRegClass), RegState::Define | RegState::Dead)
+      .addReg(tr, RegState::Kill)
+      .addImm(0x80);
+  BuildMI(xorMBB, dl, TII.get(Z80::JRk)).addMBB(checkMBB)/*.addReg(Z80::A, RegState::ImplicitKill)*/;
+  xorMBB->addSuccessor(checkMBB);
+  checkMBB->addLiveIn(Z80::SREG);
+
+  BuildMI(checkMBB, dl, TII.get(Z80::JPCC)).addMBB(trueMBB).addImm(CC);
+  BuildMI(checkMBB, dl, TII.get(Z80::JRk)).addMBB(falseMBB);
+  checkMBB->addSuccessor(falseMBB);
+  checkMBB->addSuccessor(trueMBB);
+
+  MI.eraseFromParent();
+
+  return falseMBB;
+}
+
 MachineBasicBlock *
 Z80TargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
                                                MachineBasicBlock *MBB) const {
@@ -1292,6 +1375,9 @@ Z80TargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
 
   if (Z80::ROT8LOOP == Opc || Z80::ROT16LOOP == Opc)
     return insertShift(MI, MBB);
+
+  if (Z80::BRCOND == Opc)
+    return insertBrcond(MI, MBB);
 
   assert((Opc == Z80::Select16 || Opc == Z80::Select8) &&
          "Unexpected instr type to insert");
@@ -1301,6 +1387,11 @@ Z80TargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
                                 ->getSubtarget()
                                 .getInstrInfo();
   DebugLoc dl = MI.getDebugLoc();
+
+  MachineRegisterInfo &RI = MBB->getParent()->getRegInfo();
+
+  auto CR = MI.getOperand(4);
+  auto flag = !(CR.isReg() && CR.getReg() == Z80::SREG);
 
   // To "insert" a SELECT instruction, we insert the diamond
   // control-flow pattern. The incoming instruction knows the
@@ -1319,14 +1410,29 @@ Z80TargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
     BuildMI(MBB, dl, TII.get(Z80::JRk)).addMBB(FallThrough);
   }
 
+  MachineBasicBlock *xorMBB = nullptr;
+  MachineBasicBlock *checkMBB = nullptr;
+  if (flag) {
+    xorMBB = MF->CreateMachineBasicBlock(LLVM_BB);
+    checkMBB = MF->CreateMachineBasicBlock(LLVM_BB);
+  }
+
   MachineBasicBlock *trueMBB = MF->CreateMachineBasicBlock(LLVM_BB);
   MachineBasicBlock *falseMBB = MF->CreateMachineBasicBlock(LLVM_BB);
+
+  MachineBasicBlock *cbb = flag ? checkMBB : MBB;
 
   MachineFunction::iterator I;
   for (I = MF->begin(); I != MF->end() && &(*I) != MBB; ++I)
     ;
   if (I != MF->end())
     ++I;
+
+  if (flag) {
+    MF->insert(I, xorMBB);
+    MF->insert(I, checkMBB);
+  }
+
   MF->insert(I, trueMBB);
   MF->insert(I, falseMBB);
 
@@ -1340,10 +1446,37 @@ Z80TargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
   Z80CC::CondCodes CC = (Z80CC::CondCodes)MI.getOperand(3).getImm();
   auto opc = isUInt<2>(CC) ? Z80::JRCC : Z80::JPCC;
 
-  BuildMI(MBB, dl, TII.get(opc)).addMBB(trueMBB).addImm(CC);
-  BuildMI(MBB, dl, TII.get(Z80::JRk)).addMBB(falseMBB);
-  MBB->addSuccessor(falseMBB);
-  MBB->addSuccessor(trueMBB);
+  if(flag) {
+    BuildMI(MBB, dl, TII.get(Z80::JPCC)).addMBB(checkMBB).addImm(Z80CC::COND_PO);
+    BuildMI(MBB, dl, TII.get(Z80::JRk)).addMBB(xorMBB);
+    MBB->addSuccessor(checkMBB);
+    MBB->addSuccessor(xorMBB);
+
+    Register tr = CR.getReg();
+
+    auto sz = RI.getTargetRegisterInfo()->getRegSizeInBits(*RI.getRegClass(tr));
+
+    if (sz == 16) {
+      tr = RI.createVirtualRegister(&Z80::ACCRegClass);
+
+      BuildMI(xorMBB, dl, TII.get(Z80::COPY))
+          .addReg(tr, RegState::Define)
+          .addReg(CR.getReg(), RegState::Kill, Z80::sub_hi);
+    }
+
+    BuildMI(xorMBB, dl, TII.get(Z80::XORimm8))
+        .addReg(RI.createVirtualRegister(&Z80::ACCRegClass), RegState::Define | RegState::Dead)
+        .addReg(tr, RegState::Kill)
+        .addImm(0x80);
+    BuildMI(xorMBB, dl, TII.get(Z80::JRk)).addMBB(checkMBB)/*.addReg(Z80::A, RegState::ImplicitKill)*/;
+    xorMBB->addSuccessor(checkMBB);
+    checkMBB->addLiveIn(Z80::SREG);
+  }
+
+  BuildMI(cbb, dl, TII.get(opc)).addMBB(trueMBB).addImm(CC);
+  BuildMI(cbb, dl, TII.get(Z80::JRk)).addMBB(falseMBB);
+  cbb->addSuccessor(falseMBB);
+  cbb->addSuccessor(trueMBB);
 
   // Unconditionally flow back to the true block
   BuildMI(falseMBB, dl, TII.get(Z80::JRk)).addMBB(trueMBB);
@@ -1353,7 +1486,7 @@ Z80TargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
   BuildMI(*trueMBB, trueMBB->begin(), dl, TII.get(Z80::PHI),
           MI.getOperand(0).getReg())
       .addReg(MI.getOperand(1).getReg())
-      .addMBB(MBB)
+      .addMBB(cbb)
       .addReg(MI.getOperand(2).getReg())
       .addMBB(falseMBB);
 

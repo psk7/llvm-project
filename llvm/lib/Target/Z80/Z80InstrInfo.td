@@ -24,9 +24,10 @@ def SDT_Z80Brcond : SDTypeProfile<0, 2,
                                   [SDTCisVT<0, OtherVT>, SDTCisVT<1, i8>]>;
 def SDT_Z80Cmp : SDTypeProfile<0, 2, [SDTCisSameAs<0, 1>]>;
 def SDT_Z80Cp : SDTypeProfile<0, 2, [SDTCisSameAs<0, 1>]>;
+def SDT_Z80Cps : SDTypeProfile<1, 2, [SDTCisSameAs<0, 1>]>;
 def SDT_Z80Tst : SDTypeProfile<0, 1, [SDTCisInt<0>]>;
-def SDT_Z80SelectCC : SDTypeProfile<1, 3, [SDTCisSameAs<0, 1>,
-                                    SDTCisSameAs<1, 2>, SDTCisVT<3, i8>]>;
+def SDT_Z80SelectCC : SDTypeProfile<1, 4, [SDTCisSameAs<0, 1>,
+                                    SDTCisSameAs<1, 2>, SDTCisVT<3, i8>, SDTCisVT<4, i8>]>;
 
 def SDT_Z80Outport : SDTypeProfile<0, 2, [SDTCisVT<0, i8>, SDTCisVT<1, i16>]>;
 
@@ -59,6 +60,7 @@ def Z80brcond : SDNode<"Z80ISD::BRCOND", SDT_Z80Brcond,
                        [SDNPHasChain, SDNPInGlue]>;
 def Z80cmp : SDNode<"Z80ISD::CMP", SDT_Z80Cmp, [SDNPOutGlue]>;
 def Z80cp : SDNode<"Z80ISD::CP", SDT_Z80Cp, [SDNPOutGlue]>;
+def Z80cps : SDNode<"Z80ISD::CPS", SDT_Z80Cps, [SDNPOutGlue]>;
 def Z80cmpc : SDNode<"Z80ISD::CMPC", SDT_Z80Cmp, [SDNPInGlue, SDNPOutGlue]>;
 def Z80tst : SDNode<"Z80ISD::TST", SDT_Z80Tst, [SDNPOutGlue]>;
 def Z80selectcc: SDNode<"Z80ISD::SELECT_CC", SDT_Z80SelectCC, [SDNPInGlue]>;
@@ -481,11 +483,18 @@ Defs = [SREG] in
 let Constraints = "$src = $rd",
 Defs = [SREG] in
 {
-   def SUBRdRr8 : FormB<0xd6,
+   def SUBRdRr8 : FormB<0x90,
                          (outs ACC:$rd), (ins GPR8:$src, GPR8:$rr), "sub  $rd, $rr",
                          [(set i8:$rd, (sub i8:$src, i8:$rr)), (implicit SREG)]>;
 
-   def SBCRdRr16 : FormC<0x42, (outs HLREG:$rd), (ins HLREG:$src, DREGS:$rr), "sbc  $rd, $rr", []>, ED;
+   def SUBRdK : FormI<0xd6,
+                     (outs ACC:$rd), (ins ACC:$src, i8imm:$d8), "sub  $rd, $d8",
+                     [(set i8:$rd, (sub i8:$src, imm:$d8)), (implicit SREG)]>;
+
+   def SUBRdRr16 : Pseudo<(outs HLREG:$rd), (ins HLREG:$src, DREGS:$rr), "sub  $rd, $rr", []>;
+
+   let Uses = [SREG] in
+     def SBCRdRr16 : FormC<0x42, (outs HLREG:$rd), (ins HLREG:$src, DREGS:$rr), "sbc  $rd, $rr", []>, ED;
 
 //  // SUB Rd, Rr
 //  // Subtracts the 8-bit value of Rr from Rd and places the value in Rd.
@@ -504,11 +513,11 @@ Defs = [SREG] in
   // Expands to:
   // sub Rd,   Rr
   // sbc Rd+1, Rr+1
-  def SUBWRdRr : Pseudo<(outs HLREG:$rd),
-                        (ins HLREG:$src, DREGS:$rr),
-                        "subw $rd, $rr",
-                        [(set i16:$rd, (sub i16:$src, i16:$rr)),
-                         (implicit SREG)]>;
+  //def SUBWRdRr : Pseudo<(outs HLREG:$rd),
+  //                      (ins HLREG:$src, DREGS:$rr),
+  //                      "subw $rd, $rr",
+  //                      [(set i16:$rd, (sub i16:$src, i16:$rr)),
+  //                       (implicit SREG)]>;
 
 //  def SUBIRdK : FRdK<0b0101,
 //                     (outs LD8:$rd),
@@ -885,10 +894,10 @@ let Defs = [SREG] in
 //                   []>;
 
     def CPRr8 : FormB<0xb8, (outs), (ins ACC:$rd, GPR8:$rr), "cp   $rd, $rr",
-                      [(Z80cp i8:$rd, i8:$rr), (implicit SREG)]>;
+                      []>;
 
     def CPImm8 : FormI<0xfe, (outs), (ins ACC:$rd, imm_ldi8:$d8), "cp   $rd, $d8",
-                       [(Z80cp i8:$rd, imm:$d8), (implicit SREG)]>;
+                       []>;
 
 //  def CPRdRr : FRdRr<0b0001,
 //                     0b01,
@@ -939,7 +948,7 @@ let Defs = [SREG] in
 // Based on status register. We cannot simplify these into instruction aliases
 // because we also need to be able to specify a pattern to match for ISel.
 
-def jrcondcode : PatLeaf<(imm), [{
+def jrcondcode : PatLeaf<(timm), [{
     return isUInt<2>(N->getZExtValue());
 }]>;
 
@@ -949,6 +958,9 @@ Uses = [SREG] in
 {
   def JRCC : FormJ<0x20, (outs), (ins relbrtarget_7:$d8, condcode:$cc), "jr   $cc, $d8", [(Z80brcond bb:$d8, jrcondcode:$cc)]>;
   def JPCC : FormL<0xc2, (outs), (ins call_target:$d16, condcode:$cc), "jp   $cc, $d16", []>;
+
+  let usesCustomInserter = 1, Uses = [SREG] in
+  def BRCOND : Pseudo<(outs), (ins variable_ops), "#BRCOND", []>;
 }
 
 //===----------------------------------------------------------------------===//
@@ -1489,13 +1501,8 @@ def STDSPQRr : StorePseudo<(outs), (ins memspi:$dst, GPR8:$src), "stdstk\t$dst, 
 def STDWSPQRr : StorePseudo<(outs), (ins memri:$dst, DREGS:$src), "stdwstk\t$dst, $src",
                             [(store i16:$src, addr:$dst)]>;
 
-def Select8 : SelectPseudo<(outs GPR8:$dst), (ins GPR8:$src, GPR8:$src2, i8imm:$cc),
-                           "# Select8 PSEUDO",
-                           [(set i8:$dst, (Z80selectcc i8:$src, i8:$src2, imm:$cc))]>;
-
-def Select16 : SelectPseudo<(outs DREGS:$dst), (ins DREGS:$src, DREGS:$src2, i8imm:$cc),
-                            "# Select16 PSEUDO",
-                            [(set i16:$dst, (Z80selectcc i16:$src, i16:$src2, imm:$cc))]>;
+def Select8 : SelectPseudo<(outs GPR8:$dst), (ins GPR8:$src, GPR8:$src2, variable_ops), "# Select8 PSEUDO", []>;
+def Select16 : SelectPseudo<(outs DREGS:$dst), (ins DREGS:$src, DREGS:$src2, variable_ops), "# Select16 PSEUDO", []>;
 
 //
 //def Lsl8 : ShiftPseudo<
@@ -1682,6 +1689,14 @@ def : Pat<(i16 (Z80Wrapper tblockaddress:$dst)),
 //def : Pat<(Z80lsl i8:$rd),
 //          (ADDRdRr GPR8:$rd, GPR8:$rd)>;
 //
+
+def : Pat<(Z80cps i8:$rd, (i8 1)), (DECRd $rd)>;
+def : Pat<(Z80cps i8:$rd, (i8 imm:$rr)), (SUBRdK $rd, imm:$rr)>;
+def : Pat<(Z80cps i8:$rd, i8:$rr), (SUBRdRr8 $rd, $rr)>;
+def : Pat<(Z80cps i16:$rd, i16:$rr), (SUBRdRr16 $rd, $rr)>;
+
+def : Pat<(Z80cp i8:$rd, i8:$rr),(CPRr8 $rd, $rr)>;
+def : Pat<(Z80cp i8:$rd, imm:$d8),(CPImm8 $rd, $d8)>;
 
 def : Pat<(Z80cp (add i8:$v, -1), 0), (CPIMPLICIT (DECRd $v))>;
 def : Pat<(Z80cp (sub i8:$v, 1),  0), (CPIMPLICIT (DECRd $v))>;

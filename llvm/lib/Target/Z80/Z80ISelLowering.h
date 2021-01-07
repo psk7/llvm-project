@@ -55,7 +55,7 @@ enum NodeType {
   /// or TEST instruction.
   BRCOND,
   /// Compare instruction.
-  CMP, CP,
+  CMP, CP, CPS,
   /// Compare with carry instruction.
   CMPC,
   /// Test for zero or minus instruction.
@@ -184,6 +184,7 @@ protected:
 
 private:
   MachineBasicBlock *insertShift(MachineInstr &MI, MachineBasicBlock *BB) const;
+  MachineBasicBlock *insertBrcond(MachineInstr &MI, MachineBasicBlock *BB) const;
 };
 
 } // end namespace llvm

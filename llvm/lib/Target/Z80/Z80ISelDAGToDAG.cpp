@@ -437,6 +437,62 @@ template <> bool Z80DAGToDAGISel::select<Z80ISD::CP>(SDNode *N) {
   CurDAG->RemoveDeadNode(N);
 }
 
+template <> bool Z80DAGToDAGISel::select<Z80ISD::SELECT_CC>(SDNode *N) {
+  auto op0 = N->getOperand(0);
+  auto op1 = N->getOperand(1);
+  auto op2 = N->getOperand(2);
+  auto op3 = N->getOperand(3);
+
+  SDLoc dl(N);
+
+  auto hasreg = Z80ISD::CPS == op3->getOpcode();
+  auto glue = hasreg ? op3.getValue(1) : op3.getValue(0);
+  auto vt = N->getValueType(0);
+
+  SDNode *c;
+
+  auto opc = vt == MVT::i8 ? Z80::Select8 : Z80::Select16;
+
+  if (hasreg) {
+    SDValue r = op3.getValue(0);
+
+    c = CurDAG->getMachineNode(opc, dl, vt, MVT::Glue,
+                               {op0, op1, op2, r, glue});
+  } else
+    c = CurDAG->getMachineNode(opc, dl, vt, MVT::Glue,
+                           {op0, op1, op2, glue});
+
+  ReplaceUses(SDValue(N, 0), SDValue(c, 0));
+  ReplaceUses(SDValue(N, 1), SDValue(c, 1));
+  CurDAG->RemoveDeadNode(N);
+
+  return true;
+}
+
+template <> bool Z80DAGToDAGISel::select<Z80ISD::BRCOND>(SDNode *N) {
+  auto op0 = N->getOperand(0);  // Entry token
+  auto op1 = N->getOperand(1);  // BB target
+  auto op2 = N->getOperand(2);  // CC
+  auto op3 = N->getOperand(3);  // CP node
+
+  auto reg = op3.getValue(0);
+  auto glue = op3.getValue(1);
+
+  assert(Z80ISD::CPS == op3->getOpcode());
+
+  SDLoc dl(N);
+
+  SDNode *c;
+
+  c = CurDAG->getMachineNode(Z80::BRCOND, dl, MVT::Other,
+                             {op1, op2, reg, op0, glue});
+
+  ReplaceUses(SDValue(N, 0), SDValue(c, 0));
+  CurDAG->RemoveDeadNode(N);
+
+  return true;
+}
+
 void Z80DAGToDAGISel::Select(SDNode *N) {
   // If we have a custom node, we already have selected!
   if (N->isMachineOpcode()) {
@@ -470,6 +526,8 @@ bool Z80DAGToDAGISel::trySelect(SDNode *N) {
   case ISD::OR: return select<ISD::OR>(N);
 
   case Z80ISD::CP: return select<Z80ISD::CP>(N);
+  case Z80ISD::SELECT_CC: return select<Z80ISD::SELECT_CC>(N);
+  case Z80ISD::BRCOND: return select<Z80ISD::BRCOND>(N);
 
   default:           return false;
   }
