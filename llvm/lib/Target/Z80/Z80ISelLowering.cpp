@@ -229,34 +229,13 @@ const char *Z80TargetLowering::getTargetNodeName(unsigned Opcode) const {
     NODE(RETI_FLAG);
     NODE(CALL);
     NODE(WRAPPER);
-    //    NODE(LSL);
-    //    NODE(LSR);
-    //    NODE(ROL);
-    //    NODE(ROR);
-    //    NODE(ASR);
-    //    NODE(LSLLOOP);
-    //    NODE(LSRLOOP);
-    //    NODE(ROLLOOP);
-    //    NODE(RORLOOP);
-    //    NODE(ASRLOOP);
     NODE(BRCOND);
-    NODE(CMP);
     NODE(CP);
     NODE(CPS);
     NODE(CMPC);
     NODE(TST);
     NODE(SELECT_CC);
-
     NODE(ROTSHIFT);
-//    NODE(ROTSHIFTLOOP);
-
-//    NODE(SRL);
-//    NODE(SRA);
-//    NODE(RLC);
-//    NODE(RRC);
-//    NODE(SLA);
-//    NODE(RR);
-//    NODE(RL);
     NODE(OUTPORT);
     NODE(INPORT);
 #undef NODE
@@ -291,20 +270,6 @@ SDValue Z80TargetLowering::LowerShifts(SDValue Op, SelectionDAG &DAG) const {
   case ISD::SRA:
     ROT = Z80II::ROT_SRA;
     break;
-    /*case ISD::ROTL:
-      Opc8 = Z80ISD::ROL;
-      ShiftAmount = ShiftAmount % VT.getSizeInBits();
-      break;
-    case ISD::ROTR:
-      Opc8 = Z80ISD::ROR;
-      ShiftAmount = ShiftAmount % VT.getSizeInBits();
-      break;
-    case ISD::SRL:
-      Opc8 = Z80ISD::SRL;
-      break;
-    case ISD::SHL:
-      Opc8 = Z80ISD::LSL;
-      break;*/
   default:
     llvm_unreachable("Invalid shift opcode");
   }
@@ -560,13 +525,11 @@ SDValue Z80TargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const {
   case ISD::SHL:
   case ISD::SRA:
   case ISD::SRL:
-    //  case ISD::ROTL:
-    //  case ISD::ROTR:
     return LowerShifts(Op, DAG);
   case ISD::GlobalAddress:
     return LowerGlobalAddress(Op, DAG);
-    //  case ISD::BlockAddress:
-    //    return LowerBlockAddress(Op, DAG);
+  case ISD::BlockAddress:
+    return LowerBlockAddress(Op, DAG);
   case ISD::BR_CC:
     return LowerBR_CC(Op, DAG);
   case ISD::SELECT_CC:
