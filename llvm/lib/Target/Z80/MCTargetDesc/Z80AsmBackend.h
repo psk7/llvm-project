@@ -14,7 +14,7 @@
 #ifndef LLVM_Z80_ASM_BACKEND_H
 #define LLVM_Z80_ASM_BACKEND_H
 
-//#include "MCTargetDesc/Z80FixupKinds.h"
+#include "MCTargetDesc/Z80FixupKinds.h"
 
 #include "llvm/ADT/Triple.h"
 #include "llvm/MC/MCAsmBackend.h"
@@ -30,10 +30,8 @@ public:
   Z80AsmBackend(Triple::OSType OSType)
       : MCAsmBackend(support::little), OSType(OSType) {}
 
-/*
   void adjustFixupValue(const MCFixup &Fixup, const MCValue &Target,
                         uint64_t &Value, MCContext *Ctx = nullptr) const;
-*/
 
   std::unique_ptr<MCObjectTargetWriter>
   createObjectTargetWriter() const override;
@@ -46,7 +44,7 @@ public:
   const MCFixupKindInfo &getFixupKindInfo(MCFixupKind Kind) const override;
 
   unsigned getNumFixupKinds() const override {
-    return 0 /*Z80::NumTargetFixupKinds*/;
+    return Z80::NumTargetFixupKinds;
   }
 
   bool mayNeedRelaxation(const MCInst &Inst,
@@ -63,10 +61,8 @@ public:
 
   bool writeNopData(raw_ostream &OS, uint64_t Count) const override;
 
-/*
   bool shouldForceRelocation(const MCAssembler &Asm, const MCFixup &Fixup,
                              const MCValue &Target) override;
-*/
 
 private:
   Triple::OSType OSType;

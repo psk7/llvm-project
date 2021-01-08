@@ -13,7 +13,7 @@ static unsigned getEFlagsForFeatureSet(const FeatureBitset &Features) {
   unsigned EFlags = 0;
 
   // Set architecture
-  if (Features[AVR::ELFArchAVR1])
+ /* if (Features[AVR::ELFArchAVR1])
     EFlags |= ELF::EF_AVR_ARCH_AVR1;
   else if (Features[AVR::ELFArchAVR2])
     EFlags |= ELF::EF_AVR_ARCH_AVR2;
@@ -48,7 +48,7 @@ static unsigned getEFlagsForFeatureSet(const FeatureBitset &Features) {
   else if (Features[AVR::ELFArchXMEGA6])
     EFlags |= ELF::EF_AVR_ARCH_XMEGA6;
   else if (Features[AVR::ELFArchXMEGA7])
-    EFlags |= ELF::EF_AVR_ARCH_XMEGA7;
+    EFlags |= ELF::EF_AVR_ARCH_XMEGA7;*/
 
   return EFlags;
 }

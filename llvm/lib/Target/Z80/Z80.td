@@ -53,18 +53,18 @@ def Z80AsmWriter : AsmWriter {
 // Assembly Parsers
 //===---------------------------------------------------------------------===//
 
-//def Z80AsmParser : AsmParser {
-//  let ShouldEmitMatchRegisterName = 1;
-//  let ShouldEmitMatchRegisterAltName = 1;
-//}
+def Z80AsmParser : AsmParser {
+  let ShouldEmitMatchRegisterName = 1;
+  let ShouldEmitMatchRegisterAltName = 1;
+}
 
-//def Z80AsmParserVariant : AsmParserVariant {
-//  int Variant = 0;
-//
-//  // Recognize hard coded registers.
-// string RegisterPrefix = "$";
-//  string TokenizingCharacters = "+";
-//}
+def Z80AsmParserVariant : AsmParserVariant {
+  int Variant = 0;
+
+  // Recognize hard coded registers.
+  string RegisterPrefix = "$";
+  string TokenizingCharacters = "+";
+}
 
 //===---------------------------------------------------------------------===//
 // Target Declaration
@@ -74,7 +74,7 @@ def Z80 : Target {
   let InstructionSet         = Z80InstrInfo;
   let AssemblyWriters        = [Z80AsmWriter];
 
-//  let AssemblyParsers        = [Z80AsmParser];
-//  let AssemblyParserVariants = [Z80AsmParserVariant];
+  let AssemblyParsers        = [Z80AsmParser];
+  let AssemblyParserVariants = [Z80AsmParserVariant];
 }
 

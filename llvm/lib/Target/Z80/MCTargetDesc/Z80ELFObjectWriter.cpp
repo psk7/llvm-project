@@ -6,7 +6,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-//#include "MCTargetDesc/Z80FixupKinds.h"
+#include "MCTargetDesc/Z80FixupKinds.h"
 #include "MCTargetDesc/Z80MCTargetDesc.h"
 
 #include "llvm/MC/MCAssembler.h"
@@ -80,10 +80,8 @@ unsigned Z80ELFObjectWriter::getRelocType(MCContext &Ctx,
     }
   case Z80::fixup_32:
     return ELF::R_Z80_32;
-  case Z80::fixup_7_pcrel:
-    return ELF::R_Z80_7_PCREL;
-  case Z80::fixup_13_pcrel:
-    return ELF::R_Z80_13_PCREL;
+  case Z80::fixup_8_pcrel:
+    return ELF::R_Z80_8_PCREL;
   case Z80::fixup_16:
     return ELF::R_Z80_16;
   case Z80::fixup_16_pm:

@@ -16,10 +16,10 @@
 #include "llvm/IR/DataLayout.h"
 #include "llvm/Target/TargetMachine.h"
 
-//#include "Z80FrameLowering.h"
-//#include "Z80ISelLowering.h"
-//#include "Z80InstrInfo.h"
-//#include "Z80SelectionDAGInfo.h"
+#include "Z80FrameLowering.h"
+#include "Z80ISelLowering.h"
+#include "Z80InstrInfo.h"
+#include "Z80SelectionDAGInfo.h"
 #include "Z80Subtarget.h"
 
 namespace llvm {

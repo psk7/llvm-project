@@ -10,10 +10,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-//#include "Z80ELFStreamer.h"
+#include "Z80ELFStreamer.h"
 #include "Z80InstPrinter.h"
 #include "Z80MCAsmInfo.h"
-//#include "Z80MCELFStreamer.h"
+#include "Z80MCELFStreamer.h"
 #include "Z80MCTargetDesc.h"
 #include "Z80TargetStreamer.h"
 #include "TargetInfo/Z80TargetInfo.h"
@@ -77,10 +77,10 @@ static MCStreamer *createMCStreamer(const Triple &T, MCContext &Context,
                            std::move(Emitter), RelaxAll);
 }
 
-/*static MCTargetStreamer *
+static MCTargetStreamer *
 createZ80ObjectTargetStreamer(MCStreamer &S, const MCSubtargetInfo &STI) {
   return new Z80ELFStreamer(S, STI);
-}*/
+}
 
 static MCTargetStreamer *createMCAsmTargetStreamer(MCStreamer &S,
                                                    formatted_raw_ostream &OS,
@@ -111,13 +111,11 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeZ80TargetMC() {
   TargetRegistry::RegisterMCCodeEmitter(getTheZ80Target(), createZ80MCCodeEmitter);
 
   // Register the obj streamer
-  //TargetRegistry::RegisterELFStreamer(getTheZ80Target(), createMCStreamer);
+  TargetRegistry::RegisterELFStreamer(getTheZ80Target(), createMCStreamer);
 
   // Register the obj target streamer.
-/*
   TargetRegistry::RegisterObjectTargetStreamer(getTheZ80Target(),
                                                createZ80ObjectTargetStreamer);
-*/
 
   // Register the asm target streamer.
   TargetRegistry::RegisterAsmTargetStreamer(getTheZ80Target(),

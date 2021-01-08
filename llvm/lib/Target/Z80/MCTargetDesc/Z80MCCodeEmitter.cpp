@@ -13,7 +13,7 @@
 #include "Z80MCCodeEmitter.h"
 
 #include "Z80InstrInfo.h"
-//#include "MCTargetDesc/Z80MCExpr.h"
+#include "MCTargetDesc/Z80MCExpr.h"
 #include "MCTargetDesc/Z80MCTargetDesc.h"
 
 #include "llvm/ADT/APFloat.h"
@@ -60,6 +60,13 @@ InstPrefixInfo::InstPrefixInfo(const T &B, const T &E, const MCInstrDesc &MD,
   HasHL = false;
   Displacement = 0;
   HasDisplacement = false;
+  InstrSize = 0;
+  PureSize = 0;
+
+  if(MD.isPseudo())
+    return;
+
+  PureSize = ((MD.TSFlags >> 4) & 0x3) + 1;
 
   for (auto i = B; i != E; ++i) {
     auto &Op = *i;
@@ -103,7 +110,7 @@ InstPrefixInfo::InstPrefixInfo(const T &B, const T &E, const MCInstrDesc &MD,
       report_fatal_error(
           "Unable to mix IX and IY registers in same instruction");
 
-  InstrSize = MD.getSize();
+  InstrSize = PureSize;
   if (HasCB)
     InstrSize += 1;
   if (HasED)
@@ -178,7 +185,7 @@ Z80MCCodeEmitter::loadStorePostEncoder(const MCInst &MI, unsigned EncodedValue,
 
   return EncodedValue;
 }
-
+*/
 template <Z80::Fixups Fixup>
 unsigned
 Z80MCCodeEmitter::encodeRelCondBrTarget(const MCInst &MI, unsigned OpNo,
@@ -187,20 +194,16 @@ Z80MCCodeEmitter::encodeRelCondBrTarget(const MCInst &MI, unsigned OpNo,
   const MCOperand &MO = MI.getOperand(OpNo);
 
   if (MO.isExpr()) {
-    Fixups.push_back(MCFixup::create(0, MO.getExpr(),
+    Fixups.push_back(MCFixup::create(1, MO.getExpr(),
                      MCFixupKind(Fixup), MI.getLoc()));
     return 0;
   }
 
   assert(MO.isImm());
 
-  // Take the size of the current instruction away.
-  // With labels, this is implicitly done.
-  auto target = MO.getImm();
-  Z80::fixups::adjustBranchTarget(target);
-  return target;
+  return MO.getImm();
 }
-
+/*
 unsigned Z80MCCodeEmitter::encodeLDSTPtrReg(const MCInst &MI, unsigned OpNo,
                                             SmallVectorImpl<MCFixup> &Fixups,
                                             const MCSubtargetInfo &STI) const {
@@ -275,7 +278,7 @@ unsigned Z80MCCodeEmitter::encodeComplement(const MCInst &MI, unsigned OpNo,
   auto Imm = MI.getOperand(OpNo).getImm();
   return (~0) - Imm;
 }
-
+*/
 template <Z80::Fixups Fixup, unsigned Offset>
 unsigned Z80MCCodeEmitter::encodeImm(const MCInst &MI, unsigned OpNo,
                                      SmallVectorImpl<MCFixup> &Fixups,
@@ -300,23 +303,21 @@ unsigned Z80MCCodeEmitter::encodeImm(const MCInst &MI, unsigned OpNo,
   assert(MO.isImm());
   return MO.getImm();
 }
-*/
+
 unsigned Z80MCCodeEmitter::encodeCallTarget(const MCInst &MI, unsigned OpNo,
                                             SmallVectorImpl<MCFixup> &Fixups,
                                             const MCSubtargetInfo &STI) const {
   auto MO = MI.getOperand(OpNo);
 
   if (MO.isExpr()) {
-    //MCFixupKind FixupKind = static_cast<MCFixupKind>(Z80::fixup_call);
-    //Fixups.push_back(MCFixup::create(0, MO.getExpr(), FixupKind, MI.getLoc()));
+    MCFixupKind FixupKind = static_cast<MCFixupKind>(Z80::fixup_call);
+    Fixups.push_back(MCFixup::create(1, MO.getExpr(), FixupKind, MI.getLoc()));
     return 0;
   }
 
   assert(MO.isImm());
 
-  auto Target = MO.getImm();
-  //Z80::fixups::adjustBranchTarget(Target);
-  return Target;
+  return MO.getImm();
 }
 
 unsigned Z80MCCodeEmitter::getExprOpValue(const MCExpr *Expr,
@@ -381,17 +382,15 @@ unsigned Z80MCCodeEmitter::getMachineOpValue(const MCInst &MI,
 void Z80MCCodeEmitter::encodeInstruction(const MCInst &MI, raw_ostream &OS,
                                          SmallVectorImpl<MCFixup> &Fixups,
                                          const MCSubtargetInfo &STI) const {
-  const MCInstrDesc &Desc = MCII.get(MI.getOpcode());
+  Z80II::InstPrefixInfo P(MI, MCII);
 
   // Get byte count of instruction
-  unsigned Size = Desc.Size;
+  unsigned Size = P.getSize();
 
   if (Size == 0)
     MI.dump();
 
   assert(Size > 0 && "Instruction size cannot be zero");
-
-  Z80II::InstPrefixInfo P(MI, MCII);
 
   if (P.hasFD())
     OS << (unsigned char)0xFD;
@@ -410,7 +409,9 @@ void Z80MCCodeEmitter::encodeInstruction(const MCInst &MI, raw_ostream &OS,
   if (P.hasDisplacement() && P.hasCB())
     OS << (unsigned char)P.getDisplacement();
 
-  for (int64_t i = 0; i < Size; ++i) {
+  auto ps = P.getPureSize();
+
+  for (int64_t i = 0; i < ps; ++i) {
     uint8_t Word = (BinaryOpCode >> (i * 8)) & 0xFF;
     OS << Word;
   }

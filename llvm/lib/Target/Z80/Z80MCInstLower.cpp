@@ -14,7 +14,7 @@
 #include "Z80MCInstLower.h"
 
 #include "Z80InstrInfo.h"
-//#include "MCTargetDesc/Z80MCExpr.h"
+#include "MCTargetDesc/Z80MCExpr.h"
 
 #include "llvm/CodeGen/AsmPrinter.h"
 #include "llvm/IR/Mangler.h"

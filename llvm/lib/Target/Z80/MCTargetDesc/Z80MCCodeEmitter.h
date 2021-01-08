@@ -14,7 +14,7 @@
 #ifndef LLVM_Z80_CODE_EMITTER_H
 #define LLVM_Z80_CODE_EMITTER_H
 
-//#include "Z80FixupKinds.h"
+#include "Z80FixupKinds.h"
 
 #include "llvm/MC/MCCodeEmitter.h"
 #include "llvm/Support/DataTypes.h"
@@ -53,6 +53,7 @@ private:
   bool HasCB, HasED, HasDD, HasFD;
   bool HasDisplacement;
   unsigned InstrSize;
+  unsigned PureSize;
   unsigned Displacement;
 
   template <class T, class I>
@@ -70,6 +71,7 @@ public:
   unsigned getDisplacement() const { return Displacement; };
 
   unsigned getSize() const { return InstrSize; };
+  unsigned getPureSize() const { return PureSize; };
 };
 
 } // end of namespace Z80II
@@ -88,11 +90,11 @@ private:
   unsigned loadStorePostEncoder(const MCInst &MI, unsigned EncodedValue,
                                 const MCSubtargetInfo &STI) const;
 
-/*  /// Gets the encoding for a conditional branch target.
+  /// Gets the encoding for a conditional branch target.
   template <Z80::Fixups Fixup>
   unsigned encodeRelCondBrTarget(const MCInst &MI, unsigned OpNo,
                                  SmallVectorImpl<MCFixup> &Fixups,
-                                 const MCSubtargetInfo &STI) const;*/
+                                 const MCSubtargetInfo &STI) const;
 
   /// Encodes the `PTRREGS` operand to a load or store instruction.
   unsigned encodeLDSTPtrReg(const MCInst &MI, unsigned OpNo,
@@ -109,12 +111,12 @@ private:
                             SmallVectorImpl<MCFixup> &Fixups,
                             const MCSubtargetInfo &STI) const;
 
-  /*/// Encodes an immediate value with a given fixup.
+  /// Encodes an immediate value with a given fixup.
   /// \tparam Offset The offset into the instruction for the fixup.
   template <Z80::Fixups Fixup, unsigned Offset>
   unsigned encodeImm(const MCInst &MI, unsigned OpNo,
                      SmallVectorImpl<MCFixup> &Fixups,
-                     const MCSubtargetInfo &STI) const;*/
+                     const MCSubtargetInfo &STI) const;
 
   /// Gets the encoding of the target for the `CALL k` instruction.
   unsigned encodeCallTarget(const MCInst &MI, unsigned OpNo,

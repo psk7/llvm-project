@@ -224,16 +224,10 @@ def memspi : Operand<iPTR>
   let MIOperandInfo = (ops SPREG, i16imm);
 }
 
-def relbrtarget_7 : Operand<OtherVT>
+def relbrtarget : Operand<OtherVT>
 {
     let PrintMethod   = "printPCRelImm";
-    //let EncoderMethod = "encodeRelCondBrTarget<Z80::fixup_7_pcrel>";
-}
-
-def brtarget_13 : Operand<OtherVT>
-{
-    let PrintMethod   = "printPCRelImm";
-    //let EncoderMethod = "encodeRelCondBrTarget<Z80::fixup_13_pcrel>";
+    let EncoderMethod = "encodeRelCondBrTarget<Z80::fixup_8_pcrel>";
 }
 
 def condcode : Operand<i8>
@@ -241,7 +235,6 @@ def condcode : Operand<i8>
     let PrintMethod   = "printCondCode";
 }
 
-// The target of a 22 or 16-bit call/jmp instruction.
 def icall_target : Operand<iPTR>
 {
 }
@@ -252,10 +245,9 @@ def call_target : Operand<iPTR>
     let DecoderMethod = "decodeCallTarget";
 }
 
-// A 16-bit address (which can lead to an R_Z80_16 relocation).
 def imm16 : Operand<i16>
 {
-//    let EncoderMethod = "encodeImm<Z80::fixup_16, 2>";
+    let EncoderMethod = "encodeImm<Z80::fixup_16, 1>";
 }
 
 ///// A 6-bit immediate used in the ADIW/SBIW instructions.
@@ -572,8 +564,8 @@ let isBarrier = 1,
 isBranch = 1,
 isTerminator = 1 in
 {
-  def JRk : FormI<0x18, (outs), (ins brtarget_13:$d8), "jr   $d8", [(br bb:$d8)]>;
-  def JMPk : FormF<0xc3, (outs), (ins call_target:$k), "jp   $k", []>;
+  def JRk : FormI<0x18, (outs), (ins relbrtarget:$d8), "jr   $d8", [(br bb:$d8)]>;
+  def JMPk : FormF<0xc3, (outs), (ins call_target:$d16), "jp   $d16", []>;
 }
 
 //===----------------------------------------------------------------------===//
@@ -584,12 +576,12 @@ let isCall = 1 in
   // SP is marked as a use to prevent stack-pointer assignments that appear
   // immediately before calls from potentially appearing dead.
   let Uses = [SP, HL] in
-  def ICALL : FormF<0xcd, (outs), (ins icall_target:$k), "call $k", []>;
+  def ICALL : FormF<0xcd, (outs), (ins call_target:$d16), "call $d16", []>;
 
   // SP is marked as a use to prevent stack-pointer assignments that appear
   // immediately before calls from potentially appearing dead.
   let Uses = [SP] in
-  def CALLk : FormF<0xcd, (outs), (ins call_target:$k), "call $k", [(Z80call imm:$k)]>;
+  def CALLk : FormF<0xcd, (outs), (ins call_target:$d16), "call $d16", [(Z80call imm:$d16)]>;
 }
 
 ////===----------------------------------------------------------------------===//
@@ -632,7 +624,7 @@ let isBranch = 1,
 isTerminator = 1,
 Uses = [SREG] in
 {
-  def JRCC : FormJ<0x20, (outs), (ins relbrtarget_7:$d8, condcode:$cc), "jr   $cc, $d8", [(Z80brcond bb:$d8, jrcondcode:$cc)]>;
+  def JRCC : FormJ<0x20, (outs), (ins relbrtarget:$d8, condcode:$cc), "jr   $cc, $d8", [(Z80brcond bb:$d8, jrcondcode:$cc)]>;
   def JPCC : FormL<0xc2, (outs), (ins call_target:$d16, condcode:$cc), "jp   $cc, $d16", []>;
 
   let usesCustomInserter = 1, Uses = [SREG] in
@@ -666,8 +658,8 @@ let isReMaterializable = 1 in
 let canFoldAsLoad = 1,
 isReMaterializable = 1 in
 {
-  def LDSRdK : FormF<0x3a, (outs ACC:$rd), (ins imm16:$k), "ld   $rd, ($k)",
-                     [(set i8:$rd, (load imm:$k))]>;
+  def LDSRdK : FormF<0x3a, (outs ACC:$rd), (ins imm16:$d16), "ld   $rd, ( $d16 )",
+                     [(set i8:$rd, (load imm:$d16))]>;
 
   //def LD16MEMPTR : FormE<0x4b, (outs DREGS:$rd), (ins imm16:$ptr), "ld   $rd, ($ptr)", []>, ED;
 
@@ -679,7 +671,7 @@ isReMaterializable = 1 in
 let canFoldAsLoad = 1,
 isReMaterializable = 1 in
 {
-  def LDRdPtr : FormH<0x46, (outs GPR8:$rd), (ins HLIXIYREGS:$ptrreg), "ld   $rd, ($ptrreg)",
+  def LDRdPtr : FormH<0x46, (outs GPR8:$rd), (ins HLIXIYREGS:$ptrreg), "ld   $rd, ($ptrreg )",
                       [(set i8:$rd, (load i16:$ptrreg))]>;
 
   let Constraints = "@earlyclobber $reg" in
@@ -706,21 +698,21 @@ isReMaterializable = 1 in
 }
 
 // Indirect store from register to data space.
-def STSKRr : FormF<0x32, (outs), (ins imm16:$d16, ACC:$rd), "ld   ($d16), $rd", [(store i8:$rd, imm:$d16)]>;
+def STSKRr : FormF<0x32, (outs), (ins imm16:$d16, ACC:$rd), "ld   ($d16 ), $rd", [(store i8:$rd, imm:$d16)]>;
 
 def STSWKRr : Pseudo<(outs), (ins i16imm:$dst, DREGS:$src), "stsw\t$dst, $src", [(store i16:$src, imm:$dst)]>;
 
 def OUT16K : FormH<0x41, (outs), (ins BCREG:$port, GPR8:$rd), "out  (c), $rd", [(outport i8:$rd, i16:$port)]>, ED;
-def OUT8K  : FormI<0xd3, (outs), (ins i16imm:$d8, ACC:$rd), "out  ($d8), $rd", [(outport i8:$rd, uimm8:$d8)]>;
+def OUT8K  : FormI<0xd3, (outs), (ins i16imm:$d8, ACC:$rd), "out  ($d8 ), $rd", [(outport i8:$rd, uimm8:$d8)]>;
 def OUT16Z : FormA<0x71, (outs), (ins BCREG:$port, i8imm:$imm), "out  (c), $imm", [(outport immzero:$imm, i16:$port)]>, ED;
 
 let Defs = [SREG] in
 def IN16K : FormH<0x40, (outs GPR8:$rd), (ins BCREG:$port), "in   $rd, (c)", [(set i8:$rd, (inport i16:$port))]>, ED;
 
-def IN8K  : FormI<0xDB, (outs ACC:$rd), (ins i16imm:$d8), "in   $rd, ($d8)", [(set i8:$rd, (inport uimm8:$d8))]>;
+def IN8K  : FormI<0xDB, (outs ACC:$rd), (ins i16imm:$d8), "in   $rd, ($d8 )", [(set i8:$rd, (inport uimm8:$d8))]>;
 
 // Indirect stores.
-def STPtrRr : FormB<0x70, (outs), (ins HLIXIYREGS:$ptrreg, GPR8:$rr), "ld   ($ptrreg), $rr",
+def STPtrRr : FormB<0x70, (outs), (ins HLIXIYREGS:$ptrreg, GPR8:$rr), "ld   ($ptrreg ), $rr",
                     [(store GPR8:$rr, i16:$ptrreg)]>;
 
 def STWPtrRr : Pseudo<(outs), (ins PTRDISPREGS:$ptrreg, DREGS:$reg), "stw  $ptrreg, $reg",

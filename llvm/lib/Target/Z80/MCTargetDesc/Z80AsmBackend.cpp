@@ -11,7 +11,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "MCTargetDesc/Z80AsmBackend.h"
-//#include "MCTargetDesc/Z80FixupKinds.h"
+#include "MCTargetDesc/Z80FixupKinds.h"
 #include "MCTargetDesc/Z80MCTargetDesc.h"
 
 #include "llvm/MC/MCAsmBackend.h"
@@ -104,7 +104,7 @@ static void adjustRelativeBranch(unsigned Size, const MCFixup &Fixup,
   Z80::fixups::adjustBranchTarget(Value);
 */
 }
-/*
+
 /// 22-bit absolute fixup.
 ///
 /// Resolves to:
@@ -113,28 +113,26 @@ static void adjustRelativeBranch(unsigned Size, const MCFixup &Fixup,
 /// Offset of 0 (so the result is left shifted by 3 bits before application).
 static void fixup_call(unsigned Size, const MCFixup &Fixup, uint64_t &Value,
                        MCContext *Ctx = nullptr) {
-  adjustBranch(Size, Fixup, Value, Ctx);
+  llvm_unreachable("fixup_call");
+
+  /*adjustBranch(Size, Fixup, Value, Ctx);
 
   auto top = Value & (0xf00000 << 6);   // the top four bits
   auto middle = Value & (0x1ffff << 5); // the middle 13 bits
   auto bottom = Value & 0x1f;           // end bottom 5 bits
 
-  Value = (top << 6) | (middle << 3) | (bottom << 0);
+  Value = (top << 6) | (middle << 3) | (bottom << 0);*/
 }
 
-/// 7-bit PC-relative fixup.
-///
-/// Resolves to:
-/// 0000 00kk kkkk k000
-/// Offset of 0 (so the result is left shifted by 3 bits before application).
-static void fixup_7_pcrel(unsigned Size, const MCFixup &Fixup, uint64_t &Value,
+/// 8-bit PC-relative fixup.
+static void fixup_8_pcrel(unsigned Size, const MCFixup &Fixup, uint64_t &Value,
                           MCContext *Ctx = nullptr) {
   adjustRelativeBranch(Size, Fixup, Value, Ctx);
 
   // Because the value may be negative, we must mask out the sign bits
   Value &= 0x7f;
 }
-
+/*
 /// 12-bit PC-relative fixup.
 /// Yes, the fixup is 12 bits even though the name says otherwise.
 ///
@@ -251,7 +249,6 @@ static void ms8(unsigned Size, const MCFixup &Fixup, uint64_t &Value,
 
 namespace llvm {
 
-/*
  // Prepare value for the target space for it
 void Z80AsmBackend::adjustFixupValue(const MCFixup &Fixup,
                                      const MCValue &Target,
@@ -264,16 +261,13 @@ void Z80AsmBackend::adjustFixupValue(const MCFixup &Fixup,
   switch (Kind) {
   default:
     llvm_unreachable("unhandled fixup");
-  case Z80::fixup_7_pcrel:
-    adjust::fixup_7_pcrel(Size, Fixup, Value, Ctx);
-    break;
-  case Z80::fixup_13_pcrel:
-    adjust::fixup_13_pcrel(Size, Fixup, Value, Ctx);
+  case Z80::fixup_8_pcrel:
+    adjust::fixup_8_pcrel(Size, Fixup, Value, Ctx);
     break;
   case Z80::fixup_call:
     adjust::fixup_call(Size, Fixup, Value, Ctx);
     break;
-  case Z80::fixup_ldi:
+  /*case Z80::fixup_ldi:
     adjust::ldi::fixup(Size, Fixup, Value, Ctx);
     break;
   case Z80::fixup_lo8_ldi:
@@ -326,13 +320,13 @@ void Z80AsmBackend::adjustFixupValue(const MCFixup &Fixup,
   case Z80::fixup_ms8_ldi_neg:
     adjust::ldi::neg(Value);
     adjust::ldi::ms8(Size, Fixup, Value, Ctx);
-    break;
+    break;*/
   case Z80::fixup_16:
     adjust::unsigned_width(16, Value, std::string("port number"), Fixup, Ctx);
 
     Value &= 0xffff;
     break;
-  case Z80::fixup_16_pm:
+  /*case Z80::fixup_16_pm:
     Value >>= 1; // Flash addresses are always shifted.
     adjust::unsigned_width(16, Value, std::string("port number"), Fixup, Ctx);
 
@@ -363,10 +357,9 @@ void Z80AsmBackend::adjustFixupValue(const MCFixup &Fixup,
 
   case FK_GPRel_4:
     llvm_unreachable("don't know how to adjust this fixup");
-    break;
+    break;*/
   }
 }
- */
 
 std::unique_ptr<MCObjectTargetWriter>
 Z80AsmBackend::createObjectTargetWriter() const {
@@ -380,7 +373,7 @@ void Z80AsmBackend::applyFixup(const MCAssembler &Asm, const MCFixup &Fixup,
                                bool IsResolved,
                                const MCSubtargetInfo *STI) const {
   llvm_unreachable("applyFixup");
-  /*adjustFixupValue(Fixup, Target, Value, &Asm.getContext());
+  adjustFixupValue(Fixup, Target, Value, &Asm.getContext());
   if (Value == 0)
     return; // Doesn't change encoding.
 
@@ -401,12 +394,11 @@ void Z80AsmBackend::applyFixup(const MCAssembler &Asm, const MCFixup &Fixup,
   for (unsigned i = 0; i < NumBytes; ++i) {
     uint8_t mask = (((Value >> (i * 8)) & 0xff));
     Data[Offset + i] |= mask;
-  }*/
+  }
 }
 
 MCFixupKindInfo const &Z80AsmBackend::getFixupKindInfo(MCFixupKind Kind) const {
-  llvm_unreachable("Z80AsmBackend::getFixupKindInfo");
- /* // NOTE: Many Z80 fixups work on sets of non-contignous bits. We work around
+  // NOTE: Many Z80 fixups work on sets of non-contignous bits. We work around
   // this by saying that the fixup is the size of the entire instruction.
   const static MCFixupKindInfo Infos[Z80::NumTargetFixupKinds] = {
       // This table *must* be in same the order of fixup_* kinds in
@@ -415,8 +407,7 @@ MCFixupKindInfo const &Z80AsmBackend::getFixupKindInfo(MCFixupKind Kind) const {
       // name                    offset  bits  flags
       {"fixup_32", 0, 32, 0},
 
-      {"fixup_7_pcrel", 3, 7, MCFixupKindInfo::FKF_IsPCRel},
-      {"fixup_13_pcrel", 0, 12, MCFixupKindInfo::FKF_IsPCRel},
+      {"fixup_8_pcrel", 0, 8, MCFixupKindInfo::FKF_IsPCRel},
 
       {"fixup_16", 0, 16, 0},
       {"fixup_16_pm", 0, 16, 0},
@@ -441,7 +432,7 @@ MCFixupKindInfo const &Z80AsmBackend::getFixupKindInfo(MCFixupKind Kind) const {
       {"fixup_hi8_ldi_pm_neg", 0, 8, 0},
       {"fixup_hh8_ldi_pm_neg", 0, 8, 0},
 
-      {"fixup_call", 0, 22, 0},
+      {"fixup_call", 0, 16, 0},
 
       {"fixup_6", 0, 16, 0}, // non-contiguous
       {"fixup_6_adiw", 0, 6, 0},
@@ -470,7 +461,7 @@ MCFixupKindInfo const &Z80AsmBackend::getFixupKindInfo(MCFixupKind Kind) const {
   assert(unsigned(Kind - FirstTargetFixupKind) < getNumFixupKinds() &&
          "Invalid kind!");
 
-  return Infos[Kind - FirstTargetFixupKind];*/
+  return Infos[Kind - FirstTargetFixupKind];
 }
 
 bool Z80AsmBackend::writeNopData(raw_ostream &OS, uint64_t Count) const {
@@ -484,18 +475,18 @@ bool Z80AsmBackend::writeNopData(raw_ostream &OS, uint64_t Count) const {
   return true;*/
 }
 
-/*bool Z80AsmBackend::shouldForceRelocation(const MCAssembler &Asm,
+bool Z80AsmBackend::shouldForceRelocation(const MCAssembler &Asm,
                                           const MCFixup &Fixup,
                                           const MCValue &Target) {
-  switch ((unsigned) Fixup.getKind()) {
+  llvm_unreachable("Z80AsmBackend::shouldForceRelocation");
+  /*switch ((unsigned) Fixup.getKind()) {
   default: return false;
   // Fixups which should always be recorded as relocations.
-  case Z80::fixup_7_pcrel:
-  case Z80::fixup_13_pcrel:
+  case Z80::fixup_8_pcrel:
   case Z80::fixup_call:
     return true;
-  }
-}*/
+  }*/
+}
 
 MCAsmBackend *createZ80AsmBackend(const Target &T, const MCSubtargetInfo &STI,
                                   const MCRegisterInfo &MRI,

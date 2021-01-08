@@ -242,6 +242,14 @@ public:
     VK_AVR_DIFF16,
     VK_AVR_DIFF32,
 
+    VK_Z80_NONE,
+    VK_Z80_LO8,
+    VK_Z80_HI8,
+    VK_Z80_HLO8,
+    VK_Z80_DIFF8,
+    VK_Z80_DIFF16,
+    VK_Z80_DIFF32,
+
     VK_PPC_LO,              // symbol@l
     VK_PPC_HI,              // symbol@h
     VK_PPC_HA,              // symbol@ha
