@@ -359,6 +359,7 @@ Defs = [SREG] in
 
     def ADDRdRr16 : FormC<0b00001001, (outs HLIXIYREGS:$rd), (ins HLIXIYREGS:$src, DREGS:$rr), "add  $rd, $rr", []>;
 
+    let isCommutable = 1 in
     def ADDWRdRr : Pseudo<(outs HLREG:$rd),
                         (ins HLREG:$src, DREGS:$rr),
                         "addw\t$rd, $rr",
@@ -603,15 +604,15 @@ def CPIMPLICIT : Pseudo<(outs), (ins GPR8:$rr), "cp", []>;
 
 let Defs = [SREG] in
 {
-    def CPRr8 : FormB<0xb8, (outs), (ins ACC:$rd, GPR8:$rr), "cp   $rd, $rr",
-                      []>;
+    def CPRr8 : FormB<0xb8, (outs), (ins ACC:$rd, GPR8:$rr), "cp   $rd, $rr", []>;
 
-    def CPImm8 : FormI<0xfe, (outs), (ins ACC:$rd, imm_ldi8:$d8), "cp   $rd, $d8",
-                       []>;
+    def CPImm8 : FormI<0xfe, (outs), (ins ACC:$rd, imm_ldi8:$d8), "cp   $rd, $d8", []>;
 
-    def CPWRdRr : Pseudo<(outs), (ins HLREG:$src, DREGS:$src2), "!cpw $src, $src2",
-                         [(Z80cp i16:$src, i16:$src2), (implicit SREG)]>;
+    let Constraints = "$dst = $src" in
+    def CPWRdRr : Pseudo<(outs HLREG:$dst), (ins HLREG:$src, DREGS:$src2), "!cpw $src, $src2", []>;
 }
+
+def : Pat<(Z80cp i16:$v1, i16:$v2), (CPWRdRr $v1, $v2)>;
 
 //===----------------------------------------------------------------------===//
 // PC-relative conditional branches
@@ -1071,6 +1072,11 @@ def : Pat<(i16 (or (srl i16:$a, (i8 8)), (shl i16:$b, (i8 8)))),
 def : Pat<(i16 (shl i16:$v, (i8 8))),
     (i16 (INSERT_SUBREG (INSERT_SUBREG (i16 (IMPLICIT_DEF)),
                                     (i8 (EXTRACT_SUBREG $v, sub_hi)), sub_hi), (LDIRdK (i8 0)), sub_lo))>;
+
+// (v1 << 8) | v2
+def : Pat<(i16 (or (shl (i16 (anyext i8:$v1)), (i8 8)), (i16 (zext i8:$v2)))),
+    (i16 (INSERT_SUBREG (INSERT_SUBREG (i16 (IMPLICIT_DEF)), $v1, sub_hi), $v2, sub_lo))>;
+
 
 def : Pat<(i16 (zext (i8 (load addr:$a)))),
            (i16 (INSERT_SUBREG (INSERT_SUBREG (i16 (IMPLICIT_DEF)), (i8 (LDIRdK (i8 0))), sub_hi),

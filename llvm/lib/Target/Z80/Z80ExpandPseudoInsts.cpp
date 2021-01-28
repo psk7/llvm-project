@@ -475,11 +475,11 @@ bool Z80ExpandPseudo::expand<Z80::COMWRd>(Block &MBB, BlockIt MBBI) {
 template <>
 bool Z80ExpandPseudo::expand<Z80::CPWRdRr>(Block &MBB, BlockIt MBBI) {
   MachineInstr &MI = *MBBI;
-  Register DstReg = MI.getOperand(0).getReg();
-  Register SrcReg = MI.getOperand(1).getReg();
-  bool DstIsKill = MI.getOperand(0).isKill();
-  bool SrcIsKill = MI.getOperand(1).isKill();
-  bool ImpIsDead = MI.getOperand(2).isDead();
+  Register DstReg = MI.getOperand(1).getReg();
+  Register SrcReg = MI.getOperand(2).getReg();
+  bool DstIsKill = MI.getOperand(1).isKill();
+  bool SrcIsKill = MI.getOperand(2).isKill();
+  bool ImpIsDead = MI.getOperand(3).isDead();
 
   buildMI(MBB, MBBI, Z80::CLEARC);
 
@@ -489,7 +489,7 @@ bool Z80ExpandPseudo::expand<Z80::CPWRdRr>(Block &MBB, BlockIt MBBI) {
       .addReg(SrcReg, getKillRegState(SrcIsKill));
 
   if (ImpIsDead)
-    MIBHI->getOperand(3).setIsDead();
+    MIBHI->getOperand(4).setIsDead();
 
   // SREG is always implicitly killed
   //MIBHI->getOperand(3).setIsKill();

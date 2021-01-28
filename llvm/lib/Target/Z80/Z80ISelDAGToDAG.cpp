@@ -435,6 +435,8 @@ template <> bool Z80DAGToDAGISel::select<Z80ISD::CP>(SDNode *N) {
 
   ReplaceUses(SDValue(N, 0), SDValue(c, 0));
   CurDAG->RemoveDeadNode(N);
+
+  return true;
 }
 
 template <> bool Z80DAGToDAGISel::select<Z80ISD::SELECT_CC>(SDNode *N) {
@@ -475,17 +477,26 @@ template <> bool Z80DAGToDAGISel::select<Z80ISD::BRCOND>(SDNode *N) {
   auto op2 = N->getOperand(2);  // CC
   auto op3 = N->getOperand(3);  // CP node
 
-  auto reg = op3.getValue(0);
-  auto glue = op3.getValue(1);
-
-  assert(Z80ISD::CPS == op3->getOpcode());
-
   SDLoc dl(N);
+
+  auto opc = op3->getOpcode();
+
+  assert(Z80ISD::CPS == opc || Z80ISD::CP == opc);
+
+  auto hasreg = Z80ISD::CPS == opc;
+  auto glue = hasreg ? op3.getValue(1) : op3.getValue(0);
+
 
   SDNode *c;
 
-  c = CurDAG->getMachineNode(Z80::BRCOND, dl, MVT::Other,
-                             {op1, op2, reg, op0, glue});
+  if (hasreg) {
+    SDValue reg = op3.getValue(0);
+
+    c = CurDAG->getMachineNode(Z80::BRCOND, dl, MVT::Other, MVT::Glue,
+                               {op1, op2, reg, op0, glue});
+  } else
+    c = CurDAG->getMachineNode(Z80::BRCOND, dl, MVT::Other, MVT::Glue,
+                               {op1, op2, op0, glue});
 
   ReplaceUses(SDValue(N, 0), SDValue(c, 0));
   CurDAG->RemoveDeadNode(N);

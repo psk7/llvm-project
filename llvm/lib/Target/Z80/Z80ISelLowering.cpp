@@ -1265,10 +1265,23 @@ MachineBasicBlock *Z80TargetLowering::insertBrcond(MachineInstr &MI,
   MachineRegisterInfo &RI = BB->getParent()->getRegInfo();
 
   auto CR = MI.getOperand(2);
+  auto flag = !(CR.isReg() && CR.getReg() == Z80::SREG);
 
   MachineFunction *MF = BB->getParent();
   const BasicBlock *LLVM_BB = BB->getBasicBlock();
   MachineBasicBlock *FallThrough = BB->getFallThrough();
+
+  Z80CC::CondCodes CC = (Z80CC::CondCodes)MI.getOperand(1).getImm();
+  MachineBasicBlock *trueMBB = MI.getOperand(0).getMBB();
+
+  if (!flag){
+    auto opc = isUInt<2>(CC) ? Z80::JRCC : Z80::JPCC;
+    BuildMI(*BB, MI, dl, TII.get(opc)).addMBB(trueMBB).addImm(CC);
+
+    MI.eraseFromParent();
+
+    return BB;
+  }
 
   if (FallThrough != nullptr) {
     BuildMI(BB, dl, TII.get(Z80::JRk)).addMBB(FallThrough);
@@ -1276,7 +1289,6 @@ MachineBasicBlock *Z80TargetLowering::insertBrcond(MachineInstr &MI,
 
   MachineBasicBlock *xorMBB = MF->CreateMachineBasicBlock(LLVM_BB);
   MachineBasicBlock *checkMBB = MF->CreateMachineBasicBlock(LLVM_BB);
-  MachineBasicBlock *trueMBB = MI.getOperand(0).getMBB();
   MachineBasicBlock *falseMBB = MF->CreateMachineBasicBlock(LLVM_BB);
 
   MachineFunction::iterator I;
@@ -1293,8 +1305,6 @@ MachineBasicBlock *Z80TargetLowering::insertBrcond(MachineInstr &MI,
                   std::next(MachineBasicBlock::iterator(MI)), BB->end());
   falseMBB->transferSuccessorsAndUpdatePHIs(BB);
   falseMBB->removeSuccessor(trueMBB);
-
-  Z80CC::CondCodes CC = (Z80CC::CondCodes)MI.getOperand(1).getImm();
 
   BuildMI(BB, dl, TII.get(Z80::JPCC)).addMBB(checkMBB).addImm(Z80CC::COND_PO);
   BuildMI(BB, dl, TII.get(Z80::JRk)).addMBB(xorMBB);
