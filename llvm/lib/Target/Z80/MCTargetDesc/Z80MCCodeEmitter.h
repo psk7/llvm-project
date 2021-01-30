@@ -49,7 +49,7 @@ enum Prefix {
 
 class InstPrefixInfo {
 private:
-  bool HasHL, HasIX, HasIY;
+  bool HasHL, HasXExtension, HasYExtension;
   bool HasCB, HasED, HasDD, HasFD;
   bool HasDisplacement;
   unsigned InstrSize;

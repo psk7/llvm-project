@@ -46,7 +46,7 @@ public:
   explicit Z80MachineFunctionInfo(MachineFunction &MF)
       : HasSpills(false), HasAllocas(false), HasStackArgs(false),
         CalleeSavedFrameSize(0), VarArgsFrameIndex(0) {
-    unsigned CallConv = MF.getFunction().getCallingConv();
+    //unsigned CallConv = MF.getFunction().getCallingConv();
   }
 
   bool getHasSpills() const { return HasSpills; }

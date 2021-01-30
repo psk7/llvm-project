@@ -93,10 +93,10 @@ Z80TargetLowering::Z80TargetLowering(const Z80TargetMachine &TM,
   setOperationAction(ISD::SRA_PARTS, MVT::i16, Expand);
   setOperationAction(ISD::SRL_PARTS, MVT::i16, Expand);
 
-  //  setOperationAction(ISD::ROTL, MVT::i8, Custom);
-  //  setOperationAction(ISD::ROTL, MVT::i16, Expand);
-  //  setOperationAction(ISD::ROTR, MVT::i8, Custom);
-  //  setOperationAction(ISD::ROTR, MVT::i16, Expand);
+  setOperationAction(ISD::ROTL, MVT::i8, Custom);
+  setOperationAction(ISD::ROTL, MVT::i16, Expand);
+  setOperationAction(ISD::ROTR, MVT::i8, Custom);
+  setOperationAction(ISD::ROTR, MVT::i16, Expand);
 
   setOperationAction(ISD::BR_CC, MVT::i8, Custom);
   setOperationAction(ISD::BR_CC, MVT::i16, Custom);
@@ -115,14 +115,14 @@ Z80TargetLowering::Z80TargetLowering(const Z80TargetMachine &TM,
   setOperationAction(ISD::SELECT, MVT::i8, Expand);
   setOperationAction(ISD::SELECT, MVT::i16, Expand);
 
-  //  setOperationAction(ISD::BSWAP, MVT::i16, Expand);
+  //setOperationAction(ISD::BSWAP, MVT::i16, Expand);
 
   //  setOperationAction(ISD::BR_JT, MVT::Other, Expand);
 
-  //  setOperationAction(ISD::VASTART, MVT::Other, Custom);
-  //  setOperationAction(ISD::VAEND, MVT::Other, Expand);
-  //  setOperationAction(ISD::VAARG, MVT::Other, Expand);
-  //  setOperationAction(ISD::VACOPY, MVT::Other, Expand);
+  setOperationAction(ISD::VASTART, MVT::Other, Custom);
+  setOperationAction(ISD::VAEND, MVT::Other, Expand);
+  setOperationAction(ISD::VAARG, MVT::Other, Expand);
+  setOperationAction(ISD::VACOPY, MVT::Other, Expand);
 
   // Division/remainder
   setOperationAction(ISD::UDIV, MVT::i8, Expand);
@@ -136,8 +136,8 @@ Z80TargetLowering::Z80TargetLowering(const Z80TargetMachine &TM,
 
   // Make division and modulus custom
   setOperationAction(ISD::UDIVREM, MVT::i8, Expand);
-  setOperationAction(ISD::UDIVREM, MVT::i16, Expand);
-  setOperationAction(ISD::UDIVREM, MVT::i32, Expand);
+  setOperationAction(ISD::UDIVREM, MVT::i16, LibCall);
+  setOperationAction(ISD::UDIVREM, MVT::i32, LibCall);
   setOperationAction(ISD::SDIVREM, MVT::i8, Expand);
   setOperationAction(ISD::SDIVREM, MVT::i16, Expand);
   setOperationAction(ISD::SDIVREM, MVT::i32, Expand);
@@ -169,7 +169,7 @@ Z80TargetLowering::Z80TargetLowering(const Z80TargetMachine &TM,
   }
 
   for (MVT VT : MVT::integer_valuetypes()) {
-    //    setOperationAction(ISD::SIGN_EXTEND_INREG, VT, Expand);
+        setOperationAction(ISD::SIGN_EXTEND_INREG, VT, Expand);
     // TODO: The generated code is pretty poor. Investigate using the
     // same "shift and subtract with carry" trick that we do for
     // extending 8-bit to 16-bit. This may require infrastructure
@@ -194,6 +194,7 @@ Z80TargetLowering::Z80TargetLowering(const Z80TargetMachine &TM,
 
   setLibcallCallingConv(RTLIB::MUL_I8, CallingConv::Z80_BUILTIN);
   setLibcallCallingConv(RTLIB::MUL_I16, CallingConv::Z80_BUILTIN);
+  setLibcallCallingConv(RTLIB::MUL_I32, CallingConv::Z80_BUILTIN_32BITARITH);
 
   // Division and modulus rtlib functions
   setLibcallName(RTLIB::SDIVREM_I8, "__divmodqi4");
@@ -208,6 +209,13 @@ Z80TargetLowering::Z80TargetLowering(const Z80TargetMachine &TM,
   setLibcallCallingConv(RTLIB::SDIVREM_I16, CallingConv::Z80_BUILTIN);
   setLibcallCallingConv(RTLIB::UDIVREM_I8, CallingConv::Z80_BUILTIN);
   setLibcallCallingConv(RTLIB::UDIVREM_I16, CallingConv::Z80_BUILTIN);
+
+  setLibcallCallingConv(RTLIB::UDIV_I16, CallingConv::Z80_BUILTIN);
+  setLibcallCallingConv(RTLIB::UDIV_I32, CallingConv::Z80_BUILTIN_32BITARITH);
+  setLibcallCallingConv(RTLIB::UREM_I32, CallingConv::Z80_BUILTIN_32BITARITH);
+
+  setLibcallCallingConv(RTLIB::MEMCPY, CallingConv::Z80_BUILTIN_MEMCPY);
+  setLibcallCallingConv(RTLIB::MEMSET, CallingConv::Z80_BUILTIN);
 
   // Trigonometric rtlib functions
   //  setLibcallName(RTLIB::SIN_F32, "sin");
@@ -234,6 +242,7 @@ const char *Z80TargetLowering::getTargetNodeName(unsigned Opcode) const {
     NODE(CPS);
     NODE(CMPC);
     NODE(TST);
+    NODE(TSTS);
     NODE(SELECT_CC);
     NODE(ROTSHIFT);
     NODE(OUTPORT);
@@ -270,6 +279,12 @@ SDValue Z80TargetLowering::LowerShifts(SDValue Op, SelectionDAG &DAG) const {
   case ISD::SRA:
     ROT = Z80II::ROT_SRA;
     break;
+  case ISD::ROTL:
+    ROT = Z80II::ROT_RLC;
+    break;
+  case ISD::ROTR:
+    ROT = Z80II::ROT_RRC;
+    break;
   default:
     llvm_unreachable("Invalid shift opcode");
   }
@@ -286,6 +301,12 @@ SDValue Z80TargetLowering::LowerShifts(SDValue Op, SelectionDAG &DAG) const {
   SDValue Victim = N->getOperand(0);
 
   if (ISD::SRL == Op.getOpcode() && ShiftAmount == 8)
+    return Op;
+
+  if (ISD::SRL == Op.getOpcode() && ShiftAmount == 15)
+    return Op;
+
+  if (ISD::SHL == Op.getOpcode() && ShiftAmount == 15)
     return Op;
 
   if (ISD::SHL == Op.getOpcode() && ShiftAmount == 8)
@@ -352,6 +373,8 @@ SDValue Z80TargetLowering::getZ80Cmp(SDValue LHS, SDValue RHS, ISD::CondCode CC,
                                      SDLoc DL) const {
   SDValue Cmp;
   EVT VT = LHS.getValueType();
+  bool UseTest = false;
+  bool UseTestS = false;
 
   switch (CC) {
   default:
@@ -365,13 +388,13 @@ SDValue Z80TargetLowering::getZ80Cmp(SDValue LHS, SDValue RHS, ISD::CondCode CC,
   case ISD::SETGT: {
     if (const ConstantSDNode *C = dyn_cast<ConstantSDNode>(RHS)) {
       switch (C->getSExtValue()) {
-      /*case -1: {
+      case -1: {
         // When doing lhs > -1 use a tst instruction on the top part of lhs
         // and use brpl instead of using a chain of cp/cpc.
-        UseTest = true;
-        Z80cc = DAG.getConstant(Z80CC::COND_PL, DL, MVT::i8);
+        UseTestS = true;
+        Z80cc = DAG.getTargetConstant(Z80CC::COND_Z, DL, MVT::i8);
         break;
-      }*/
+      }
       /*case 0: {
         // Turn lhs > 0 into 0 < lhs since 0 can be materialized with
         // __zero_reg__ in lhs.
@@ -406,13 +429,13 @@ SDValue Z80TargetLowering::getZ80Cmp(SDValue LHS, SDValue RHS, ISD::CondCode CC,
           CC = ISD::SETGE;
           break;
         }*/
-        /*case 0: {
+        case 0: {
           // When doing lhs < 0 use a tst instruction on the top part of lhs
           // and use brmi instead of using a chain of cp/cpc.
-          UseTest = true;
-          Z80cc = DAG.getConstant(Z80CC::COND_MI, DL, MVT::i8);
+          UseTestS = true;
+          Z80cc = DAG.getTargetConstant(Z80CC::COND_NZ, DL, MVT::i8);
           break;
-        }*/
+        }
       }
     }
     break;
@@ -436,6 +459,14 @@ SDValue Z80TargetLowering::getZ80Cmp(SDValue LHS, SDValue RHS, ISD::CondCode CC,
     CC = ISD::SETULT;
     break;
   }
+  }
+
+  if (UseTest) {
+    return DAG.getNode(Z80ISD::TST, DL, MVT::Glue, LHS);
+  }
+
+  if (UseTestS) {
+    return DAG.getNode(Z80ISD::TSTS, DL, MVT::Glue, LHS);
   }
 
   if (VT == MVT::i8 || VT == MVT::i16) {
@@ -503,8 +534,7 @@ SDValue Z80TargetLowering::LowerSETCC(SDValue Op, SelectionDAG &DAG) const {
 }
 
 SDValue Z80TargetLowering::LowerVASTART(SDValue Op, SelectionDAG &DAG) const {
-  llvm_unreachable("Z80TargetLowering::LowerVASTART");
-  /*const MachineFunction &MF = DAG.getMachineFunction();
+  const MachineFunction &MF = DAG.getMachineFunction();
   const Z80MachineFunctionInfo *AFI = MF.getInfo<Z80MachineFunctionInfo>();
   const Value *SV = cast<SrcValueSDNode>(Op.getOperand(2))->getValue();
   auto DL = DAG.getDataLayout();
@@ -515,7 +545,7 @@ SDValue Z80TargetLowering::LowerVASTART(SDValue Op, SelectionDAG &DAG) const {
   SDValue FI = DAG.getFrameIndex(AFI->getVarArgsFrameIndex(), getPointerTy(DL));
 
   return DAG.getStore(Op.getOperand(0), dl, FI, Op.getOperand(1),
-                      MachinePointerInfo(SV), 0);*/
+                      MachinePointerInfo(SV), 0);
 }
 
 SDValue Z80TargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const {
@@ -525,6 +555,8 @@ SDValue Z80TargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const {
   case ISD::SHL:
   case ISD::SRA:
   case ISD::SRL:
+  case ISD::ROTL:
+  case ISD::ROTR:
     return LowerShifts(Op, DAG);
   case ISD::GlobalAddress:
     return LowerGlobalAddress(Op, DAG);
@@ -538,24 +570,38 @@ SDValue Z80TargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const {
     return LowerSETCC(Op, DAG);
   case ISD::LOAD: {
     const MemSDNode *mn = dyn_cast<MemSDNode>(Op);
-    if (mn && Z80::AddressSpace::Ports == mn->getMemOperand()->getAddrSpace()) {
-      SDValue Ops[] = {mn->getOperand(0), mn->getOperand(1)};
+    if (mn) {
+      auto adrspc = mn->getMemOperand()->getAddrSpace();
 
-      return DAG.getNode(Z80ISD::INPORT, SDLoc(Op), {MVT::i8, MVT::Other}, Ops);
+      if (Z80::AddressSpace::Ports == adrspc ||
+          Z80::AddressSpace::ShortPorts == adrspc) {
+        SDValue Ops[] = {mn->getOperand(0), mn->getOperand(1),
+                         DAG.getTargetConstant(adrspc, SDLoc(Op), MVT::i8)};
+
+        return DAG.getNode(Z80ISD::INPORT, SDLoc(Op), {MVT::i8, MVT::Other},
+                           Ops);
+      }
     }
     return Op;
   }
   case ISD::STORE: {
     const MemSDNode *mn = dyn_cast<MemSDNode>(Op);
-    if (mn && Z80::AddressSpace::Ports == mn->getMemOperand()->getAddrSpace()) {
-      SDValue Ops[] = {mn->getOperand(0), mn->getOperand(1), mn->getOperand(2)};
+    if (mn) {
+      auto adrspc = mn->getMemOperand()->getAddrSpace();
 
-      return DAG.getNode(Z80ISD::OUTPORT, SDLoc(Op), MVT::Other, Ops);
+      if (Z80::AddressSpace::Ports == adrspc ||
+          Z80::AddressSpace::ShortPorts == adrspc) {
+        SDValue Ops[] = {mn->getOperand(0), mn->getOperand(1),
+                         mn->getOperand(2),
+                         DAG.getTargetConstant(adrspc, SDLoc(Op), MVT::i8)};
+
+        return DAG.getNode(Z80ISD::OUTPORT, SDLoc(Op), MVT::Other, Ops);
+      }
     }
     return Op;
   }
-    //  case ISD::VASTART:
-    //    return LowerVASTART(Op, DAG);
+  case ISD::VASTART:
+    return LowerVASTART(Op, DAG);
   }
 
   return SDValue();
@@ -767,9 +813,17 @@ SDValue Z80TargetLowering::LowerFormalArguments(
   CCState CCInfo(CallConv, isVarArg, DAG.getMachineFunction(), ArgLocs,
                  *DAG.getContext());
 
-  if (CallConv == CallingConv::Z80_BUILTIN){
+  switch (CallConv) {
+  case CallingConv::Z80_BUILTIN:
     CCInfo.AnalyzeFormalArguments(Ins, ArgCC_Z80_Builtin);
-  } else {
+    break;
+  case CallingConv::Z80_BUILTIN_MEMCPY:
+    CCInfo.AnalyzeFormalArguments(Ins, ArgCC_Z80_Builtin_MEMCPY);
+    break;
+  case CallingConv::Z80_BUILTIN_32BITARITH:
+    CCInfo.AnalyzeFormalArguments(Ins, ArgCC_Z80_Builtin_32BitArith);
+    break;
+  default:
     // Variadic functions do not need all the analysis below.
     if (isVarArg) {
       CCInfo.AnalyzeFormalArguments(Ins, ArgCC_Z80_Vararg);
@@ -896,9 +950,17 @@ SDValue Z80TargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
                                          getPointerTy(DAG.getDataLayout()));
   }
 
-  if (CallConv == CallingConv::Z80_BUILTIN){
+  switch (CallConv) {
+  case CallingConv::Z80_BUILTIN:
     CCInfo.AnalyzeCallOperands(Outs, ArgCC_Z80_Builtin);
-  } else {
+    break;
+  case CallingConv::Z80_BUILTIN_MEMCPY:
+    CCInfo.AnalyzeCallOperands(Outs, ArgCC_Z80_Builtin_MEMCPY);
+    break;
+  case CallingConv::Z80_BUILTIN_32BITARITH:
+    CCInfo.AnalyzeCallOperands(Outs, ArgCC_Z80_Builtin_32BitArith);
+    break;
+  default:
     // Variadic functions do not need all the analysis below.
     if (isVarArg) {
       CCInfo.AnalyzeCallOperands(Outs, ArgCC_Z80_Vararg);
@@ -1040,10 +1102,16 @@ SDValue Z80TargetLowering::LowerCallResult(
                  *DAG.getContext());
 
   // Handle runtime calling convs.
-  if (CallConv == CallingConv::Z80_BUILTIN) {
+  switch (CallConv) {
+  case CallingConv::Z80_BUILTIN:
     CCInfo.AnalyzeCallResult(Ins, RetCC_Z80_BUILTIN);
-  } else {
+    break;
+  case CallingConv::Z80_BUILTIN_32BITARITH:
+    CCInfo.AnalyzeCallResult(Ins, RetCC_Z80_BUILTIN_32BitArith);
+    break;
+  default:
     CCInfo.AnalyzeCallResult(Ins, RetCC_Z80_BUILTIN);
+    break;
   }
 
   // Copy all of the result registers out of their specified physreg.
@@ -1070,6 +1138,11 @@ bool Z80TargetLowering::CanLowerReturn(
     CCState CCInfo(CallConv, isVarArg, MF, RVLocs, Context);
     return CCInfo.CheckReturn(Outs, RetCC_Z80_BUILTIN);
   }
+  if (CallConv == CallingConv::Z80_BUILTIN_32BITARITH) {
+    SmallVector<CCValAssign, 16> RVLocs;
+    CCState CCInfo(CallConv, isVarArg, MF, RVLocs, Context);
+    return CCInfo.CheckReturn(Outs, RetCC_Z80_BUILTIN_32BitArith);
+  }
 
   unsigned TotalBytes = getTotalArgumentsSizeInBytes(Outs);
   return TotalBytes <= 4;
@@ -1091,10 +1164,16 @@ Z80TargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
   MachineFunction &MF = DAG.getMachineFunction();
 
   // Analyze return values.
-  if (CallConv == CallingConv::Z80_BUILTIN) {
+  switch (CallConv) {
+  case CallingConv::Z80_BUILTIN:
     CCInfo.AnalyzeReturn(Outs, RetCC_Z80_BUILTIN);
-  } else {
+    break;
+  case CallingConv::Z80_BUILTIN_32BITARITH:
+    CCInfo.AnalyzeReturn(Outs, RetCC_Z80_BUILTIN_32BitArith);
+    break;
+  default:
     CCInfo.AnalyzeReturn(Outs, RetCC_Z80_C);
+    break;
   }
 
   SDValue Flag;
@@ -1224,18 +1303,23 @@ MachineBasicBlock *Z80TargetLowering::insertShift(MachineInstr &MI,
       llvm_unreachable("unable to shift");
     case Z80II::ROT_SLA:
       BuildMI(LoopBB, dl, TII.get(Z80::SLARd), ShiftReg2)
-                         .addReg(ShiftReg)
-                         .addImm(rot);
+                         .addReg(ShiftReg);
       break;
     case Z80II::ROT_SRL:
       BuildMI(LoopBB, dl, TII.get(Z80::SRLRd), ShiftReg2)
-          .addReg(ShiftReg)
-          .addImm(rot);
+          .addReg(ShiftReg);
       break;
     case Z80II::ROT_SRA:
       BuildMI(LoopBB, dl, TII.get(Z80::SRARd), ShiftReg2)
-          .addReg(ShiftReg)
-          .addImm(rot);
+          .addReg(ShiftReg);
+      break;
+    case Z80II::ROT_RLC:
+      BuildMI(LoopBB, dl, TII.get(Z80::RLCRd), ShiftReg2)
+          .addReg(ShiftReg);
+      break;
+    case Z80II::ROT_RRC:
+      BuildMI(LoopBB, dl, TII.get(Z80::RLCRd), ShiftReg2)
+          .addReg(ShiftReg);
       break;
     }
   }

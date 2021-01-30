@@ -33,6 +33,12 @@ namespace llvm {
 #define PRINT_ALIAS_INSTR
 #include "Z80GenAsmWriter.inc"
 
+Z80InstPrinter::Z80InstPrinter(const MCAsmInfo &MAI, const MCInstrInfo &MII,
+                 const MCRegisterInfo &MRI)
+      : MCInstPrinter(MAI, MII, MRI) {
+  //PrintImmHex = true;
+}
+
 void Z80InstPrinter::printInst(const MCInst *MI, uint64_t Address,
                                StringRef Annot, const MCSubtargetInfo &STI,
                                raw_ostream &O) {

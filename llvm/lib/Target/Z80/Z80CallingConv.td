@@ -20,6 +20,11 @@ def RetCC_Z80_BUILTIN : CallingConv
   CCIfType<[i16], CCAssignToReg<[HL]>>
 ]>;
 
+def RetCC_Z80_BUILTIN_32BitArith : CallingConv
+<[
+  CCIfType<[i16], CCAssignToReg<[HL, DE]>>
+]>;
+
 def RetCC_Z80_C : CallingConv
 <[
   CCIfType<[i8], CCAssignToReg<[L, H]>>,
@@ -37,6 +42,16 @@ def ArgCC_Z80_Builtin : CallingConv
   CCIfType<[i16], CCAssignToReg<[HL, DE, BC]>>
 ]>;
 
+def ArgCC_Z80_Builtin_32BitArith : CallingConv
+<[
+  CCIfType<[i16], CCAssignToStack<2, 1>>,
+]>;
+
+def ArgCC_Z80_Builtin_MEMCPY : CallingConv
+<[
+  CCIfType<[i16], CCAssignToReg<[DE, HL, BC]>>
+]>;
+
 def ArgCC_Z80_C : CallingConv
 <[
   CCIfType<[i8], CCAssignToReg<[E, D, C, B]>>,
@@ -48,6 +63,7 @@ def ArgCC_Z80_C : CallingConv
 // Calling convention for variadic functions.
 def ArgCC_Z80_Vararg : CallingConv
 <[
+  CCIfType<[i16], CCAssignToReg<[DE]>>,
   // i16 are always passed through the stack with an alignment of 1.
   CCAssignToStack<2, 1>
 ]>;

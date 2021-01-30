@@ -24,21 +24,26 @@ class FunctionPass;
 
 FunctionPass *createZ80ISelDag(Z80TargetMachine &TM,
                                CodeGenOpt::Level OptLevel);
+ModulePass *createZ80ModuleAnalyzerPass();
 FunctionPass *createZ80BranchRelaxationPass();
 FunctionPass *createZ80ExpandPseudoPass();
+FunctionPass *createZ80SimplifyInstructionsPass();
 FunctionPass *createZ80FrameAnalyzerPass();
 FunctionPass *createZ80RelaxMemPass();
 FunctionPass *createZ80DynAllocaSRPass();
 FunctionPass *createZ80BranchSelectionPass();
 
+void initializeZ80ModuleAnalyzerPass(PassRegistry&);
 void initializeZ80BranchRelaxationPass(PassRegistry&);
+void initializeZ80ModuleAnalyzerPass(PassRegistry&);
 void initializeZ80ExpandPseudoPass(PassRegistry&);
+void initializeZ80SimplifyInstructionsPass(PassRegistry&);
 void initializeZ80RelaxMemPass(PassRegistry&);
 
 /// Contains the Z80 backend.
 namespace Z80 {
 
-enum AddressSpace { DataMemory, Ports = 2 };
+enum AddressSpace { DataMemory, Ports = 2, ShortPorts = 3 };
 
 } // end of namespace Z80
 

@@ -388,45 +388,21 @@ MachineBasicBlock::iterator Z80FrameLowering::eliminateCallFramePseudoInstr(
       BuildMI(MBB, MI, DL, TII.get(Z80::LDSP), Z80::SP)
           .addReg(Z80::IY);
 
-      /*BuildMI(MBB, MI, DL, TII.get(Z80::SPREAD), Z80::IX).addReg(Z80::SP);
-
-      MachineInstr *New = BuildMI(MBB, MI, DL, TII.get(Z80::ADDWRdRr), Z80::IX)
-                              .addReg(Z80::IX, RegState::Kill)
-                              .addImm(-Amount);
-      New->getOperand(3).setIsDead();
-
-      BuildMI(MBB, MI, DL, TII.get(Z80::SPWRITE), Z80::SP)
-          .addReg(Z80::R31R30, RegState::Kill);*/
-
       // Make sure the remaining stack stores are converted to real store
       // instructions.
       fixStackStores(MBB, MI, TII, Z80::IY);
     } else {
       assert(Opcode == TII.getCallFrameDestroyOpcode());
 
-      // Note that small stack changes could be implemented more efficiently
-      // with a few pop instructions instead of the 8-9 instructions now
-      // required.
+      BuildMI(MBB, MI, DL, TII.get(Z80::LDIWRdK), Z80::IY)
+          .addImm(Amount);
 
-      // Select the best opcode to adjust SP based on the offset size.
-      /*unsigned addOpcode;
-      if (isUInt<6>(Amount)) {
-        addOpcode = Z80::ADIWRdK;
-      } else {
-        addOpcode = Z80::SUBIWRdK;
-        Amount = -Amount;
-      }
+      BuildMI(MBB, MI, DL, TII.get(Z80::ADDRdRr16), Z80::IY)
+          .addReg(Z80::IY)
+          .addReg(Z80::SP, RegState::Kill);
 
-      // Build the instruction sequence.
-      BuildMI(MBB, MI, DL, TII.get(Z80::SPREAD), Z80::R31R30).addReg(Z80::SP);
-
-      MachineInstr *New = BuildMI(MBB, MI, DL, TII.get(addOpcode), Z80::R31R30)
-                              .addReg(Z80::R31R30, RegState::Kill)
-                              .addImm(Amount);
-      New->getOperand(3).setIsDead();
-
-      BuildMI(MBB, MI, DL, TII.get(Z80::SPWRITE), Z80::SP)
-          .addReg(Z80::R31R30, RegState::Kill);*/
+      BuildMI(MBB, MI, DL, TII.get(Z80::LDSP), Z80::SP)
+          .addReg(Z80::IY);
     }
   }
 

@@ -35,7 +35,7 @@ Z80RegisterInfo::Z80RegisterInfo() : Z80GenRegisterInfo(0) {}
 
 const uint16_t *
 Z80RegisterInfo::getCalleeSavedRegs(const MachineFunction *MF) const {
-  const Z80MachineFunctionInfo *AFI = MF->getInfo<Z80MachineFunctionInfo>();
+  //const Z80MachineFunctionInfo *AFI = MF->getInfo<Z80MachineFunctionInfo>();
 
   /*return AFI->isInterruptOrSignalHandler()
               ? CSR_Interrupts_SaveList
@@ -47,7 +47,7 @@ Z80RegisterInfo::getCalleeSavedRegs(const MachineFunction *MF) const {
 const uint32_t *
 Z80RegisterInfo::getCallPreservedMask(const MachineFunction &MF,
                                       CallingConv::ID CC) const {
-  const Z80MachineFunctionInfo *AFI = MF.getInfo<Z80MachineFunctionInfo>();
+  //const Z80MachineFunctionInfo *AFI = MF.getInfo<Z80MachineFunctionInfo>();
 
   /*return AFI->isInterruptOrSignalHandler()
               ? CSR_Interrupts_RegMask
@@ -91,7 +91,7 @@ Z80RegisterInfo::getLargestLegalSuperClass(const TargetRegisterClass *RC,
 static void foldFrameOffset(MachineBasicBlock::iterator &II, int &Offset,
                             Register DstReg) {
   MachineInstr &MI = *II;
-  int Opcode = MI.getOpcode();
+//  int Opcode = MI.getOpcode();
 
   // Don't bother trying if the next instruction is not an add or a sub.
 //  if (Opcode != Z80::ADIWRdK) {

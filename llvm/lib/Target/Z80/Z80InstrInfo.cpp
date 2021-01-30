@@ -65,13 +65,18 @@ void Z80InstrInfo::copyPhysReg(MachineBasicBlock &MBB,
     return;
   }
 
-  if ((Z80::XDREGSRegClass.contains(DestReg) && Z80::DREGSRegClass.contains(SrcReg))
-   || (Z80::XDREGSRegClass.contains(SrcReg) && Z80::DREGSRegClass.contains(DestReg)))
-  {
-    BuildMI(MBB, MI, DL, get(Z80::PUSHRr))
+  if ((Z80::XDREGSRegClass.contains(DestReg) &&
+       Z80::DREGSRegClass.contains(SrcReg)) ||
+      (Z80::XDREGSRegClass.contains(SrcReg) &&
+       Z80::DREGSRegClass.contains(DestReg))) {
+
+    BuildMI(MBB, MI, DL, get(Z80::COPYREG), DestReg)
         .addReg(SrcReg, getKillRegState(KillSrc));
 
-    BuildMI(MBB, MI, DL, get(Z80::POPRd), DestReg);
+     /*BuildMI(MBB, MI, DL, get(Z80::PUSHRr))
+         .addReg(SrcReg, getKillRegState(KillSrc));
+
+     BuildMI(MBB, MI, DL, get(Z80::POPRd), DestReg);*/
 
     return;
   }
@@ -106,6 +111,14 @@ void Z80InstrInfo::copyPhysReg(MachineBasicBlock &MBB,
     }*/
   } else {
     if (Z80::GPR8RegClass.contains(DestReg, SrcReg)) {
+
+      if ((Z80::XY_HandLRegClass.contains(SrcReg) &&
+           Z80::HandLRegClass.contains(DestReg)) ||
+          (Z80::XY_HandLRegClass.contains(DestReg) &&
+           Z80::HandLRegClass.contains(SrcReg))) {
+        llvm_unreachable("Impossible reg-to-reg copy");
+      }
+
       Opc = Z80::LDRdRr8;
     } /*else if (SrcReg == Z80::SP && Z80::DREGSRegClass.contains(DestReg)) {
       Opc = Z80::SPREAD;
@@ -594,7 +607,7 @@ bool Z80InstrInfo::isBranchOffsetInRange(unsigned BranchOp,
     llvm_unreachable("unexpected opcode!");
   case Z80::JRk:
   case Z80::JRCC:
-    return isIntN(8, BrOffset);
+    return BrOffset >= -126 && BrOffset <= 129;  //isIntN(8, BrOffset);
   case Z80::JMPk:
   case Z80::JPCC:
   case Z80::CALLk:

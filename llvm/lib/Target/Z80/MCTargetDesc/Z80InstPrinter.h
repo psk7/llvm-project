@@ -23,8 +23,7 @@ namespace llvm {
 class Z80InstPrinter : public MCInstPrinter {
 public:
   Z80InstPrinter(const MCAsmInfo &MAI, const MCInstrInfo &MII,
-                 const MCRegisterInfo &MRI)
-      : MCInstPrinter(MAI, MII, MRI) {}
+                 const MCRegisterInfo &MRI);
 
   static const char *getPrettyRegisterName(unsigned RegNo,
                                            MCRegisterInfo const &MRI);

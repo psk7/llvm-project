@@ -55,8 +55,8 @@ inline bool isImplicitDefOrKill(const MachineOperand &Op){
 template <class T, class I>
 InstPrefixInfo::InstPrefixInfo(const T &B, const T &E, const MCInstrDesc &MD,
                                const I &Inst) {
-  HasIX = false;
-  HasIY = false;
+  HasXExtension = false;
+  HasYExtension = false;
   HasHL = false;
   Displacement = 0;
   HasDisplacement = false;
@@ -73,8 +73,8 @@ InstPrefixInfo::InstPrefixInfo(const T &B, const T &E, const MCInstrDesc &MD,
     if (isImplicitDefOrKill(Op) || !Op.isReg())
       continue;
     unsigned reg = Op.getReg();
-    HasIX |= (reg == Z80::IX);
-    HasIY |= (reg == Z80::IY);
+    HasXExtension |= ((reg == Z80::IX) | (reg == Z80::XL) | (reg == Z80::XH));
+    HasYExtension |= ((reg == Z80::IY) | (reg == Z80::YL) | (reg == Z80::YH));
     HasHL |= (reg == Z80::HL);
 
     auto d = (reg == Z80::IX || reg == Z80::IY) && (MD.TSFlags & (1 << 3));
@@ -92,7 +92,7 @@ InstPrefixInfo::InstPrefixInfo(const T &B, const T &E, const MCInstrDesc &MD,
 
   if (!MD.isPseudo())
   if (!MD.isPseudo())
-    if (HasHL && (HasIX || HasIY)) {
+    if (HasHL && (HasXExtension || HasYExtension)) {
       // Inst.dump();
       report_fatal_error(
           "Unable to mix IX, IY and HL registers in same instruction");
@@ -102,8 +102,8 @@ InstPrefixInfo::InstPrefixInfo(const T &B, const T &E, const MCInstrDesc &MD,
 
   HasCB = Prefixes == CB || Prefixes == DDCB || Prefixes == FDCB;
   HasED = Prefixes == ED;
-  HasDD = Prefixes == DD || Prefixes == DDCB || HasIX;
-  HasFD = Prefixes == FD || Prefixes == FDCB || HasIY;
+  HasDD = Prefixes == DD || Prefixes == DDCB || HasXExtension;
+  HasFD = Prefixes == FD || Prefixes == FDCB || HasYExtension;
 
   if (!MD.isPseudo())
     if (HasDD && HasFD)

@@ -67,6 +67,7 @@ public:
     return getTM<Z80TargetMachine>();
   }
 
+  bool addPreISel() override;
   bool addInstSelector() override;
   void addPreSched2() override;
   void addPreEmitPass() override;
@@ -83,7 +84,9 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeZ80Target() {
   RegisterTargetMachine<Z80TargetMachine> X(getTheZ80Target());
 
   auto &PR = *PassRegistry::getPassRegistry();
+  initializeZ80ModuleAnalyzerPass(PR);
   initializeZ80BranchRelaxationPass(PR);
+  initializeZ80SimplifyInstructionsPass(PR);
   initializeZ80ExpandPseudoPass(PR);
   //initializeZ80RelaxMemPass(PR);
 }
@@ -99,6 +102,11 @@ const Z80Subtarget *Z80TargetMachine::getSubtargetImpl(const Function &) const {
 //===----------------------------------------------------------------------===//
 // Pass Pipeline Configuration
 //===----------------------------------------------------------------------===//
+
+bool Z80PassConfig::addPreISel() {
+  addPass(createZ80ModuleAnalyzerPass());
+  return true;
+}
 
 bool Z80PassConfig::addInstSelector() {
   // Install an instruction selector.
@@ -116,7 +124,9 @@ void Z80PassConfig::addPreRegAlloc() {
 
 void Z80PassConfig::addPreSched2() {
   //addPass(createZ80RelaxMemPass());
+  addPass(createZ80SimplifyInstructionsPass());
   addPass(createZ80ExpandPseudoPass());
+  addPass(createZ80SimplifyInstructionsPass());
 }
 
 void Z80PassConfig::addPreEmitPass() {

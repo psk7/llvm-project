@@ -481,11 +481,10 @@ template <> bool Z80DAGToDAGISel::select<Z80ISD::BRCOND>(SDNode *N) {
 
   auto opc = op3->getOpcode();
 
-  assert(Z80ISD::CPS == opc || Z80ISD::CP == opc);
+  assert(Z80ISD::CPS == opc || Z80ISD::CP == opc || Z80ISD::TST == opc || Z80ISD::TSTS == opc);
 
   auto hasreg = Z80ISD::CPS == opc;
   auto glue = hasreg ? op3.getValue(1) : op3.getValue(0);
-
 
   SDNode *c;
 
