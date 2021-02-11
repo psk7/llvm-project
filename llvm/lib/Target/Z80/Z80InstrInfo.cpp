@@ -347,7 +347,7 @@ bool Z80InstrInfo::analyzeBranch(MachineBasicBlock &MBB,
 
     // Handle unconditional branches.
     //:TODO: add here jmp
-    if (I->getOpcode() == Z80::JRk) {
+    if (I->getOpcode() == Z80::JRk || I->getOpcode() == Z80::JMPk) {
       UnCondBrIter = I;
 
       if (!AllowModify) {
@@ -377,14 +377,14 @@ bool Z80InstrInfo::analyzeBranch(MachineBasicBlock &MBB,
       continue;
     }
 
+    if (I->getOpcode() == Z80::JRk || I->getOpcode() == Z80::JMPk) {
+      return true; // Can't handle indirect branch.
+    }
+
     // Handle conditional branches.
     //Z80CC::CondCodes BranchCode = getCondFromBranchOpc(I->getOpcode());
     Z80CC::CondCodes BranchCode =
         static_cast<Z80CC::CondCodes>(I->getOperand(1).getImm());
-
-    if (I->getOpcode() == Z80::JRk) {
-      return true; // Can't handle indirect branch.
-    }
 
     // Working from the bottom, handle the first conditional branch.
     if (Cond.empty()) {

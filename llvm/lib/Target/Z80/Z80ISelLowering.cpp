@@ -163,9 +163,9 @@ Z80TargetLowering::Z80TargetLowering(const Z80TargetMachine &TM,
   }
 
   for (MVT VT : MVT::integer_valuetypes()) {
-    //    setOperationAction(ISD::CTPOP, VT, Expand);
-    //    setOperationAction(ISD::CTLZ, VT, Expand);
-    //    setOperationAction(ISD::CTTZ, VT, Expand);
+        setOperationAction(ISD::CTPOP, VT, Expand);
+        setOperationAction(ISD::CTLZ, VT, Expand);
+        setOperationAction(ISD::CTTZ, VT, Expand);
   }
 
   for (MVT VT : MVT::integer_valuetypes()) {
@@ -1110,7 +1110,7 @@ SDValue Z80TargetLowering::LowerCallResult(
     CCInfo.AnalyzeCallResult(Ins, RetCC_Z80_BUILTIN_32BitArith);
     break;
   default:
-    CCInfo.AnalyzeCallResult(Ins, RetCC_Z80_BUILTIN);
+    CCInfo.AnalyzeCallResult(Ins, RetCC_Z80_C);
     break;
   }
 
@@ -1419,6 +1419,8 @@ MachineBasicBlock *Z80TargetLowering::insertBrcond(MachineInstr &MI,
   BuildMI(checkMBB, dl, TII.get(Z80::JRk)).addMBB(falseMBB);
   checkMBB->addSuccessor(falseMBB);
   checkMBB->addSuccessor(trueMBB);
+
+  trueMBB->replacePhiUsesWith(falseMBB, checkMBB);
 
   MI.eraseFromParent();
 

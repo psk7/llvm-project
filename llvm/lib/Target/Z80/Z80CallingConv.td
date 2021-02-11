@@ -28,7 +28,7 @@ def RetCC_Z80_BUILTIN_32BitArith : CallingConv
 def RetCC_Z80_C : CallingConv
 <[
   CCIfType<[i8], CCAssignToReg<[L, H]>>,
-  CCIfType<[i16], CCAssignToReg<[HL]>>
+  CCIfType<[i16], CCAssignToReg<[HL, DE]>>
 ]>;
 
 //===----------------------------------------------------------------------===//
@@ -73,4 +73,5 @@ def ArgCC_Z80_Vararg : CallingConv
 //===----------------------------------------------------------------------===//
 
 def CSR_Normal : CalleeSavedRegs<(add BC, DE, IX, IY)>;
+def CSR_Normal_NoDE : CalleeSavedRegs<(add BC, IX, IY)>;
 

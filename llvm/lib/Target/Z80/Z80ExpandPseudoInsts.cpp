@@ -676,8 +676,13 @@ bool Z80ExpandPseudo::expand<Z80::LDDWRdPtrQ>(Block &MBB, BlockIt MBBI) {
 
   if (NeedAcc) {
     Register TmpReg = scavengeGPR8(MI, &Z80::GPR8_NoHLRegClass);
+    bool haspush = false;
 
-    assert(TmpReg != -1);
+    if (TmpReg == -1) {
+      TmpReg = Z80::B;
+      buildMI(MBB, MI, Z80::PUSHRr).addReg(Z80::BC);
+      haspush = true;
+    }
 
     // Load low byte.
     MIBLO = buildMI(MBB, MBBI, Z80::LDDRdPtrQ)
@@ -699,6 +704,9 @@ bool Z80ExpandPseudo::expand<Z80::LDDWRdPtrQ>(Block &MBB, BlockIt MBBI) {
         .addReg(DstHiReg, RegState::Define)
         .addReg(TmpReg, RegState::Kill);
 
+    if (haspush) {
+      buildMI(MBB, MI, Z80::POPRd).addReg(Z80::BC);
+    }
   } else {
     // Load low byte.
     MIBLO = buildMI(MBB, MBBI, Z80::LDDRdPtrQ)

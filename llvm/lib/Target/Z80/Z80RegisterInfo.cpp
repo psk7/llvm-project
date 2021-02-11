@@ -41,6 +41,11 @@ Z80RegisterInfo::getCalleeSavedRegs(const MachineFunction *MF) const {
               ? CSR_Interrupts_SaveList
               : CSR_Normal_SaveList;*/
 
+  auto *t = MF->getFunction().getReturnType();
+
+  if (t->isIntegerTy() && t->getIntegerBitWidth() == 32)
+    return CSR_Normal_NoDE_SaveList;
+
   return CSR_Normal_SaveList;
 }
 
@@ -52,6 +57,11 @@ Z80RegisterInfo::getCallPreservedMask(const MachineFunction &MF,
   /*return AFI->isInterruptOrSignalHandler()
               ? CSR_Interrupts_RegMask
               : CSR_Normal_RegMask;*/
+
+  auto *t = MF.getFunction().getReturnType();
+
+  if (t->isIntegerTy() && t->getIntegerBitWidth() == 32)
+    return CSR_Normal_NoDE_RegMask;
 
   return CSR_Normal_RegMask;
 }
@@ -205,6 +215,17 @@ void Z80RegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
   // to materialize a valid load/store with displacement.
   //:TODO: consider using only one adiw/sbiw chain for more than one frame index
   if (Offset > 126) {
+    BuildMI(MBB, II, dl, TII.get(Z80::LDIWRdK), Z80::IX).addImm(Offset);
+    BuildMI(MBB, II, dl, TII.get(Z80::ADDRdRr16))
+        .addReg(Z80::IX, RegState::Define)
+        .addReg(Z80::IX)
+        .addReg(Z80::SP);
+
+    MI.getOperand(FIOperandNum).ChangeToRegister(Z80::IX, false, false, true);
+    MI.getOperand(FIOperandNum + 1).ChangeToImmediate(0);
+
+    return;
+
     llvm_unreachable("Z80RegisterInfo::eliminateFrameIndex Offset > 126");
     /*unsigned AddOpc = Z80::ADIWRdK, SubOpc = Z80::SBIWRdK;
     int AddOffset = Offset - 63 + 1;
