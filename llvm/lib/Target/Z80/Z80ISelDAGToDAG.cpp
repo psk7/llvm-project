@@ -82,6 +82,12 @@ bool Z80DAGToDAGISel::SelectAddr(SDNode *Op, SDValue N, SDValue &Base,
       return true;
     }
 
+/*    if (N->getOpcode() == ISD::CopyFromReg) {
+      Base = N;
+      Disp = CurDAG->getTargetConstant(0, dl, MVT::i8);
+      return true;
+    }*/
+
     return false;
   }
 
@@ -106,7 +112,23 @@ bool Z80DAGToDAGISel::SelectAddr(SDNode *Op, SDValue N, SDValue &Base,
       return true;
     }
 
-    MemSDNode *mn = dyn_cast<MemSDNode>(Op);
+    MemSDNode *mn = nullptr;
+
+    if (Op->getNumOperands() > 1)
+      mn = dyn_cast<MemSDNode>(Op->getOperand(1));
+
+    if (mn) {
+      MVT VT = mn->getMemoryVT().getSimpleVT();
+
+      if (isInt<8>(RHSC) && (VT == MVT::i8 || VT == MVT::i16)) {
+        Base = N.getOperand(0);
+        Disp = CurDAG->getTargetConstant(RHSC, dl, MVT::i8);
+
+        return true;
+      }
+    }
+
+    mn = dyn_cast<MemSDNode>(Op);
 
     if (!mn)
       return false;

@@ -215,6 +215,17 @@ def memri : Operand<iPTR>
   let ParserMatchClass = MemriAsmOperand;
 }
 
+/// Address operand for `reg+0` used by STD and LDD.
+def memriz : Operand<iPTR>
+{
+  let MIOperandInfo = (ops HLIXIYREGS);
+
+  let PrintMethod = "printMemriz";
+  //let EncoderMethod = "encodeMemri";
+
+  let ParserMatchClass = MemriAsmOperand;
+}
+
 def rottype : Operand<i8>
 {
   let MIOperandInfo = (ops i8imm);
@@ -356,7 +367,7 @@ Constraints = "$src = $rd",
 Defs = [SREG] in
 {
     def ADDRdRr8 : FormB<0b10000000,
-                         (outs ACC:$rd), (ins ACC:$src, GPR8:$rr), "add  $rd, $rr",
+                         (outs ACC:$rd), (ins ACC:$src, GPR8:$rr), "add  $rr",
                          [(set i8:$rd, (add i8:$src, i8:$rr)), (implicit SREG)]>;
 
     def ADDRdRr16 : FormC<0b00001001, (outs HLIXIYREGS:$rd), (ins HLIXIYREGS:$src, DREGS:$rr), "add  $rd, $rr", []>;
@@ -405,7 +416,7 @@ Defs = [SREG] in
   let Uses = [SREG] in
   {
       def SBCRdRr8 : FormB<0x98,
-                           (outs ACC:$rd), (ins GPR8:$src, GPR8:$rr), "sbc  $rd, $rr",
+                           (outs ACC:$rd), (ins GPR8:$src, GPR8:$rr), "sbc  $rr",
                            [(set i8:$rd, (sube i8:$src, i8:$rr)), (implicit SREG)]>;
   }
 }
@@ -527,6 +538,10 @@ def as_i16timm : SDNodeXForm<imm, [{
   return CurDAG->getTargetConstant(N->getSExtValue(), SDLoc(N), MVT::i16);
 }]>;
 
+def as_i8timm : SDNodeXForm<imm, [{
+  return CurDAG->getTargetConstant(N->getSExtValue(), SDLoc(N), MVT::i8);
+}]>;
+
 def SETRESBITWPTR : Pseudo<(outs), (ins memri:$addr, i16imm:$resbit, i16imm:$setbit),
                            "setresbitwptr $addr, $resbit, $setbit", []>;
 
@@ -626,7 +641,10 @@ let Defs = [SREG] in
 {
     def CPRr8 : FormB<0xb8, (outs), (ins ACC:$rd, GPR8:$rr), "cp   $rr", []>;
 
-    def CPImm8 : FormI<0xfe, (outs), (ins ACC:$rd, imm_ldi8:$d8), "cp   $d8", []>;
+    let rr = 6 in
+        def CPRr8Ptr : FormB<0xb8, (outs), (ins ACC:$rd, memri:$addr), "cp   $addr", []>, IsPtrInstr;
+
+    def CPImm8 : FormI<0xfe, (outs), (ins ACC:$rd, i8imm:$d8), "cp   $d8", []>;
 
     let Constraints = "$dst = $src" in
     def CPWRdRr : Pseudo<(outs HLREG:$dst), (ins HLREG:$src, DREGS:$src2), "!cpw $src, $src2", []>;
@@ -696,7 +714,7 @@ isReMaterializable = 1 in
 let canFoldAsLoad = 1,
 isReMaterializable = 1 in
 {
-  def LDRdPtr : FormH<0x46, (outs GPR8:$rd), (ins HLIXIYREGS:$ptrreg), "ld   $rd, ($ptrreg )",
+  def LDRdPtr : FormH<0x46, (outs GPR8:$rd), (ins memriz:$ptrreg), "ld   $rd, $ptrreg",
                       [(set i8:$rd, (load i16:$ptrreg))]>;
 
   let Constraints = "@earlyclobber $reg" in
@@ -749,7 +767,7 @@ def IN8K  : FormI<0xDB, (outs ACC:$rd), (ins i16imm:$d8), "in   $rd, ($d8 )",
                         [(set i8:$rd, (inport uimm8:$d8, PORTS_SHORT))]>;
 
 // Indirect stores.
-def STPtrRr : FormB<0x70, (outs), (ins HLIXIYREGS:$ptrreg, GPR8:$rr), "ld   ($ptrreg ), $rr",
+def STPtrRr : FormB<0x70, (outs), (ins memriz:$ptrreg, GPR8:$rr), "ld   $ptrreg, $rr",
                     [(store GPR8:$rr, i16:$ptrreg)]>;
 
 def STWPtrRr : Pseudo<(outs), (ins PTRDISPREGS:$ptrreg, DREGS:$reg), "stw  $ptrreg, $reg",
@@ -1112,7 +1130,8 @@ def : Pat<(Z80cps i8:$rd, i8:$rr), (SUBRdRr8 $rd, $rr)>;
 def : Pat<(Z80cps i16:$rd, i16:$rr), (SUBRdRr16 $rd, $rr)>;
 
 def : Pat<(Z80cp i8:$rd, i8:$rr),(CPRr8 $rd, $rr)>;
-def : Pat<(Z80cp i8:$rd, imm:$d8),(CPImm8 $rd, $d8)>;
+def : Pat<(Z80cp i8:$rd, (load addr:$addr)), (CPRr8Ptr $rd, memri:$addr)>;
+def : Pat<(Z80cp i8:$rd, imm:$d8),(CPImm8 $rd, (as_i8timm $d8))>;
 
 def : Pat<(Z80cp (add i8:$v, -1), 0), (CPIMPLICIT (DECRd $v))>;
 def : Pat<(Z80cp (sub i8:$v, 1),  0), (CPIMPLICIT (DECRd $v))>;
@@ -1154,7 +1173,10 @@ def : Pat<(i16 (or (srl i16:$a, (i8 8)), (shl i16:$b, (i8 8)))),
 // v << 8
 def : Pat<(i16 (shl i16:$v, (i8 8))),
     (i16 (INSERT_SUBREG (INSERT_SUBREG (i16 (IMPLICIT_DEF)),
-                                    (i8 (EXTRACT_SUBREG $v, sub_hi)), sub_hi), (LDIRdK (i8 0)), sub_lo))>;
+                                    (i8 (EXTRACT_SUBREG $v, sub_lo)), sub_hi), (LDIRdK (i8 0)), sub_lo))>;
+
+def : Pat<(i16 (shl (i16 (anyext i8:$v)), (i8 8))),
+    (i16 (INSERT_SUBREG (INSERT_SUBREG (i16 (IMPLICIT_DEF)), $v, sub_hi), (LDIRdK (i8 0)), sub_lo))>;
 
 // (v1 << 8) | v2
 def : Pat<(i16 (or (shl (i16 (anyext i8:$v1)), (i8 8)), (i16 (zext i8:$v2)))),

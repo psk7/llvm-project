@@ -387,8 +387,10 @@ void Z80MCCodeEmitter::encodeInstruction(const MCInst &MI, raw_ostream &OS,
   // Get byte count of instruction
   unsigned Size = P.getSize();
 
+#if DEBUG
   if (Size == 0)
     MI.dump();
+#endif
 
   assert(Size > 0 && "Instruction size cannot be zero");
 
