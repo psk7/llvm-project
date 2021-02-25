@@ -968,6 +968,14 @@ def CLEARC : FormA<0xb7, (outs), (ins), "or   a", []>;
 def NOP : FormA<0, (outs), (ins), "nop", []>;
 def HALT : FormA<0x76, (outs), (ins), "halt", []>;
 
+let Defs = [SREG, HL, DE, BC] in {
+    def LDIR : FormA<0xb0, (outs), (ins HLREG:$src, DEREG:$dst, BCREG:$cnt), "ldir", []>, ED;
+    def LDI  : FormA<0xa0, (outs), (ins HLREG:$src, DEREG:$dst, BCREG:$cnt), "ldi",  []>, ED;
+
+    def LDDR : FormA<0xb8, (outs), (ins HLREG:$src, DEREG:$dst, BCREG:$cnt), "lddr", []>, ED;
+    def LDD  : FormA<0xa8, (outs), (ins HLREG:$src, DEREG:$dst, BCREG:$cnt), "ldd",  []>, ED;
+}
+
 //===----------------------------------------------------------------------===//
 // Pseudo instructions for later expansion
 //===----------------------------------------------------------------------===//

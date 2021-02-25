@@ -18,6 +18,7 @@ add_llvm_target(Z80CodeGen
   Z80FrameLowering.cpp
   Z80InstrInfo.cpp
   Z80ISelDAGToDAG.cpp
+  Z80SelectionDAGInfo.cpp
   Z80ISelLowering.cpp
   Z80MCInstLower.cpp
 # Z80RelaxMemOperations.cpp

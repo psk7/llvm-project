@@ -190,6 +190,7 @@ def PTRDISPREGS : RegisterClass<"Z80", [i16], 8, ( add IX, IY ), ptr>;
 
 def BCREG : RegisterClass<"Z80", [i16], 8, (add BC)>;
 def HLREG : RegisterClass<"Z80", [i16], 8, (add HL)>;
+def DEREG : RegisterClass<"Z80", [i16], 8, (add DE)>;
 def SPREG : RegisterClass<"Z80", [i16], 8, (add SP)>;
 
 let CopyCost = 3 in

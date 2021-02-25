@@ -20,6 +20,17 @@ namespace llvm {
 /// Holds information about the Z80 instruction selection DAG.
 class Z80SelectionDAGInfo : public SelectionDAGTargetInfo {
 public:
+  SDValue EmitTargetCodeForMemset(SelectionDAG &DAG, const SDLoc &dl,
+                                  SDValue Chain, SDValue Op1, SDValue Op2,
+                                  SDValue Op3, Align Alignment, bool isVolatile,
+                                  MachinePointerInfo DstPtrInfo) const override;
+
+  SDValue EmitTargetCodeForMemcpy(SelectionDAG &DAG, const SDLoc &dl,
+                                  SDValue Chain, SDValue Op1, SDValue Op2,
+                                  SDValue Op3, Align Alignment, bool isVolatile,
+                                  bool AlwaysInline,
+                                  MachinePointerInfo DstPtrInfo,
+                                  MachinePointerInfo SrcPtrInfo) const override;
 };
 
 } // end namespace llvm
