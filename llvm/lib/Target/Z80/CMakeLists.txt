@@ -28,6 +28,7 @@ add_llvm_target(Z80CodeGen
   Z80TargetObjectFile.cpp
   Z80BranchRelaxation.cpp
   Z80SimplifyInstructions.cpp
+  Z80PreRASimplifyInstructions.cpp
   Z80ModuleAnalyzer.cpp
 
   DEPENDS

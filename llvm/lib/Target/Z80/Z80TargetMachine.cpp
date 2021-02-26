@@ -86,6 +86,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeZ80Target() {
   auto &PR = *PassRegistry::getPassRegistry();
   initializeZ80ModuleAnalyzerPass(PR);
   initializeZ80BranchRelaxationPass(PR);
+  initializeZ80PreRASimplifyInstructionsPass(PR);
   initializeZ80SimplifyInstructionsPass(PR);
   initializeZ80ExpandPseudoPass(PR);
   //initializeZ80RelaxMemPass(PR);
@@ -120,6 +121,7 @@ bool Z80PassConfig::addInstSelector() {
 void Z80PassConfig::addPreRegAlloc() {
   // Create the dynalloc SP save/restore pass to handle variable sized allocas.
   addPass(createZ80DynAllocaSRPass());
+  addPass(createZ80PreRASimplifyInstructionsPass());
 }
 
 void Z80PassConfig::addPreSched2() {

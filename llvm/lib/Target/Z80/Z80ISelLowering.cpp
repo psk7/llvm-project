@@ -306,10 +306,7 @@ SDValue Z80TargetLowering::LowerShifts(SDValue Op, SelectionDAG &DAG) const {
   if (ISD::SRL == Op.getOpcode() && ShiftAmount == 15)
     return Op;
 
-  if (ISD::SHL == Op.getOpcode() && ShiftAmount == 15)
-    return Op;
-
-  if (ISD::SHL == Op.getOpcode() && ShiftAmount == 8)
+  if (ISD::SHL == Op.getOpcode() && ShiftAmount >= 8 && ShiftAmount <= 15)
     return Op;
 
   auto SC = DAG.getTargetConstant(1, dl, MVT::i8);

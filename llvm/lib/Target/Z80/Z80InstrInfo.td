@@ -204,6 +204,16 @@ def MemriAsmOperand : AsmOperandClass {
   let ParserMethod = "parseMemriOperand";
 }
 
+def memriall : Operand<iPTR>
+{
+  let MIOperandInfo = (ops HLIXIYREGS, i16imm);
+
+  let PrintMethod = "printMemri";
+  let EncoderMethod = "encodeMemri";
+
+  let ParserMatchClass = MemriAsmOperand;
+}
+
 /// Address operand for `reg+imm` used by STD and LDD.
 def memri : Operand<iPTR>
 {
@@ -471,14 +481,17 @@ def RESBITPTR : FormH<0x86, (outs), (ins memri:$addr, i8imm:$rd), "res  $rd, $ad
 def RESBITWPTR : Pseudo<(outs), (ins memri:$addr, i8imm:$rd), "res  $rd, $addr",
                       [(store (i16 (and (i16 (load addr:$addr)), iobitposn16:$rd)), addr:$addr)]>;
 
-let Constraints = "$dst = $rr" in
-def RESBIT : FormG<0x80, (outs GPR8:$dst), (ins GPR8:$rr, i16imm:$rd), "res  $rd, $rr", []>, CB;
+let Constraints = "$dst = $rr" in {
+    def RESBIT : FormG<0x80, (outs GPR8:$dst), (ins GPR8:$rr, i16imm:$rd), "res  $rd, $rr", []>, CB;
+    def SETBIT : FormG<0xC0, (outs GPR8:$dst), (ins GPR8:$rr, i16imm:$rd), "set  $rd, $rr", []>, CB;
+}
 
-let Constraints = "$dst = $rr" in
-def SETBIT : FormG<0xC0, (outs GPR8:$dst), (ins GPR8:$rr, i16imm:$rd), "set  $rd, $rr", []>, CB;
+let Defs = [SREG] in {
+    let rr=6, mayLoad=1 in
+        def TESTBITPTR : FormG<0x40, (outs), (ins memriall:$addr, i8imm:$rd), "bit  $rd, $addr", []>, CB, IsPtrInstr;
 
-let Constraints = "$dst = $rr", Defs = [SREG] in
-def TESTBIT : FormG<0x40, (outs GPR8:$dst), (ins GPR8:$rr, i8imm:$rd), "bit  $rd, $rr", []>, CB;
+    def TESTBIT : FormG<0x40, (outs), (ins GPR8:$rr, i8imm:$rd), "bit  $rd, $rr", []>, CB;
+}
 
 //def : Pat<(i16 (and i16:$rr, iobitposn16h:$rd)),
 //            (INSERT_SUBREG
@@ -540,6 +553,10 @@ def as_i16timm : SDNodeXForm<imm, [{
 
 def as_i8timm : SDNodeXForm<imm, [{
   return CurDAG->getTargetConstant(N->getSExtValue(), SDLoc(N), MVT::i8);
+}]>;
+
+def as_minus8_timm : SDNodeXForm<imm, [{
+  return CurDAG->getTargetConstant(N->getSExtValue() - 8, SDLoc(N), MVT::i8);
 }]>;
 
 def SETRESBITWPTR : Pseudo<(outs), (ins memri:$addr, i16imm:$resbit, i16imm:$setbit),
@@ -616,8 +633,11 @@ let isCall = 1 in
 
   // SP is marked as a use to prevent stack-pointer assignments that appear
   // immediately before calls from potentially appearing dead.
-  let Uses = [SP] in
-  def CALLk : FormF<0xcd, (outs), (ins call_target:$d16), "call $d16", [(Z80call imm:$d16)]>;
+  let Uses = [SP] in {
+    def CALLk : FormF<0xcd, (outs), (ins call_target:$d16), "call $d16", [(Z80call imm:$d16)]>;
+
+    def CALLCCk : FormL<0xc4, (outs), (ins condcode:$cc, call_target:$d16), "call $cc, $d16", []>;
+  }
 }
 
 ////===----------------------------------------------------------------------===//
@@ -634,9 +654,6 @@ isBarrier = 1 in
 //===----------------------------------------------------------------------===//
 // Compare operations.
 //===----------------------------------------------------------------------===//
-let Defs = [SREG], Uses = [SREG] in
-def CPIMPLICIT : Pseudo<(outs), (ins GPR8:$rr), "cp", []>;
-
 let Defs = [SREG] in
 {
     def CPRr8 : FormB<0xb8, (outs), (ins ACC:$rd, GPR8:$rr), "cp   $rr", []>;
@@ -877,7 +894,6 @@ let Defs = [SREG] in
 
 def : Pat<(Z80rotshift i16:$src, rot:$rot, i16:$amt), (ROT16LOOP $src, $rot, (EXTRACT_SUBREG $amt, sub_lo))>;
 def : Pat<(Z80rotshift i16:$src, rot:$rot, i8:$amt), (ROT16LOOP $src, $rot, $amt)>;
-
 
 //def LDRdIXoffs : FormD<0x46, (outs GPR8:$rd), (ins memri:$d8), "ld   $rd, ($d8)",
 //                         [(set i8:$rd, (load addr:$d8))]>;
@@ -1123,8 +1139,8 @@ def : Pat<(i16 (Z80Wrapper tblockaddress:$dst)),
 // Lowering of 'tst' node to 'TST' instruction.
 // TST is an alias of AND Rd, Rd.
 def : Pat<(Z80tst i8:$rd), (ANDrr8 ACC:$rd, GPR8:$rd)>;
-def : Pat<(Z80tsts i8:$rd), (ANDimm8 ACC:$rd, 0x80)>;
-def : Pat<(Z80tsts i16:$rd), (ANDimm8 (EXTRACT_SUBREG $rd, sub_hi), 0x80)>;
+def : Pat<(Z80tsts i8:$rd), (TESTBIT $rd, 7)>;
+def : Pat<(Z80tsts i16:$rd), (TESTBIT (EXTRACT_SUBREG $rd, sub_hi), 7)>;
 
 //// Lowering of 'lsl' node to 'LSL' instruction.
 //// LSL is an alias of 'ADD Rd, Rd'
@@ -1139,15 +1155,9 @@ def : Pat<(Z80cps i16:$rd, i16:$rr), (SUBRdRr16 $rd, $rr)>;
 
 def : Pat<(Z80cp i8:$rd, i8:$rr),(CPRr8 $rd, $rr)>;
 def : Pat<(Z80cp i8:$rd, (load addr:$addr)), (CPRr8Ptr $rd, memri:$addr)>;
-def : Pat<(Z80cp i8:$rd, imm:$d8),(CPImm8 $rd, (as_i8timm $d8))>;
-
-def : Pat<(Z80cp (add i8:$v, -1), 0), (CPIMPLICIT (DECRd $v))>;
-def : Pat<(Z80cp (sub i8:$v, 1),  0), (CPIMPLICIT (DECRd $v))>;
-
-def : Pat<(Z80cp (and i8:$v, iobitposn8:$a),  0), (CPIMPLICIT (TESTBIT $v, iobitposn8:$a))>;
-
-//def : Pat<(Z80cp (and i8:$v, imm:$a),  0), (CPIMPLICIT (ANDimm8 $v, imm:$a))>;
-//def : Pat<(Z80cp (or i8:$v, imm:$a),  0), (CPIMPLICIT (ORimm8 $v, imm:$a))>;
+def : Pat<(Z80cp i8:$rd, imm:$d8), (CPImm8 $rd, (as_i8timm $d8))>;
+def : Pat<(Z80cp (and i8:$v, iobitpos8:$a),  0), (TESTBIT $v, iobitpos8:$a)>;
+//def : Pat<(Z80cp (and (i8 (load addr:$v)), iobitpos8:$a),  0), (TESTBITPTR addr:$v, iobitpos8:$a)>;
 
 def : Pat<(Z80cp i8:$rd, 0), (ORrr8 $rd, $rd)>;
 def : Pat<(Z80cp i16:$rd, 0), (ORrr8 (EXTRACT_SUBREG $rd, sub_lo), (EXTRACT_SUBREG $rd, sub_hi))>;
@@ -1182,6 +1192,42 @@ def : Pat<(i16 (or (srl i16:$a, (i8 8)), (shl i16:$b, (i8 8)))),
 def : Pat<(i16 (shl i16:$v, (i8 8))),
     (i16 (INSERT_SUBREG (INSERT_SUBREG (i16 (IMPLICIT_DEF)),
                                     (i8 (EXTRACT_SUBREG $v, sub_lo)), sub_hi), (LDIRdK (i8 0)), sub_lo))>;
+
+// v << 9
+def : Pat<(i16 (shl i16:$v, (i8 9))),
+    (i16 (INSERT_SUBREG (INSERT_SUBREG (i16 (IMPLICIT_DEF)),
+                                    (SLARd (i8 (EXTRACT_SUBREG $v, sub_lo)))
+                                    , sub_hi), (LDIRdK (i8 0)), sub_lo))>;
+
+// v << 10
+def : Pat<(i16 (shl i16:$v, (i8 10))),
+    (i16 (INSERT_SUBREG (INSERT_SUBREG (i16 (IMPLICIT_DEF)),
+                                    (SLARd (SLARd (i8 (EXTRACT_SUBREG $v, sub_lo))))
+                                    , sub_hi), (LDIRdK (i8 0)), sub_lo))>;
+
+// v << 11
+def : Pat<(i16 (shl i16:$v, (i8 11))),
+    (i16 (INSERT_SUBREG (INSERT_SUBREG (i16 (IMPLICIT_DEF)),
+                                    (SLARd (SLARd (SLARd (i8 (EXTRACT_SUBREG $v, sub_lo)))))
+                                    , sub_hi), (LDIRdK (i8 0)), sub_lo))>;
+
+// v << 12
+def : Pat<(i16 (shl i16:$v, (i8 12))),
+    (i16 (INSERT_SUBREG (INSERT_SUBREG (i16 (IMPLICIT_DEF)),
+                                    (SLARd (SLARd (SLARd (SLARd (i8 (EXTRACT_SUBREG $v, sub_lo))))))
+                                    , sub_hi), (LDIRdK (i8 0)), sub_lo))>;
+
+// v << 13
+def : Pat<(i16 (shl i16:$v, (i8 13))),
+    (i16 (INSERT_SUBREG (INSERT_SUBREG (i16 (IMPLICIT_DEF)),
+                                    (SLARd (SLARd (SLARd (SLARd (SLARd (i8 (EXTRACT_SUBREG $v, sub_lo)))))))
+                                    , sub_hi), (LDIRdK (i8 0)), sub_lo))>;
+
+// v << 14
+def : Pat<(i16 (shl i16:$v, (i8 14))),
+    (i16 (INSERT_SUBREG (INSERT_SUBREG (i16 (IMPLICIT_DEF)),
+                                    (SLARd (SLARd (SLARd (SLARd (SLARd (SLARd (i8 (EXTRACT_SUBREG $v, sub_lo))))))))
+                                    , sub_hi), (LDIRdK (i8 0)), sub_lo))>;
 
 def : Pat<(i16 (shl (i16 (anyext i8:$v)), (i8 8))),
     (i16 (INSERT_SUBREG (INSERT_SUBREG (i16 (IMPLICIT_DEF)), $v, sub_hi), (LDIRdK (i8 0)), sub_lo))>;

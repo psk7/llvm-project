@@ -179,8 +179,8 @@ void Z80InstPrinter::printPCRelImm(const MCInst *MI, unsigned OpNo,
 void Z80InstPrinter::printCondCode(const MCInst *MI, unsigned OpNo,
                                    raw_ostream &O) {
   const unsigned opcode = MI->getOpcode();
-  assert((Z80::JRCC == opcode || Z80::JPCC == opcode) &&
-         "Opcode MUST BE JRCC OR JPCC");
+  assert((Z80::JRCC == opcode || Z80::JPCC == opcode || Z80::CALLCCk == opcode) &&
+         "Opcode MUST BE JRCC or JPCC or CALLCC");
 
   auto cc = static_cast<Z80CC::CondCodes>(MI->getOperand(OpNo).getImm());
 
@@ -220,23 +220,30 @@ void Z80InstPrinter::printMemri(const MCInst *MI, unsigned OpNo,
 
   const MCOperand &OffsetOp = MI->getOperand(OpNo + 1);
 
+  bool OpIsHL = Z80::HL == MI->getOperand(OpNo).getReg();
+
+  if(OpIsHL)
+    assert(OffsetOp.isImm() && OffsetOp.getImm() == 0);
+
   O << "(";
 
   // Print the register.
   printOperand(MI, OpNo, O);
 
-  // Print the {+,-}offset.
-  if (OffsetOp.isImm()) {
-    int64_t Offset = OffsetOp.getImm();
+  if (!OpIsHL) {
+    // Print the {+,-}offset.
+    if (OffsetOp.isImm()) {
+      int64_t Offset = OffsetOp.getImm();
 
-    if (Offset >= 0)
-      O << '+';
+      if (Offset >= 0)
+        O << '+';
 
-    O << Offset;
-  } else if (OffsetOp.isExpr()) {
-    O << *OffsetOp.getExpr();
-  } else {
-    llvm_unreachable("unknown type for offset");
+      O << Offset;
+    } else if (OffsetOp.isExpr()) {
+      O << *OffsetOp.getExpr();
+    } else {
+      llvm_unreachable("unknown type for offset");
+    }
   }
 
   O << ")";

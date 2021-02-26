@@ -28,6 +28,7 @@ ModulePass *createZ80ModuleAnalyzerPass();
 FunctionPass *createZ80BranchRelaxationPass();
 FunctionPass *createZ80ExpandPseudoPass();
 FunctionPass *createZ80SimplifyInstructionsPass();
+FunctionPass *createZ80PreRASimplifyInstructionsPass();
 FunctionPass *createZ80FrameAnalyzerPass();
 FunctionPass *createZ80RelaxMemPass();
 FunctionPass *createZ80DynAllocaSRPass();
@@ -37,6 +38,7 @@ void initializeZ80ModuleAnalyzerPass(PassRegistry&);
 void initializeZ80BranchRelaxationPass(PassRegistry&);
 void initializeZ80ModuleAnalyzerPass(PassRegistry&);
 void initializeZ80ExpandPseudoPass(PassRegistry&);
+void initializeZ80PreRASimplifyInstructionsPass(PassRegistry&);
 void initializeZ80SimplifyInstructionsPass(PassRegistry&);
 void initializeZ80RelaxMemPass(PassRegistry&);
 

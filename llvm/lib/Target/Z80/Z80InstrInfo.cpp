@@ -611,6 +611,7 @@ bool Z80InstrInfo::isBranchOffsetInRange(unsigned BranchOp,
   case Z80::JMPk:
   case Z80::JPCC:
   case Z80::CALLk:
+  case Z80::CALLCCk:
     return true;
   }
 }

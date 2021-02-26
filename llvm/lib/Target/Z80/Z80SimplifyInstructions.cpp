@@ -49,7 +49,7 @@ private:
   typedef Block::iterator BlockIt;
 
   const Z80RegisterInfo *TRI;
-  const TargetInstrInfo *TII;
+  const Z80InstrInfo *TII;
 
   MachineInstrBuilder buildMI(Block &MBB, BlockIt MBBI, unsigned Opcode) {
     return BuildMI(MBB, MBBI, MBBI->getDebugLoc(), TII->get(Opcode));
@@ -159,6 +159,77 @@ bool Z80SimplifyInstructions::expand<Z80::ORrr8>(Block &MBB, BlockIt MBBI) {
   return true;
 }
 
+template <>
+bool Z80SimplifyInstructions::expand<Z80::TESTBIT>(Block &MBB, BlockIt MBBI) {
+  MachineInstr &MI = *MBBI;
+
+  MachineOperand &Op0 = MI.getOperand(0);
+  MachineOperand &Op1 = MI.getOperand(1);
+
+  if (!(Op0.isReg() && Z80::A == Op0.getReg() && Op0.isKill() && Op1.isImm()))
+    return false;
+
+  buildMI(MBB, MBBI, Z80::ANDimm8)
+      .addReg(Z80::A, RegState::Define | getDeadRegState(true))
+      .addReg(Z80::A, getKillRegState(true))
+      .addImm(1 << Op1.getImm());
+
+  MI.eraseFromParent();
+
+  return true;
+}
+
+template <>
+bool Z80SimplifyInstructions::expand<Z80::JRCC>(Block &MBB, BlockIt MBBI) {
+  MachineInstr &MI = *MBBI;
+
+  BlockIt NMBBI = std::next(MBBI);
+
+  if (NMBBI != MBB.end())
+    return false;
+
+  auto *FallThrough = MBB.getFallThrough();
+  if (!FallThrough)
+    return false;
+
+  auto *Target = MI.getOperand(0).getMBB();
+
+  auto *CallFallThrough = FallThrough->getFallThrough();
+  if (!CallFallThrough)
+    return false;
+
+  if (Target != CallFallThrough)
+    return false;
+
+  for(auto *Predecessor : FallThrough->predecessors())
+    if (Predecessor != &MBB)
+      return false;
+
+  if (FallThrough->size() != 1)
+    return false;
+
+  MachineInstr &MICall = *FallThrough->begin();
+
+  Z80CC::CondCodes BranchCode =
+      static_cast<Z80CC::CondCodes>(MI.getOperand(1).getImm());
+
+  BranchCode = TII->getOppositeCondition(BranchCode);
+
+  MachineInstrBuilder NewCall =
+      buildMI(MBB, MBBI, Z80::CALLCCk).addImm(BranchCode);
+
+  for(auto &Op : MICall.operands())
+    NewCall.add(Op);
+
+  MI.eraseFromParent();
+
+  MBB.removeSuccessor(FallThrough);
+  FallThrough->removeSuccessor(CallFallThrough);
+  FallThrough->eraseFromParent();
+
+  return true;
+}
+
 bool Z80SimplifyInstructions::runOnMachineFunction(MachineFunction &MF) {
   bool Modified = false;
 
@@ -192,6 +263,8 @@ bool Z80SimplifyInstructions::expandMI(Block &MBB, BlockIt MBBI) {
     EXPAND(Z80::RRRd);
     EXPAND(Z80::RLRd);
     EXPAND(Z80::ORrr8);
+    EXPAND(Z80::TESTBIT);
+    EXPAND(Z80::JRCC);
   }
 
 #undef EXPAND
