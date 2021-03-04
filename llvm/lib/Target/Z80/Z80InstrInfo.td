@@ -608,6 +608,8 @@ def STWPTR : Pseudo<(outs), (ins memriz:$ptr, DREGS:$reg), "!stw  $ptr, $reg", [
 def STDPTR : FormB<0x70, (outs), (ins memri:$d8, BGPR8:$rr), "ld   $d8, $rr",
                        [(store i8:$rr, addr:$d8)]>, IsPtrInstr;
 
+def STDPTR_P : Pseudo<(outs), (ins memri:$d8, GPR8:$rr), "!ld   $d8, $rr", []>;
+
 def STDWPTR : Pseudo<(outs), (ins memri:$addr, DREGS:$src), "!stdw\t$addr, $src",
                        [(store i16:$src, addr:$addr)]>;
 

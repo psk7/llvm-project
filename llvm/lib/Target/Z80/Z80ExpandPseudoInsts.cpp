@@ -992,7 +992,8 @@ template <> bool Z80ExpandPseudo::expand<Z80::COPYREG>(Block &MBB, BlockIt MBBI)
   if (!NeedIntermediateReg) {
     buildMI(MBB, MBBI, Z80::LD)
         .addReg(DstReg, RegState::Define | getDeadRegState(DstIsDead))
-        .addReg(SrcReg, getKillRegState(SrcIsKill));
+        .addReg(SrcReg, getKillRegState(SrcIsKill))
+        .copyImplicitOps(MI);
 
     MI.eraseFromParent();
     return true;
@@ -1020,7 +1021,8 @@ template <> bool Z80ExpandPseudo::expand<Z80::COPYREG>(Block &MBB, BlockIt MBBI)
 
   buildMI(MBB, MBBI, Z80::LD)
       .addReg(DstReg, RegState::Define | getDeadRegState(DstIsDead))
-      .addReg(IntermediateReg, getKillRegState(true));
+      .addReg(IntermediateReg, getKillRegState(true))
+      .copyImplicitOps(MI);
 
   if (UsingAltAF) {
     buildMI(MBB, MBBI, Z80::EXAF);
@@ -1079,6 +1081,36 @@ template <> bool Z80ExpandPseudo::expand<Z80::COPYREGW>(Block &MBB, BlockIt MBBI
   return true;
 }
 
+template <> bool Z80ExpandPseudo::expand<Z80::STDPTR_P>(Block &MBB, BlockIt MBBI) {
+  MachineInstr &MI = *MBBI;
+
+  Register Reg = MI.getOperand(2).getReg();
+  Register Ptr = MI.getOperand(0).getReg();
+  bool RegIsKill = MI.getOperand(2).isKill();
+  bool PtrIsKill = MI.getOperand(0).isKill();
+  auto Offset = MI.getOperand(1).getImm();
+
+  if (Z80::XL != Reg && Z80::XH != Reg && Z80::YL != Reg && Z80::YH != Reg) {
+    MI.setDesc(TII->get(Z80::STDPTR));
+    return true;
+  }
+
+  Register TempReg = scavengeGPR8(MI, &Z80::GPR8_NoHLRegClass);
+
+  if (TempReg == -1)
+    return false;
+
+  buildMI(MBB, MBBI, Z80::LD, TempReg).addReg(Reg, getKillRegState(RegIsKill));
+  buildMI(MBB, MBBI, Z80::STDPTR)
+      .addReg(Ptr, getKillRegState(PtrIsKill))
+      .addImm(Offset)
+      .addReg(TempReg, getKillRegState(true));
+
+  MI.eraseFromParent();
+
+  return true;
+}
+
 bool Z80ExpandPseudo::expandMI(Block &MBB, BlockIt MBBI) {
   MachineInstr &MI = *MBBI;
   int Opcode = MBBI->getOpcode();
@@ -1108,6 +1140,7 @@ bool Z80ExpandPseudo::expandMI(Block &MBB, BlockIt MBBI) {
     EXPAND(Z80::COPYREG);
     EXPAND(Z80::COPYREGW);
     EXPAND(Z80::LDSTDWPTR);
+    EXPAND(Z80::STDPTR_P);
     return true;
   }
 #undef EXPAND

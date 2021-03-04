@@ -125,7 +125,7 @@ void Z80InstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
 
   unsigned Opcode = 0;
   if (TRI->isTypeLegalForClass(*RC, MVT::i8)) {
-    Opcode = Z80::STDPTR;
+    Opcode = Z80::STDPTR_P;
   } else if (TRI->isTypeLegalForClass(*RC, MVT::i16)) {
     Opcode = Z80::STDWPTR;
   } else {
