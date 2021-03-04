@@ -32,8 +32,7 @@ public:
                  const MCSubtargetInfo &STI, raw_ostream &O) override;
 
 private:
-  static const char *getRegisterName(unsigned RegNo,
-                                     unsigned AltIdx = Z80::NoRegAltName);
+  static const char *getRegisterName(unsigned RegNo);
 
   void printOperand(const MCInst *MI, unsigned OpNo, raw_ostream &O);
   void printPCRelImm(const MCInst *MI, unsigned OpNo, raw_ostream &O);

@@ -153,9 +153,10 @@ void Z80RegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
 
     assert(Offset >= 0 && "Invalid offset");
 
-    MI.setDesc(TII.get(Z80::ADDRdRr16));
+    MI.setDesc(TII.get(Z80::ADDW));
     MI.getOperand(FIOperandNum).ChangeToRegister(Z80::HL, false);
     MI.getOperand(FIOperandNum + 1).ChangeToRegister(Z80::SP, false);
+    MI.tieOperands(0, 1);
 
     if (II != MBB.end())
       foldFrameOffset(II, Offset, Z80::HL);
@@ -216,7 +217,7 @@ void Z80RegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
   //:TODO: consider using only one adiw/sbiw chain for more than one frame index
   if (Offset > 126) {
     BuildMI(MBB, II, dl, TII.get(Z80::LDIWRdK), Z80::IX).addImm(Offset);
-    BuildMI(MBB, II, dl, TII.get(Z80::ADDRdRr16))
+    BuildMI(MBB, II, dl, TII.get(Z80::ADDW))
         .addReg(Z80::IX, RegState::Define)
         .addReg(Z80::IX)
         .addReg(Z80::SP);
@@ -281,13 +282,20 @@ Register Z80RegisterInfo::getFrameRegister(const MachineFunction &MF) const {
 const TargetRegisterClass *
 Z80RegisterInfo::getPointerRegClass(const MachineFunction &MF,
                                     unsigned Kind) const {
-  return &Z80::PTRDISPREGSRegClass;
+  return &Z80::PTRREGSRegClass;
 }
 
 void Z80RegisterInfo::splitReg(Register Reg, Register &LoReg,
                                Register &HiReg) const {
-  assert(Z80::SPLITTABLEDREGSRegClass.contains(Reg)
-         && "can only split 16-bit registers");
+  static Register SplittableDregs[] = {Z80::BC, Z80::DE, Z80::HL, Z80::IX,
+                                       Z80::IY};
+
+  bool f = false;
+
+  for(Register r : SplittableDregs)
+    f |= (r == Reg);
+
+  assert(f && "can only split 16-bit registers");
 
   LoReg = getSubReg(Reg, Z80::sub_lo);
   HiReg = getSubReg(Reg, Z80::sub_hi);
@@ -300,16 +308,147 @@ bool Z80RegisterInfo::shouldCoalesce(MachineInstr *MI,
                                      unsigned DstSubReg,
                                      const TargetRegisterClass *NewRC,
                                      LiveIntervals &LIS) const {
-  return true;
-  /*if(this->getRegClass(Z80::PTRDISPREGSRegClassID)->hasSubClassEq(NewRC)) {
+  if(this->getRegClass(Z80::PTRREGSRegClassID)->hasSubClassEq(NewRC)) {
     return false;
-  }*/
+  }
 
-  return false;
+  return true;
+}
 
-  /*llvm_unreachable("Z80RegisterInfo::shouldCoalesce");*/
+static void CheckDisableRegs(MachineInstr &MI, Register Reg, bool &DisableHL,
+                             bool &DisableXY, bool IsDef,
+                             const VirtRegMap *VRM) {
+  if (Z80::ADDW == MI.getOpcode()) {
+    //MI.dump();
+    DisableXY = true;
 
-  return TargetRegisterInfo::shouldCoalesce(MI, SrcRC, SubReg, DstRC, DstSubReg, NewRC, LIS);
+    /*if (VRM) {
+      if (VRM->hasPhys(Reg)) {
+        printReg(Reg).Print(dbgs());
+        dbgs() << "->";
+        printReg(VRM->getPhys(Reg)).Print(dbgs());
+        dbgs() << "\r\n";
+      }
+
+      VRM->dump();
+    }
+*/
+    return;
+  }
+
+  return;
+
+  auto opc = MI.getOpcode();
+
+  switch (opc) {
+  case Z80::LDWPTR:
+  case Z80::LDDWPTR:
+//    if (IsDef)
+//      DisableXY = true;
+//    else
+    if (!IsDef)
+      DisableHL = true;
+    break;
+
+  case Z80::LDDPTR: {
+    auto Offset = MI.getOperand(2).getImm();
+    //if (Offset != 0 && !IsDef)
+    if (!IsDef)
+      DisableHL = true;
+    break;
+  }
+
+  case Z80::STWPTR:{
+    auto Op0 = MI.getOperand(0);
+    if (Op0.isReg() && Op0.getReg() == Reg)
+      DisableHL = true;
+    if (MI.getOperand(1).getReg() == Reg)
+      DisableXY = true;
+    break;
+  }
+
+  case Z80::STDWPTR: {
+    auto Op0 = MI.getOperand(0);
+    if (Op0.isReg() && Op0.getReg() == Reg)
+      DisableHL = true;
+    if (MI.getOperand(2).getReg() == Reg)
+      DisableXY = true;
+    break;
+  }
+  }
+}
+
+bool Z80RegisterInfo::getRegAllocationHints(Register VirtReg,
+                                            ArrayRef<MCPhysReg> Order,
+                                            SmallVectorImpl<MCPhysReg> &Hints,
+                                            const MachineFunction &MF,
+                                            const VirtRegMap *VRM,
+                                            const LiveRegMatrix *Matrix) const {
+
+  //return TargetRegisterInfo::getRegAllocationHints(VirtReg, Order, Hints, MF, VRM);
+
+  const MachineRegisterInfo &MRI = MF.getRegInfo();
+  auto Hint = MRI.getRegAllocationHint(VirtReg);
+
+  bool DisableHL = false;
+  bool DisableXY = false;
+
+  for (auto it = MRI.use_instr_begin(VirtReg); it != MRI.use_instr_end();
+       it = std::next(it))
+    CheckDisableRegs(*it, VirtReg, DisableHL, DisableXY, false, VRM);
+
+  for (auto it = MRI.def_instr_begin(VirtReg); it != MRI.def_instr_end();
+       it = std::next(it))
+    CheckDisableRegs(*it, VirtReg, DisableHL, DisableXY, true, VRM);
+
+  if (!DisableHL && !DisableXY)
+    TargetRegisterInfo::getRegAllocationHints(VirtReg, Order, Hints, MF, VRM);
+
+  if (DisableHL && DisableXY)
+  {
+    dumpReg(VirtReg, 0, MRI.getTargetRegisterInfo());
+  }
+
+  auto p = [=](auto const &x) {
+    if (DisableHL && ((Z80::HL == x) || (Z80::H == x) || (Z80::L == x)))
+      return true;
+
+    if (DisableXY && ((Z80::IY == x) || (Z80::IX == x) || (Z80::XL == x) ||
+                      (Z80::XH == x) || (Z80::YL == x) || (Z80::YH == x)))
+      return true;
+
+    return false;
+  };
+
+  for (const Register &o : Order) {
+    if (!p(o))
+      Hints.push_back(o);
+  }
+
+  return true;
+}
+
+void Z80RegisterInfo::updateRegAllocHint(Register Reg, Register NewReg,
+                                         MachineFunction &MF) const {
+  return;
+
+  MachineRegisterInfo &MRI = MF.getRegInfo();
+
+  auto Hint = MRI.getRegAllocationHint(Reg);
+  auto NewHint = MRI.getRegAllocationHint(NewReg);
+
+  if (Hint.first == 12345 && NewHint.first != 12345) {
+    MRI.setRegAllocationHint(NewReg, 12345, Hint.second);
+  }
+
+  if (Hint.first != 12345 && NewHint.first == 12345) {
+    MRI.setRegAllocationHint(Reg, 12345, NewHint.second);
+  }
+
+/*  errs() << "---\r\n";
+  dumpReg(Reg);
+  dumpReg(NewReg);
+  errs() << "---\r\n";*/
 }
 
 } // end of namespace llvm

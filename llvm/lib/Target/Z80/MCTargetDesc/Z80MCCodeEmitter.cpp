@@ -90,13 +90,11 @@ InstPrefixInfo::InstPrefixInfo(const T &B, const T &E, const MCInstrDesc &MD,
     }
   }
 
-  if (!MD.isPseudo())
-  if (!MD.isPseudo())
+  /*if (!MD.isPseudo())
     if (HasHL && (HasXExtension || HasYExtension)) {
-      // Inst.dump();
       report_fatal_error(
           "Unable to mix IX, IY and HL registers in same instruction");
-    }
+    }*/
 
   Z80II::Prefix Prefixes = static_cast<Z80II::Prefix>(MD.TSFlags & 7);
 
@@ -231,6 +229,13 @@ unsigned Z80MCCodeEmitter::encodeMemri(const MCInst &MI, unsigned OpNo,
   auto OffsetOp = MI.getOperand(OpNo + 1);
 
   assert(RegOp.isReg() && "Expected register operand");
+
+  bool OpIsHL = Z80::HL == RegOp.getReg();
+
+  if(OpIsHL) {
+    MI.dump();
+    assert(OffsetOp.isImm() && OffsetOp.getImm() == 0);
+  }
 
   if (OffsetOp.isImm()) {
     return OffsetOp.getImm();

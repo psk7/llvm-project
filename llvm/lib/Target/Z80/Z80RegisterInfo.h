@@ -58,6 +58,13 @@ public:
                       unsigned DstSubReg,
                       const TargetRegisterClass *NewRC,
                       LiveIntervals &LIS) const override;
+
+  bool getRegAllocationHints(Register VirtReg, ArrayRef<MCPhysReg> Order,
+                             SmallVectorImpl<MCPhysReg> &Hints,
+                             const MachineFunction &MF, const VirtRegMap *VRM,
+                             const LiveRegMatrix *Matrix) const override;
+  void updateRegAllocHint(Register Reg, Register NewReg,
+                          MachineFunction &MF) const override;
 };
 
 } // end namespace llvm

@@ -63,7 +63,7 @@ void Z80InstPrinter::printInst(const MCInst *MI, uint64_t Address,
     if (Opcode == Z80::LDRdPtrPi)
       O << '+';
     break;
-  case Z80::STPtrRr:
+  case Z80::STPTR:
     O << "\tst\t";
     printOperand(MI, 0, O);
     O << ", ";
@@ -132,7 +132,7 @@ void Z80InstPrinter::printOperand(const MCInst *MI, unsigned OpNo,
                     (MOI.RegClass == Z80::PTRDISPREGSRegClassID);*/
 
     if (isPtrReg) {
-      O << getRegisterName(Op.getReg(), Z80::ptr);
+      O << getRegisterName(Op.getReg());
     } else {
       O << getPrettyRegisterName(Op.getReg(), MRI);
     }
@@ -220,30 +220,26 @@ void Z80InstPrinter::printMemri(const MCInst *MI, unsigned OpNo,
 
   const MCOperand &OffsetOp = MI->getOperand(OpNo + 1);
 
-  bool OpIsHL = Z80::HL == MI->getOperand(OpNo).getReg();
-
-  if(OpIsHL)
-    assert(OffsetOp.isImm() && OffsetOp.getImm() == 0);
-
   O << "(";
 
   // Print the register.
   printOperand(MI, OpNo, O);
 
-  if (!OpIsHL) {
-    // Print the {+,-}offset.
-    if (OffsetOp.isImm()) {
-      int64_t Offset = OffsetOp.getImm();
+  // Print the {+,-}offset.
+  if (OffsetOp.isImm()) {
+    int64_t Offset = OffsetOp.getImm();
 
+    if (Offset != 0) {
       if (Offset >= 0)
         O << '+';
 
       O << Offset;
-    } else if (OffsetOp.isExpr()) {
-      O << *OffsetOp.getExpr();
-    } else {
-      llvm_unreachable("unknown type for offset");
     }
+
+  } else if (OffsetOp.isExpr()) {
+    O << *OffsetOp.getExpr();
+  } else {
+    llvm_unreachable("unknown type for offset");
   }
 
   O << ")";
@@ -254,8 +250,6 @@ void Z80InstPrinter::printMemriz(const MCInst *MI, unsigned OpNo,
   const MCOperand &Op = MI->getOperand(OpNo);
 
   assert(Op.isReg() && "Expected a register for the first operand");
-
-  assert(Op.getReg() == Z80::HL && "Operand MUST be HL");
 
   O << "(";
   printOperand(MI, OpNo, O);

@@ -75,7 +75,7 @@ void Z80FrameLowering::emitPrologue(MachineFunction &MF,
     BuildMI(MBB, MBBI, DL, TII.get(Z80::INRdA), Z80::R0)
         .addImm(0x3f)
         .setMIFlag(MachineInstr::FrameSetup);
-    BuildMI(MBB, MBBI, DL, TII.get(Z80::PUSHRr))
+    BuildMI(MBB, MBBI, DL, TII.get(Z80::PUSH))
         .addReg(Z80::R0, RegState::Kill)
         .setMIFlag(MachineInstr::FrameSetup);
     BuildMI(MBB, MBBI, DL, TII.get(Z80::EORRdRr))
@@ -96,7 +96,7 @@ void Z80FrameLowering::emitPrologue(MachineFunction &MF,
   // Skip the callee-saved push instructions.
   while (
       (MBBI != MBB.end()) && MBBI->getFlag(MachineInstr::FrameSetup) &&
-      (MBBI->getOpcode() == Z80::PUSHRr)) {
+      (MBBI->getOpcode() == Z80::PUSH)) {
     ++MBBI;
   }
 
@@ -119,7 +119,7 @@ void Z80FrameLowering::emitPrologue(MachineFunction &MF,
       .addImm(-FrameSize)
       .setMIFlag(MachineInstr::FrameSetup);
 
-  BuildMI(MBB, MBBI, DL, TII.get(Z80::ADDRdRr16), Z80::IY)
+  BuildMI(MBB, MBBI, DL, TII.get(Z80::ADDW), Z80::IY)
       .addReg(Z80::IY)
       .addReg(Z80::SP)
       .setMIFlag(MachineInstr::FrameSetup);
@@ -170,7 +170,7 @@ void Z80FrameLowering::emitEpilogue(MachineFunction &MF,
   // Emit special epilogue code to restore R1, R0 and SREG in interrupt/signal
   // handlers at the very end of the function, just before reti.
 /*  if (AFI->isInterruptOrSignalHandler()) {
-    BuildMI(MBB, MBBI, DL, TII.get(Z80::POPRd), Z80::R0);
+    BuildMI(MBB, MBBI, DL, TII.get(Z80::POP), Z80::R0);
     BuildMI(MBB, MBBI, DL, TII.get(Z80::OUTARr))
         .addImm(0x3f)
         .addReg(Z80::R0, RegState::Kill);
@@ -187,7 +187,7 @@ void Z80FrameLowering::emitEpilogue(MachineFunction &MF,
     MachineBasicBlock::iterator PI = std::prev(MBBI);
     int Opc = PI->getOpcode();
 
-    if (Opc != Z80::POPRd && !PI->isTerminator()) {
+    if (Opc != Z80::POP && !PI->isTerminator()) {
       break;
     }
 
@@ -198,7 +198,7 @@ void Z80FrameLowering::emitEpilogue(MachineFunction &MF,
       .addImm(FrameSize)
       .setMIFlag(MachineInstr::FrameDestroy);
 
-  BuildMI(MBB, MBBI, DL, TII.get(Z80::ADDRdRr16), Z80::IY)
+  BuildMI(MBB, MBBI, DL, TII.get(Z80::ADDW), Z80::IY)
       .addReg(Z80::IY)
       .addReg(Z80::SP)
       .setMIFlag(MachineInstr::FrameDestroy);
@@ -274,8 +274,18 @@ bool Z80FrameLowering::spillCalleeSavedRegisters(
       MBB.addLiveIn(Reg);
     }
 
+    if (IsNotLiveIn && Reg == Z80::BC &&
+        (MBB.isLiveIn(Z80::B) || MBB.isLiveIn(Z80::C)))
+      IsNotLiveIn = false;
+    if (IsNotLiveIn && Reg == Z80::DE &&
+        (MBB.isLiveIn(Z80::D) || MBB.isLiveIn(Z80::E)))
+      IsNotLiveIn = false;
+    if (IsNotLiveIn && Reg == Z80::HL &&
+        (MBB.isLiveIn(Z80::H) || MBB.isLiveIn(Z80::L)))
+      IsNotLiveIn = false;
+
     // Do not kill the register when it is an input argument.
-    BuildMI(MBB, MI, DL, TII.get(Z80::PUSHRr))
+    BuildMI(MBB, MI, DL, TII.get(Z80::PUSH))
         .addReg(Reg, getKillRegState(IsNotLiveIn))
         .setMIFlag(MachineInstr::FrameSetup);
 
@@ -306,7 +316,7 @@ bool Z80FrameLowering::restoreCalleeSavedRegisters(
     assert(TRI->getRegSizeInBits(*TRI->getMinimalPhysRegClass(Reg)) == 16 &&
            "Invalid register size");
 
-    BuildMI(MBB, MI, DL, TII.get(Z80::POPRd), Reg);
+    BuildMI(MBB, MI, DL, TII.get(Z80::POP), Reg);
   }
 
   return true;
@@ -338,7 +348,7 @@ static void fixStackStores(MachineBasicBlock &MBB,
     // Replace this instruction with a regular store. Use Y as the base
     // pointer since it is guaranteed to contain a copy of SP.
     unsigned STOpc =
-        (Opcode == Z80::STDWSPQRr) ? Z80::STDWPtrQRr : Z80::STDPtrQRr;
+        (Opcode == Z80::STDWSPQRr) ? Z80::STDWPTR : Z80::STDPTR;
 
     MI.setDesc(TII.get(STOpc));
     MI.getOperand(0).setReg(FP);
@@ -381,7 +391,7 @@ MachineBasicBlock::iterator Z80FrameLowering::eliminateCallFramePseudoInstr(
       BuildMI(MBB, MI, DL, TII.get(Z80::LDIWRdK), Z80::IY)
           .addImm(-Amount);
 
-      BuildMI(MBB, MI, DL, TII.get(Z80::ADDRdRr16), Z80::IY)
+      BuildMI(MBB, MI, DL, TII.get(Z80::ADDW), Z80::IY)
           .addReg(Z80::IY)
           .addReg(Z80::SP, RegState::Kill);
 
@@ -397,7 +407,7 @@ MachineBasicBlock::iterator Z80FrameLowering::eliminateCallFramePseudoInstr(
       BuildMI(MBB, MI, DL, TII.get(Z80::LDIWRdK), Z80::IY)
           .addImm(Amount);
 
-      BuildMI(MBB, MI, DL, TII.get(Z80::ADDRdRr16), Z80::IY)
+      BuildMI(MBB, MI, DL, TII.get(Z80::ADDW), Z80::IY)
           .addReg(Z80::IY)
           .addReg(Z80::SP, RegState::Kill);
 
@@ -458,8 +468,8 @@ struct Z80FrameAnalyzer : public MachineFunctionPass {
       for (const MachineInstr &MI : BB) {
         int Opcode = MI.getOpcode();
 
-        if ((Opcode != Z80::LDDRdPtrQ) && (Opcode != Z80::LDDWRdPtrQ) &&
-            (Opcode != Z80::STDPtrQRr) && (Opcode != Z80::STDWPtrQRr)) {
+        if ((Opcode != Z80::LDDPTR) && (Opcode != Z80::LDDWPTR) &&
+            (Opcode != Z80::STDPTR) && (Opcode != Z80::STDWPTR)) {
           continue;
         }
 

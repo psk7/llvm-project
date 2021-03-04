@@ -38,7 +38,6 @@ Z80TargetLowering::Z80TargetLowering(const Z80TargetMachine &TM,
   // Set up the register classes.
   addRegisterClass(MVT::i8, &Z80::GPR8RegClass);
   addRegisterClass(MVT::i16, &Z80::DREGSRegClass);
-  // addRegisterClass(MVT::i16, &Z80::XDREGSRegClass);
 
   // Compute derived properties from the register classes.
   computeRegisterProperties(Subtarget.getRegisterInfo());
@@ -1268,7 +1267,7 @@ MachineBasicBlock *Z80TargetLowering::insertShift(MachineInstr &MI,
   // jr z RemBB
   BuildMI(BB, dl, TII.get(TargetOpcode::COPY), ShiftAmtReg8)
       .addReg(ShiftAmtSrcReg);
-  BuildMI(BB, dl, TII.get(Z80::ORrr8), ShiftAmtReg3)
+  BuildMI(BB, dl, TII.get(Z80::OR), ShiftAmtReg3)
       .addReg(ShiftAmtReg8)
       .addReg(ShiftAmtReg8);
   BuildMI(BB, dl, TII.get(Z80::JRCC)).addMBB(RemBB).addImm(Z80CC::COND_Z);
@@ -1299,29 +1298,29 @@ MachineBasicBlock *Z80TargetLowering::insertShift(MachineInstr &MI,
     default:
       llvm_unreachable("unable to shift");
     case Z80II::ROT_SLA:
-      BuildMI(LoopBB, dl, TII.get(Z80::SLARd), ShiftReg2)
+      BuildMI(LoopBB, dl, TII.get(Z80::SLA), ShiftReg2)
                          .addReg(ShiftReg);
       break;
     case Z80II::ROT_SRL:
-      BuildMI(LoopBB, dl, TII.get(Z80::SRLRd), ShiftReg2)
+      BuildMI(LoopBB, dl, TII.get(Z80::SRL), ShiftReg2)
           .addReg(ShiftReg);
       break;
     case Z80II::ROT_SRA:
-      BuildMI(LoopBB, dl, TII.get(Z80::SRARd), ShiftReg2)
+      BuildMI(LoopBB, dl, TII.get(Z80::SRA), ShiftReg2)
           .addReg(ShiftReg);
       break;
     case Z80II::ROT_RLC:
-      BuildMI(LoopBB, dl, TII.get(Z80::RLCRd), ShiftReg2)
+      BuildMI(LoopBB, dl, TII.get(Z80::RLC), ShiftReg2)
           .addReg(ShiftReg);
       break;
     case Z80II::ROT_RRC:
-      BuildMI(LoopBB, dl, TII.get(Z80::RLCRd), ShiftReg2)
+      BuildMI(LoopBB, dl, TII.get(Z80::RLC), ShiftReg2)
           .addReg(ShiftReg);
       break;
     }
   }
 
-  BuildMI(LoopBB, dl, TII.get(Z80::DECRd), ShiftAmtReg2).addReg(ShiftAmtReg);
+  BuildMI(LoopBB, dl, TII.get(Z80::DEC), ShiftAmtReg2).addReg(ShiftAmtReg);
   BuildMI(LoopBB, dl, TII.get(Z80::JRCC)).addMBB(LoopBB).addImm(Z80CC::COND_NZ);
 
   BuildMI(*RemBB, RemBB->begin(), dl, TII.get(Z80::PHI), DstReg)
@@ -1404,7 +1403,7 @@ MachineBasicBlock *Z80TargetLowering::insertBrcond(MachineInstr &MI,
         .addReg(CR.getReg(), RegState::Kill, Z80::sub_hi);
   }
 
-  BuildMI(xorMBB, dl, TII.get(Z80::XORimm8))
+  BuildMI(xorMBB, dl, TII.get(Z80::XORk))
       .addReg(RI.createVirtualRegister(&Z80::ACCRegClass), RegState::Define | RegState::Dead)
       .addReg(tr, RegState::Kill)
       .addImm(0x80);
@@ -1520,7 +1519,7 @@ Z80TargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
           .addReg(CR.getReg(), RegState::Kill, Z80::sub_hi);
     }
 
-    BuildMI(xorMBB, dl, TII.get(Z80::XORimm8))
+    BuildMI(xorMBB, dl, TII.get(Z80::XORk))
         .addReg(RI.createVirtualRegister(&Z80::ACCRegClass), RegState::Define | RegState::Dead)
         .addReg(tr, RegState::Kill)
         .addImm(0x80);

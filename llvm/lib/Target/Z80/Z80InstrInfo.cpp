@@ -45,99 +45,28 @@ void Z80InstrInfo::copyPhysReg(MachineBasicBlock &MBB,
                                MCRegister SrcReg, bool KillSrc) const {
   const Z80Subtarget &STI = MBB.getParent()->getSubtarget<Z80Subtarget>();
   const Z80RegisterInfo &TRI = *STI.getRegisterInfo();
+
   unsigned Opc;
 
-  if ((Z80::XDREGSRegClass.contains(DestReg) &&
-       (Z80::DE == SrcReg || Z80::BC == SrcReg)) ||
-      (Z80::XDREGSRegClass.contains(SrcReg) &&
-       (Z80::DE == DestReg || Z80::BC == DestReg))) {
-    Register DestLo, DestHi, SrcLo, SrcHi;
-
-    TRI.splitReg(DestReg, DestLo, DestHi);
-    TRI.splitReg(SrcReg, SrcLo, SrcHi);
-
-    // Copy each individual register with the `LD` instruction.
-    BuildMI(MBB, MI, DL, get(Z80::LDRdRr8), DestLo)
-        .addReg(SrcLo, getKillRegState(KillSrc));
-    BuildMI(MBB, MI, DL, get(Z80::LDRdRr8), DestHi)
-        .addReg(SrcHi, getKillRegState(KillSrc));
-
-    return;
-  }
-
-  if ((Z80::XDREGSRegClass.contains(DestReg) &&
-       Z80::DREGSRegClass.contains(SrcReg)) ||
-      (Z80::XDREGSRegClass.contains(SrcReg) &&
-       Z80::DREGSRegClass.contains(DestReg))) {
-
-    BuildMI(MBB, MI, DL, get(Z80::COPYREG), DestReg)
-        .addReg(SrcReg, getKillRegState(KillSrc));
-
-     /*BuildMI(MBB, MI, DL, get(Z80::PUSHRr))
-         .addReg(SrcReg, getKillRegState(KillSrc));
-
-     BuildMI(MBB, MI, DL, get(Z80::POPRd), DestReg);*/
-
-    return;
-  }
-
-  if (Z80::DREGSRegClass.contains(DestReg, SrcReg)) {
-    Register DestLo, DestHi, SrcLo, SrcHi;
-
-    TRI.splitReg(DestReg, DestLo, DestHi);
-    TRI.splitReg(SrcReg,  SrcLo,  SrcHi);
-
-    // Copy each individual register with the `LD` instruction.
-    BuildMI(MBB, MI, DL, get(Z80::LDRdRr8), DestLo)
-        .addReg(SrcLo, getKillRegState(KillSrc));
-    BuildMI(MBB, MI, DL, get(Z80::LDRdRr8), DestHi)
-        .addReg(SrcHi, getKillRegState(KillSrc));
-
-
-    /*if (STI.hasMOVW() && Z80::DREGSMOVWRegClass.contains(DestReg, SrcReg)) {
-      BuildMI(MBB, MI, DL, get(Z80::MOVWRdRr), DestReg)
-          .addReg(SrcReg, getKillRegState(KillSrc));
-    } else {
-      Register DestLo, DestHi, SrcLo, SrcHi;
-
-      TRI.splitReg(DestReg, DestLo, DestHi);
-      TRI.splitReg(SrcReg,  SrcLo,  SrcHi);
-
-      // Copy each individual register with the `MOV` instruction.
-      BuildMI(MBB, MI, DL, get(Z80::MOVRdRr), DestLo)
-        .addReg(SrcLo, getKillRegState(KillSrc));
-      BuildMI(MBB, MI, DL, get(Z80::MOVRdRr), DestHi)
-        .addReg(SrcHi, getKillRegState(KillSrc));
-    }*/
+  if (Z80::DREGSRegClass.contains(SrcReg, DestReg)){
+    Opc = Z80::COPYREGW;
+  } else if (Z80::GPR8RegClass.contains(SrcReg, DestReg)){
+    Opc = Z80::COPYREG;
   } else {
-    if (Z80::GPR8RegClass.contains(DestReg, SrcReg)) {
-
-      if ((Z80::XY_HandLRegClass.contains(SrcReg) &&
-           Z80::HandLRegClass.contains(DestReg)) ||
-          (Z80::XY_HandLRegClass.contains(DestReg) &&
-           Z80::HandLRegClass.contains(SrcReg))) {
-        llvm_unreachable("Impossible reg-to-reg copy");
-      }
-
-      Opc = Z80::LDRdRr8;
-    } /*else if (SrcReg == Z80::SP && Z80::DREGSRegClass.contains(DestReg)) {
-      Opc = Z80::SPREAD;
-    } else if (DestReg == Z80::SP && Z80::DREGSRegClass.contains(SrcReg)) {
-      Opc = Z80::SPWRITE;
-    }*/ else {
-      llvm_unreachable("Impossible reg-to-reg copy");
-    }
-
-    BuildMI(MBB, MI, DL, get(Opc), DestReg)
-        .addReg(SrcReg, getKillRegState(KillSrc));
+    llvm_unreachable("Impossible reg-to-reg copy");
   }
+
+  BuildMI(MBB, MI, DL, get(Opc), DestReg)
+      .addReg(SrcReg, getKillRegState(KillSrc));
+
+  return;
 }
 
 unsigned Z80InstrInfo::isLoadFromStackSlot(const MachineInstr &MI,
                                            int &FrameIndex) const {
   switch (MI.getOpcode()) {
-  case Z80::LDDRdPtrQ:
-  case Z80::LDDWRdYQ: { //:FIXME: remove this once PR13375 gets fixed
+  case Z80::LDDPTR:
+  /*case Z80::LDDWRdYQ:*/ { //:FIXME: remove this once PR13375 gets fixed
     if (MI.getOperand(1).isFI() && MI.getOperand(2).isImm() &&
         MI.getOperand(2).getImm() == 0) {
       FrameIndex = MI.getOperand(1).getIndex();
@@ -155,8 +84,8 @@ unsigned Z80InstrInfo::isLoadFromStackSlot(const MachineInstr &MI,
 unsigned Z80InstrInfo::isStoreToStackSlot(const MachineInstr &MI,
                                           int &FrameIndex) const {
   switch (MI.getOpcode()) {
-  case Z80::STDPtrQRr:
-  case Z80::STDWPtrQRr: {
+  case Z80::STDPTR:
+  case Z80::STDWPTR: {
     if (MI.getOperand(0).isFI() && MI.getOperand(1).isImm() &&
         MI.getOperand(1).getImm() == 0) {
       FrameIndex = MI.getOperand(0).getIndex();
@@ -196,9 +125,9 @@ void Z80InstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
 
   unsigned Opcode = 0;
   if (TRI->isTypeLegalForClass(*RC, MVT::i8)) {
-    Opcode = Z80::STDPtrQRr;
+    Opcode = Z80::STDPTR;
   } else if (TRI->isTypeLegalForClass(*RC, MVT::i16)) {
-    Opcode = Z80::STDWPtrQRr;
+    Opcode = Z80::STDWPTR;
   } else {
     llvm_unreachable("Cannot store this register into a stack slot!");
   }
@@ -230,11 +159,11 @@ void Z80InstrInfo::loadRegFromStackSlot(MachineBasicBlock &MBB,
 
   unsigned Opcode = 0;
   if (TRI->isTypeLegalForClass(*RC, MVT::i8)) {
-    Opcode = Z80::LDDRdPtrQ;
+    Opcode = Z80::LDDPTR;
   } else if (TRI->isTypeLegalForClass(*RC, MVT::i16)) {
-    // Opcode = Z80::LDDWRdPtrQ;
+     Opcode = Z80::LDDWPTR;
     //:FIXME: remove this once PR13375 gets fixed
-    Opcode = Z80::LDDWRdYQ;
+    //Opcode = Z80::LDDWRdYQ;
   } else {
     llvm_unreachable("Cannot load this register from a stack slot!");
   }
@@ -632,23 +561,7 @@ unsigned Z80InstrInfo::insertIndirectBranch(MachineBasicBlock &MBB,
 }
 
 bool Z80InstrInfo::isCommuteAllowed(const MachineInstr &MI) const {
-  switch (MI.getOpcode()) {
-  default:
-    return TargetInstrInfo::isCommuteAllowed(MI);
-  case Z80::ADDRdRr8:
-  case Z80::ADDRdRr16:
-  case Z80::ORrr8:
-  case Z80::XORrr8:
-    const MachineRegisterInfo &RI = MI.getParent()->getParent()->getRegInfo();
-
-    auto RegClass0 = RI.getRegClass(MI.getOperand(0).getReg())->getID();
-    auto RegClass1 = RI.getRegClass(MI.getOperand(1).getReg())->getID();
-    auto RegClass2 = RI.getRegClass(MI.getOperand(2).getReg())->getID();
-
-    return !(RegClass0 == Z80::ACCRegClassID &&
-             RegClass1 == Z80::ACCRegClassID &&
-             RegClass2 == Z80::GPR8RegClassID);
-  }
+  return true;
 }
 
 } // end of namespace llvm

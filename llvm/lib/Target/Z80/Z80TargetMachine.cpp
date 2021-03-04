@@ -134,6 +134,7 @@ void Z80PassConfig::addPreSched2() {
 void Z80PassConfig::addPreEmitPass() {
   // Must run branch selection immediately preceding the asm printer.
   //addPass(&BranchRelaxationPassID);
+  addPass(createZ80SimplifyInstructionsPass());
   addPass(createZ80BranchRelaxationPass());
 }
 

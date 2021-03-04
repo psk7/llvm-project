@@ -88,12 +88,12 @@ bool Z80PreRASimplifyInstructions::expand<Z80::TESTBIT>(Block &MBB, BlockIt MBBI
 
   MachineInstr &PMI = *std::prev(MBBI);
 
-  if (Z80::LDRdPtr == PMI.getOpcode()) {
+  if (Z80::LDPTR == PMI.getOpcode()) {
     buildMI(MBB, MBBI, Z80::TESTBITPTR)
         .add(PMI.getOperand(1))
         .addImm(0)
         .addImm(Bit);
-  } else if (Z80::LDDRdPtrQ == PMI.getOpcode()) {
+  } else if (Z80::LDDPTR == PMI.getOpcode()) {
     MachineOperand &Displacement = PMI.getOperand(2);
 
     buildMI(MBB, MBBI, Z80::TESTBITPTR)

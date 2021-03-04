@@ -73,7 +73,7 @@ char Z80SimplifyInstructions::ID = 0;
 #define DUMPMI(x) { dbgs() << "Rewrite: "; x.dump(); }
 
 template <>
-bool Z80SimplifyInstructions::expand<Z80::RLCRd>(Block &MBB, BlockIt MBBI) {
+bool Z80SimplifyInstructions::expand<Z80::RLC>(Block &MBB, BlockIt MBBI) {
     MachineInstr &MI = *MBBI;
 
     if (MI.getOperand(0).getReg() != Z80::A)
@@ -84,7 +84,7 @@ bool Z80SimplifyInstructions::expand<Z80::RLCRd>(Block &MBB, BlockIt MBBI) {
 }
 
 template <>
-bool Z80SimplifyInstructions::expand<Z80::RRCRd>(Block &MBB, BlockIt MBBI) {
+bool Z80SimplifyInstructions::expand<Z80::RRC>(Block &MBB, BlockIt MBBI) {
   MachineInstr &MI = *MBBI;
 
   if (MI.getOperand(0).getReg() != Z80::A)
@@ -95,7 +95,7 @@ bool Z80SimplifyInstructions::expand<Z80::RRCRd>(Block &MBB, BlockIt MBBI) {
 }
 
 template <>
-bool Z80SimplifyInstructions::expand<Z80::RRRd>(Block &MBB, BlockIt MBBI) {
+bool Z80SimplifyInstructions::expand<Z80::RR>(Block &MBB, BlockIt MBBI) {
   MachineInstr &MI = *MBBI;
 
   if (MI.getOperand(0).getReg() != Z80::A)
@@ -106,7 +106,7 @@ bool Z80SimplifyInstructions::expand<Z80::RRRd>(Block &MBB, BlockIt MBBI) {
 }
 
 template <>
-bool Z80SimplifyInstructions::expand<Z80::RLRd>(Block &MBB, BlockIt MBBI) {
+bool Z80SimplifyInstructions::expand<Z80::RL>(Block &MBB, BlockIt MBBI) {
   MachineInstr &MI = *MBBI;
 
   if (MI.getOperand(0).getReg() != Z80::A)
@@ -117,7 +117,7 @@ bool Z80SimplifyInstructions::expand<Z80::RLRd>(Block &MBB, BlockIt MBBI) {
 }
 
 template <>
-bool Z80SimplifyInstructions::expand<Z80::ORrr8>(Block &MBB, BlockIt MBBI) {
+bool Z80SimplifyInstructions::expand<Z80::OR>(Block &MBB, BlockIt MBBI) {
   MachineInstr &MI = *MBBI;
 
   if (MI.getOperand(0).getReg() != Z80::A ||
@@ -149,10 +149,10 @@ bool Z80SimplifyInstructions::expand<Z80::ORrr8>(Block &MBB, BlockIt MBBI) {
 
   auto OpCode = PMI.getOpcode();
 
-  if (OpCode != Z80::ANDrr8 && OpCode != Z80::ORrr8 && OpCode != Z80::ANDimm8 &&
-      OpCode != Z80::ORimm8 && OpCode != Z80::XORrr8 &&
-      OpCode != Z80::XORimm8 && OpCode != Z80::ANDrr8PTR &&
-      OpCode != Z80::ORrr8PTR && OpCode != Z80::XORrr8PTR)
+  if (OpCode != Z80::AND && OpCode != Z80::OR && OpCode != Z80::ANDk &&
+      OpCode != Z80::ORk && OpCode != Z80::XOR &&
+      OpCode != Z80::XORk && OpCode != Z80::ANDPTR &&
+      OpCode != Z80::ORPTR && OpCode != Z80::XORPTR)
     return false;
 
   MI.eraseFromParent();
@@ -169,7 +169,7 @@ bool Z80SimplifyInstructions::expand<Z80::TESTBIT>(Block &MBB, BlockIt MBBI) {
   if (!(Op0.isReg() && Z80::A == Op0.getReg() && Op0.isKill() && Op1.isImm()))
     return false;
 
-  buildMI(MBB, MBBI, Z80::ANDimm8)
+  buildMI(MBB, MBBI, Z80::ANDk)
       .addReg(Z80::A, RegState::Define | getDeadRegState(true))
       .addReg(Z80::A, getKillRegState(true))
       .addImm(1 << Op1.getImm());
@@ -208,6 +208,9 @@ bool Z80SimplifyInstructions::expand<Z80::JRCC>(Block &MBB, BlockIt MBBI) {
   if (FallThrough->size() != 1)
     return false;
 
+  if (Z80::CALLk != FallThrough->begin()->getOpcode())
+    return false;
+
   MachineInstr &MICall = *FallThrough->begin();
 
   Z80CC::CondCodes BranchCode =
@@ -226,6 +229,88 @@ bool Z80SimplifyInstructions::expand<Z80::JRCC>(Block &MBB, BlockIt MBBI) {
   MBB.removeSuccessor(FallThrough);
   FallThrough->removeSuccessor(CallFallThrough);
   FallThrough->eraseFromParent();
+
+  return true;
+}
+
+template <>
+bool Z80SimplifyInstructions::expand<Z80::EXAF>(Block &MBB, BlockIt MBBI) {
+  MachineInstr &MI = *MBBI;
+
+  if (MBBI == MBB.begin())
+    return false;
+
+  MachineInstr &PMI = *std::prev(MBBI);
+
+  if (Z80::EXAF != PMI.getOpcode())
+    return false;
+
+  PMI.eraseFromParent();
+  MI.eraseFromParent();
+
+  return true;
+}
+
+template <>
+bool Z80SimplifyInstructions::expand<Z80::EXX>(Block &MBB, BlockIt MBBI) {
+  MachineInstr &MI = *MBBI;
+
+  if (MBBI == MBB.begin())
+    return false;
+
+  MachineInstr &PMI = *std::prev(MBBI);
+
+  if (Z80::EXX != PMI.getOpcode())
+    return false;
+
+  PMI.eraseFromParent();
+  MI.eraseFromParent();
+
+  return true;
+}
+
+template <>
+bool Z80SimplifyInstructions::expand<Z80::STDWPTR>(Block &MBB, BlockIt MBBI) {
+  MachineInstr &MI = *MBBI;
+
+  if (MBBI == MBB.begin())
+    return false;
+
+  MachineInstr &PMI = *std::prev(MBBI);
+
+  if (Z80::LDDWPTR != PMI.getOpcode())
+    return false;
+
+  auto Res = MI.getOperand(2).getReg();
+
+  if (Res != PMI.getOperand(0).getReg())
+    return false;
+
+  if (Z80::IX != Res && Z80::IY != Res)
+    return false;
+
+  Register SrcReg = PMI.getOperand(1).getReg();
+  Register DstReg = MI.getOperand(0).getReg();
+
+  if (Z80::IX != SrcReg && Z80::IY != SrcReg)
+    return false;
+
+  if (Z80::IX != DstReg && Z80::IY != DstReg)
+    return false;
+
+  bool ResIsDead = MI.getOperand(2).isKill(); // <- It's VALID!! No change!
+  bool SrcIsKill = PMI.getOperand(1).isKill();
+  bool DstIsKill = MI.getOperand(0).isKill();
+
+  buildMI(MBB, MBBI, Z80::LDSTDWPTR)
+               .addReg(Res, RegState::Define | getDeadRegState(ResIsDead))
+               .addReg(DstReg, getKillRegState(DstIsKill))
+               .addImm(MI.getOperand(1).getImm())
+               .addReg(SrcReg, getKillRegState(SrcIsKill))
+               .addImm(PMI.getOperand(2).getImm());
+
+  PMI.eraseFromParent();
+  MI.eraseFromParent();
 
   return true;
 }
@@ -258,13 +343,16 @@ bool Z80SimplifyInstructions::expandMI(Block &MBB, BlockIt MBBI) {
     return expand<Op>(MBB, MI)
 
   switch (Opcode) {
-    EXPAND(Z80::RLCRd);
-    EXPAND(Z80::RRCRd);
-    EXPAND(Z80::RRRd);
-    EXPAND(Z80::RLRd);
-    EXPAND(Z80::ORrr8);
+    EXPAND(Z80::RLC);
+    EXPAND(Z80::RRC);
+    EXPAND(Z80::RR);
+    EXPAND(Z80::RL);
+    EXPAND(Z80::OR);
     EXPAND(Z80::TESTBIT);
     EXPAND(Z80::JRCC);
+    EXPAND(Z80::EXAF);
+    EXPAND(Z80::EXX);
+    EXPAND(Z80::STDWPTR);
   }
 
 #undef EXPAND

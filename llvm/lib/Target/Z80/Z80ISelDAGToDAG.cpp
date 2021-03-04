@@ -355,14 +355,14 @@ template<> bool Z80DAGToDAGISel::select<ISD::OR>(SDNode *N) {
 
   for (auto i : ands) {
     Chain = SDValue(
-        CurDAG->getMachineNode(Z80::ANDIWRdK_RESBIT, DL, MVT::i16, Chain,
+        CurDAG->getMachineNode(Z80::RESBITW, DL, MVT::i16, Chain,
                                CurDAG->getTargetConstant(i, DL, MVT::i16)),
         0);
   }
 
   for (auto i : ors) {
     Chain = SDValue(
-        CurDAG->getMachineNode(Z80::ORIWRdK_SETBIT, DL, MVT::i16, Chain,
+        CurDAG->getMachineNode(Z80::SETBITW, DL, MVT::i16, Chain,
                                CurDAG->getTargetConstant(i, DL, MVT::i16)),
         0);
   }
