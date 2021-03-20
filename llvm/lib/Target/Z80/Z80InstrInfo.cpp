@@ -571,10 +571,10 @@ bool Z80InstrInfo::isCommuteAllowed(const MachineInstr &MI) const {
   switch (MI.getOpcode()) {
   default:
     return TargetInstrInfo::isCommuteAllowed(MI);
-  case Z80::ADDRdRr8:
+  case Z80::ADD:
   case Z80::ADDRdRr16:
-  case Z80::ORrr8:
-  case Z80::XORrr8:
+  case Z80::OR:
+  case Z80::XOR:
     const MachineRegisterInfo &RI = MI.getParent()->getParent()->getRegInfo();
 
     auto RegClass0 = RI.getRegClass(MI.getOperand(0).getReg())->getID();

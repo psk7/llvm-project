@@ -90,32 +90,9 @@ def XY_HandL : RegisterClass<"Z80", [i8], 8, ( add XL, XH, YL, YH )>;
 
 def ACC : RegisterClass<"Z80", [i8], 8, (add A)>;
 
-// Simple lower registers r0..r15
-//def GPR8lo : RegisterClass<"Z80", [i8], 8,
-//  (
-//    add R15, R14, R13, R12, R11, R10, R9, R8, R7, R6, R5, R4, R3, R2, R0, R1
-//  )>;
-
-// 8-bit register class for instructions which take immediates.
-//def LD8 : RegisterClass<"Z80", [i8], 8,
-//  (
-//    // Return value and arguments.
-//    add R24, R25, R18, R19, R20, R21, R22, R23,
-//    // Scratch registers.
-//    R30, R31, R26, R27,
-//    // Callee saved registers.
-//    R28, R29, R17, R16
-//  )>;
-
-// Simple lower registers r16..r23
-//def LD8lo : RegisterClass<"Z80", [i8], 8,
-//  (
-//    add R23, R22, R21, R20, R19, R18, R17, R16
-//  )>;
-
 // Main 16-bit pair register class.
 def DREGS : RegisterClass<"Z80", [i16], 8, ( add BC, DE, HL, SP )>;
-
+def BDREGS : RegisterClass<"Z80", [i16], 8, ( add BC, DE, HL, SP )>;
 let CopyCost = 3 in
 def XDREGS : RegisterClass<"Z80", [i16], 8, ( add IX, IY )>;
 
@@ -127,67 +104,11 @@ def INCDECDREGS : RegisterClass<"Z80", [i16], 8, ( add BC, DE, HL, IX, IY )>;
 
 def LDITARGETREGS : RegisterClass<"Z80", [i16], 8, ( add BC, DE, HL, IX, IY )>;
 
-// 16-bit pair register class for movw
-//def DREGSMOVW : RegisterClass<"Z80", [i16], 8,
-//  (
-//    // Return value and arguments.
-//    add R25R24, R19R18, R21R20, R23R22,
-//    // Scratch registers.
-//    R31R30, R27R26,
-//    // Callee saved registers.
-//    R29R28, R17R16, R15R14, R13R12, R11R10,
-//    R9R8, R7R6, R5R4, R3R2, R1R0
-//  )>;
+//def SPLITTABLEDREGS : RegisterClass<"Z80", [i16], 8, ( add BC, DE, HL, IX, IY )>;
 
-// The 16-bit DREGS register class, excluding the Z pointer register.
-//
-// This is used by instructions which cause high pointer register
-// contention which leads to an assertion in the register allocator.
-//
-// There is no technical reason why instructions that use this class
-// cannot use Z; it's simply a workaround a regalloc bug.
-//
-// More information can be found in PR39553.
-//def DREGS_WITHOUT_YZ_WORKAROUND : RegisterClass<"Z80", [i16], 8,
-//  (
-//    // Return value and arguments.
-//    add R25R24, R19R18, R21R20, R23R22,
-//    // Scratch registers.
-//    R27R26,
-//    // Callee saved registers.
-//    R17R16, R15R14, R13R12, R11R10,
-//    R9R8, R7R6, R5R4, R3R2, R1R0
-//  )>;
-
-// 16-bit register class for immediate instructions.
-//def DLDREGS : RegisterClass<"Z80", [i16], 8,
-//  (
-//    // Return value and arguments.
-//    add R25R24, R19R18, R21R20, R23R22,
-//    // Scratch registers.
-//    R31R30, R27R26,
-//    // Callee saved registers.
-//    R29R28, R17R16
-//  )>;
-
-// 16-bit register class for the adiw/sbiw instructions.
-//def IWREGS : RegisterClass<"Z80", [i16], 8,
-//  (
-//    // Return value and arguments.
-//    add R25R24,
-//    // Scratch registers.
-//    R31R30, R27R26,
-//    // Callee saved registers.
-//    R29R28
-//  )>;
-
-// 16-bit register class for the ld and st instructions.
-// AKA HL,IX, and IY
 let CopyCost = 3 in
 def PTRREGS : RegisterClass<"Z80", [i16], 8, ( add HL, IX, IY ), ptr>;
 
-// 16-bit register class for the ldd and std instructions.
-// AKA IX and IY.
 let CopyCost = 10 in
 def PTRDISPREGS : RegisterClass<"Z80", [i16], 8, ( add IX, IY ), ptr>;
 

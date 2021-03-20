@@ -715,7 +715,8 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeZ80AsmParser() {
 // Uses enums defined in Z80GenAsmMatcher.inc
 unsigned Z80AsmParser::validateTargetOperandClass(MCParsedAsmOperand &AsmOp,
                                                   unsigned ExpectedKind) {
-  Z80Operand &Op = static_cast<Z80Operand &>(AsmOp);
+  llvm_unreachable("Z80AsmParser::validateTargetOperandClass");
+  /*Z80Operand &Op = static_cast<Z80Operand &>(AsmOp);
   MatchClassKind Expected = static_cast<MatchClassKind>(ExpectedKind);
 
   // If need be, GCC converts bare numbers to register names
@@ -747,6 +748,6 @@ unsigned Z80AsmParser::validateTargetOperandClass(MCParsedAsmOperand &AsmOp,
         return validateOperandClass(Op, Expected);
       }
     }
-  }
+  }*/
   return Match_InvalidOperand;
 }

@@ -1268,7 +1268,7 @@ MachineBasicBlock *Z80TargetLowering::insertShift(MachineInstr &MI,
   // jr z RemBB
   BuildMI(BB, dl, TII.get(TargetOpcode::COPY), ShiftAmtReg8)
       .addReg(ShiftAmtSrcReg);
-  BuildMI(BB, dl, TII.get(Z80::ORrr8), ShiftAmtReg3)
+  BuildMI(BB, dl, TII.get(Z80::OR), ShiftAmtReg3)
       .addReg(ShiftAmtReg8)
       .addReg(ShiftAmtReg8);
   BuildMI(BB, dl, TII.get(Z80::JRCC)).addMBB(RemBB).addImm(Z80CC::COND_Z);
@@ -1299,29 +1299,29 @@ MachineBasicBlock *Z80TargetLowering::insertShift(MachineInstr &MI,
     default:
       llvm_unreachable("unable to shift");
     case Z80II::ROT_SLA:
-      BuildMI(LoopBB, dl, TII.get(Z80::SLARd), ShiftReg2)
+      BuildMI(LoopBB, dl, TII.get(Z80::SLA), ShiftReg2)
                          .addReg(ShiftReg);
       break;
     case Z80II::ROT_SRL:
-      BuildMI(LoopBB, dl, TII.get(Z80::SRLRd), ShiftReg2)
+      BuildMI(LoopBB, dl, TII.get(Z80::SRL), ShiftReg2)
           .addReg(ShiftReg);
       break;
     case Z80II::ROT_SRA:
-      BuildMI(LoopBB, dl, TII.get(Z80::SRARd), ShiftReg2)
+      BuildMI(LoopBB, dl, TII.get(Z80::SRA), ShiftReg2)
           .addReg(ShiftReg);
       break;
     case Z80II::ROT_RLC:
-      BuildMI(LoopBB, dl, TII.get(Z80::RLCRd), ShiftReg2)
+      BuildMI(LoopBB, dl, TII.get(Z80::RLC), ShiftReg2)
           .addReg(ShiftReg);
       break;
     case Z80II::ROT_RRC:
-      BuildMI(LoopBB, dl, TII.get(Z80::RLCRd), ShiftReg2)
+      BuildMI(LoopBB, dl, TII.get(Z80::RLC), ShiftReg2)
           .addReg(ShiftReg);
       break;
     }
   }
 
-  BuildMI(LoopBB, dl, TII.get(Z80::DECRd), ShiftAmtReg2).addReg(ShiftAmtReg);
+  BuildMI(LoopBB, dl, TII.get(Z80::DEC), ShiftAmtReg2).addReg(ShiftAmtReg);
   BuildMI(LoopBB, dl, TII.get(Z80::JRCC)).addMBB(LoopBB).addImm(Z80CC::COND_NZ);
 
   BuildMI(*RemBB, RemBB->begin(), dl, TII.get(Z80::PHI), DstReg)

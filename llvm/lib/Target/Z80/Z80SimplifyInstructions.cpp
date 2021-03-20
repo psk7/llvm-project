@@ -73,7 +73,7 @@ char Z80SimplifyInstructions::ID = 0;
 #define DUMPMI(x) { dbgs() << "Rewrite: "; x.dump(); }
 
 template <>
-bool Z80SimplifyInstructions::expand<Z80::RLCRd>(Block &MBB, BlockIt MBBI) {
+bool Z80SimplifyInstructions::expand<Z80::RLC>(Block &MBB, BlockIt MBBI) {
     MachineInstr &MI = *MBBI;
 
     if (MI.getOperand(0).getReg() != Z80::A)
@@ -84,7 +84,7 @@ bool Z80SimplifyInstructions::expand<Z80::RLCRd>(Block &MBB, BlockIt MBBI) {
 }
 
 template <>
-bool Z80SimplifyInstructions::expand<Z80::RRCRd>(Block &MBB, BlockIt MBBI) {
+bool Z80SimplifyInstructions::expand<Z80::RRC>(Block &MBB, BlockIt MBBI) {
   MachineInstr &MI = *MBBI;
 
   if (MI.getOperand(0).getReg() != Z80::A)
@@ -95,7 +95,7 @@ bool Z80SimplifyInstructions::expand<Z80::RRCRd>(Block &MBB, BlockIt MBBI) {
 }
 
 template <>
-bool Z80SimplifyInstructions::expand<Z80::RRRd>(Block &MBB, BlockIt MBBI) {
+bool Z80SimplifyInstructions::expand<Z80::RR>(Block &MBB, BlockIt MBBI) {
   MachineInstr &MI = *MBBI;
 
   if (MI.getOperand(0).getReg() != Z80::A)
@@ -106,7 +106,7 @@ bool Z80SimplifyInstructions::expand<Z80::RRRd>(Block &MBB, BlockIt MBBI) {
 }
 
 template <>
-bool Z80SimplifyInstructions::expand<Z80::RLRd>(Block &MBB, BlockIt MBBI) {
+bool Z80SimplifyInstructions::expand<Z80::RL>(Block &MBB, BlockIt MBBI) {
   MachineInstr &MI = *MBBI;
 
   if (MI.getOperand(0).getReg() != Z80::A)
@@ -117,7 +117,7 @@ bool Z80SimplifyInstructions::expand<Z80::RLRd>(Block &MBB, BlockIt MBBI) {
 }
 
 template <>
-bool Z80SimplifyInstructions::expand<Z80::ORrr8>(Block &MBB, BlockIt MBBI) {
+bool Z80SimplifyInstructions::expand<Z80::OR>(Block &MBB, BlockIt MBBI) {
   MachineInstr &MI = *MBBI;
 
   if (MI.getOperand(0).getReg() != Z80::A ||
@@ -149,8 +149,8 @@ bool Z80SimplifyInstructions::expand<Z80::ORrr8>(Block &MBB, BlockIt MBBI) {
 
   auto OpCode = PMI.getOpcode();
 
-  if (OpCode != Z80::ANDrr8 && OpCode != Z80::ORrr8 && OpCode != Z80::ANDimm8 &&
-      OpCode != Z80::ORimm8 && OpCode != Z80::XORrr8 &&
+  if (OpCode != Z80::AND && OpCode != Z80::OR && OpCode != Z80::ANDimm8 &&
+      OpCode != Z80::ORimm8 && OpCode != Z80::XOR &&
       OpCode != Z80::XORimm8 && OpCode != Z80::ANDrr8PTR &&
       OpCode != Z80::ORrr8PTR && OpCode != Z80::XORrr8PTR)
     return false;
@@ -258,11 +258,11 @@ bool Z80SimplifyInstructions::expandMI(Block &MBB, BlockIt MBBI) {
     return expand<Op>(MBB, MI)
 
   switch (Opcode) {
-    EXPAND(Z80::RLCRd);
-    EXPAND(Z80::RRCRd);
-    EXPAND(Z80::RRRd);
-    EXPAND(Z80::RLRd);
-    EXPAND(Z80::ORrr8);
+    EXPAND(Z80::RLC);
+    EXPAND(Z80::RRC);
+    EXPAND(Z80::RR);
+    EXPAND(Z80::RL);
+    EXPAND(Z80::OR);
     EXPAND(Z80::TESTBIT);
     EXPAND(Z80::JRCC);
   }
