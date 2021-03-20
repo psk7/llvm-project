@@ -839,6 +839,30 @@ template <> bool Z80ExpandPseudo::expand<Z80::SEXT>(Block &MBB, BlockIt MBBI) {
   return true;
 }
 
+template <> bool Z80ExpandPseudo::expand<Z80::ZEXT>(Block &MBB, BlockIt MBBI) {
+  MachineInstr &MI = *MBBI;
+  Register DstLoReg, DstHiReg;
+
+  Register DstReg = MI.getOperand(0).getReg();
+  Register SrcReg = MI.getOperand(1).getReg();
+  bool DstIsDead = MI.getOperand(0).isDead();
+  bool SrcIsKill = MI.getOperand(1).isKill();
+  TRI->splitReg(DstReg, DstLoReg, DstHiReg);
+
+  if (SrcReg != DstLoReg) {
+    buildMI(MBB, MBBI, Z80::COPYREG)
+        .addReg(DstLoReg, RegState::Define | getDeadRegState(DstIsDead))
+        .addReg(SrcReg, getKillRegState(SrcIsKill));
+  }
+
+  buildMI(MBB, MBBI, Z80::LDk)
+      .addReg(DstHiReg, RegState::Define | getDeadRegState(DstIsDead))
+      .addImm(0);
+
+  MI.eraseFromParent();
+  return true;
+}
+
 template <> bool Z80ExpandPseudo::expand<Z80::ROT16>(Block &MBB, BlockIt MBBI) {
   MachineInstr &MI = *MBBI;
   Register DstLoReg, DstHiReg;
@@ -1127,20 +1151,21 @@ bool Z80ExpandPseudo::expandMI(Block &MBB, BlockIt MBBI) {
     EXPAND(Z80::CPW);
     EXPAND(Z80::LDIWRdK);
     EXPAND(Z80::LDWMEM);
-    EXPAND(Z80::LDWPTR);
+    //EXPAND(Z80::LDWPTR);
   //case Z80::LDDWRdYQ: //:FIXME: remove this once PR13375 gets fixed
-    EXPAND(Z80::LDDWPTR);
+    //EXPAND(Z80::LDDWPTR);
     EXPAND(Z80::STWMEM);
-    EXPAND(Z80::STWPTR);
-    EXPAND(Z80::STDWPTR);
+    //EXPAND(Z80::STWPTR);
+    //EXPAND(Z80::STDWPTR);
     EXPAND(Z80::SEXT);
+    EXPAND(Z80::ZEXT);
     EXPAND(Z80::ROT16);
     EXPAND(Z80::SUBW);
     EXPAND(Z80::SETRESBITWPTR);
-    EXPAND(Z80::COPYREG);
-    EXPAND(Z80::COPYREGW);
-    EXPAND(Z80::LDSTDWPTR);
-    EXPAND(Z80::STDPTR_P);
+    //EXPAND(Z80::COPYREG);
+    //EXPAND(Z80::COPYREGW);
+    //EXPAND(Z80::LDSTDWPTR);
+    //EXPAND(Z80::STDPTR_P);
     return true;
   }
 #undef EXPAND

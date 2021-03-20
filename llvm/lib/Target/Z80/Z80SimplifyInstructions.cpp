@@ -316,6 +316,8 @@ bool Z80SimplifyInstructions::expand<Z80::STDWPTR>(Block &MBB, BlockIt MBBI) {
 }
 
 bool Z80SimplifyInstructions::runOnMachineFunction(MachineFunction &MF) {
+  return false;
+
   bool Modified = false;
 
   const Z80Subtarget &STI = MF.getSubtarget<Z80Subtarget>();

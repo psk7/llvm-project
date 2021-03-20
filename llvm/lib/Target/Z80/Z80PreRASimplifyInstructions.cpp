@@ -110,6 +110,7 @@ bool Z80PreRASimplifyInstructions::expand<Z80::TESTBIT>(Block &MBB, BlockIt MBBI
 }
 
 bool Z80PreRASimplifyInstructions::runOnMachineFunction(MachineFunction &MF) {
+  return false;
   bool Modified = false;
 
   const Z80Subtarget &STI = MF.getSubtarget<Z80Subtarget>();

@@ -753,6 +753,8 @@ def SEXT : ExtensionPseudo<
   [(set i16:$dst, (sext i8:$src)), (implicit SREG)]
 >;
 
+def ZEXT : Pseudo<(outs DREGS:$dst), (ins GPR8:$src), "!zext $dst, $src", [(set i16:$dst, (zext i8:$src))]>;
+
 // This pseudo gets expanded into a movw+adiw thus it clobbers SREG.
 let Defs = [SREG], hasSideEffects = 0 in
 def FRMIDX : Pseudo<(outs PTRREGS:$dst),
@@ -774,8 +776,8 @@ def Select16 : SelectPseudo<(outs DREGS:$dst), (ins DREGS:$src, DREGS:$src2, var
 //===----------------------------------------------------------------------===//
 // Non-Instruction Patterns
 //===----------------------------------------------------------------------===//
-def : Pat<(i16 (zext i8:$v)),
-        (i16 (INSERT_SUBREG (INSERT_SUBREG (i16 (IMPLICIT_DEF)), $v, sub_lo), (LDk (i8 0)), sub_hi))>;
+//def : Pat<(i16 (zext i8:$v)),
+//        (i16 (INSERT_SUBREG (INSERT_SUBREG (i16 (IMPLICIT_DEF)), $v, sub_lo), (LDk (i8 0)), sub_hi))>;
 
 //:TODO: look in x86InstrCompiler.td for odd encoding trick related to
 // add x, 128 -> sub x, -128. Clang is emitting an eor for this (ldi+eor)
