@@ -213,9 +213,6 @@ Z80TargetLowering::Z80TargetLowering(const Z80TargetMachine &TM,
   setLibcallCallingConv(RTLIB::UDIV_I32, CallingConv::Z80_BUILTIN_32BITARITH);
   setLibcallCallingConv(RTLIB::UREM_I32, CallingConv::Z80_BUILTIN_32BITARITH);
 
-  setLibcallCallingConv(RTLIB::MEMCPY, CallingConv::Z80_BUILTIN_MEMCPY);
-  setLibcallCallingConv(RTLIB::MEMSET, CallingConv::Z80_BUILTIN);
-
   // Trigonometric rtlib functions
   //  setLibcallName(RTLIB::SIN_F32, "sin");
   //  setLibcallName(RTLIB::COS_F32, "cos");
@@ -813,9 +810,6 @@ SDValue Z80TargetLowering::LowerFormalArguments(
   case CallingConv::Z80_BUILTIN:
     CCInfo.AnalyzeFormalArguments(Ins, ArgCC_Z80_Builtin);
     break;
-  case CallingConv::Z80_BUILTIN_MEMCPY:
-    CCInfo.AnalyzeFormalArguments(Ins, ArgCC_Z80_Builtin_MEMCPY);
-    break;
   case CallingConv::Z80_BUILTIN_32BITARITH:
     CCInfo.AnalyzeFormalArguments(Ins, ArgCC_Z80_Builtin_32BitArith);
     break;
@@ -949,9 +943,6 @@ SDValue Z80TargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
   switch (CallConv) {
   case CallingConv::Z80_BUILTIN:
     CCInfo.AnalyzeCallOperands(Outs, ArgCC_Z80_Builtin);
-    break;
-  case CallingConv::Z80_BUILTIN_MEMCPY:
-    CCInfo.AnalyzeCallOperands(Outs, ArgCC_Z80_Builtin_MEMCPY);
     break;
   case CallingConv::Z80_BUILTIN_32BITARITH:
     CCInfo.AnalyzeCallOperands(Outs, ArgCC_Z80_Builtin_32BitArith);

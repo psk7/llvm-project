@@ -296,13 +296,11 @@ Defs = [SREG] in
       def SBC8 : FormB<0x98, (outs ACC:$rd), (ins ACC:$src, GPR8:$rr), "sbc  $rr",
                      [(set i8:$rd, (sube i8:$src, i8:$rr)), (implicit SREG)]>;
 
-     def SBCRdRr16 : FormC<0x42, (outs HLREG:$rd), (ins HLREG:$src, DREGS:$rr), "sbc  $rd, $rr",
-                    [(set i16:$rd, (sube i16:$src, i16:$rr)), (implicit SREG)]>, ED;
+      def SBCk : FormI<0xde, (outs ACC:$rd), (ins ACC:$src, i8imm:$d8), "sbc  $d8",
+                     [(set i8:$rd, (sube i8:$src, imm:$d8)), (implicit SREG)]>;
 
-  let Uses = [SREG] in
-      def SBCRdRr8 : FormB<0x98,
-                           (outs ACC:$rd), (ins GPR8:$src, GPR8:$rr), "sbc  $rr",
-                           [(set i8:$rd, (sube i8:$src, i8:$rr)), (implicit SREG)]>;
+      def SBCW : FormC<0x42, (outs HLREG:$rd), (ins HLREG:$src, DREGS:$rr), "sbc  $rd, $rr",
+                     [(set i16:$rd, (sube i16:$src, i16:$rr)), (implicit SREG)]>, ED;
   }
 }
 
@@ -748,22 +746,13 @@ let Defs = [SREG, HL, DE, BC] in {
 // Pseudo instructions for later expansion
 //===----------------------------------------------------------------------===//
 
-//:TODO: Optimize this for wider types AND optimize the following code
-//       compile int foo(char a, char b, char c, char d) {return d+b;}
-//       looks like a missed sext_inreg opportunity.
-def SEXT : ExtensionPseudo<
-  (outs DREGS:$dst),
-  (ins GPR8:$src),
-  "!sext\t$dst, $src",
-  [(set i16:$dst, (sext i8:$src)), (implicit SREG)]
->;
+let Defs=[SREG] in {
+    def SEXT : Pseudo<(outs DREGS:$dst), (ins GPR8:$src), "!sext\t$dst, $src",
+                       [(set i16:$dst, (sext i8:$src)), (implicit SREG)]>;
 
-def ZEXT : ExtensionPseudo<
-  (outs DREGS:$dst),
-  (ins GPR8:$src),
-  "zext\t$dst, $src",
-  [(set i16:$dst, (zext i8:$src)), (implicit SREG)]
->;
+    def ZEXT : Pseudo<(outs DREGS:$dst), (ins GPR8:$src), "!zext\t$dst, $src",
+                       [(set i16:$dst, (zext i8:$src)), (implicit SREG)]>;
+}
 
 // This pseudo gets expanded into a movw+adiw thus it clobbers SREG.
 let Defs = [SREG],
@@ -778,8 +767,7 @@ def FRMIDX : Pseudo<(outs HLIXIYREGS:$dst),
 def STDSPQRr : StorePseudo<(outs), (ins memspi:$dst, BGPR8:$src), "!stdstk\t$dst, $src",
                            [(store i8:$src, addr:$dst)]>;
 
-// This pseudo is either converted to a regular store or a push which clobbers
-// SP.
+// This pseudo is either converted to a regular store or a push which clobbers SP.
 def STDWSPQRr : StorePseudo<(outs), (ins memri:$dst, DREGS:$src), "!stdwstk\t$dst, $src",
                             [(store i16:$src, addr:$dst)]>;
 

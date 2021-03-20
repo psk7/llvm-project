@@ -109,8 +109,6 @@ public:
   unsigned isStoreToStackSlot(const MachineInstr &MI,
                               int &FrameIndex) const override;
 
-  bool isCommuteAllowed(const MachineInstr &MI) const override;
-
   // Branch analysis.
   bool analyzeBranch(MachineBasicBlock &MBB, MachineBasicBlock *&TBB,
                      MachineBasicBlock *&FBB,

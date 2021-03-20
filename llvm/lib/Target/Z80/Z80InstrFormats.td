@@ -186,12 +186,6 @@ class Pseudo<dag outs, dag ins, string asmstr, list<dag> pattern>
 class FRdK : Instruction { let isAsCheapAsAMove = 1; }
 class FSTLD : Instruction { let PostEncoderMethod = "loadStorePostEncoder"; }
 
-class ExtensionPseudo<dag outs, dag ins, string asmstr, list<dag> pattern>
-  : Pseudo<outs, ins, asmstr, pattern>
-{
-  let Defs = [SREG];
-}
-
 class StorePseudo<dag outs, dag ins, string asmstr, list<dag> pattern>
   : Pseudo<outs, ins, asmstr, pattern>
 {

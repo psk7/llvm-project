@@ -242,8 +242,7 @@ namespace CallingConv {
     WASM_EmscriptenInvoke = 99,
 
     Z80_BUILTIN = 120,
-    Z80_BUILTIN_MEMCPY = 121,
-    Z80_BUILTIN_32BITARITH = 122,
+    Z80_BUILTIN_32BITARITH = 121,
 
     /// The highest possible calling convention ID. Must be some 2^k - 1.
     MaxID = 1023

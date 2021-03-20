@@ -567,25 +567,5 @@ unsigned Z80InstrInfo::insertIndirectBranch(MachineBasicBlock &MBB,
     return getInstSizeInBytes(MI);
 }
 
-bool Z80InstrInfo::isCommuteAllowed(const MachineInstr &MI) const {
-  switch (MI.getOpcode()) {
-  default:
-    return TargetInstrInfo::isCommuteAllowed(MI);
-  case Z80::ADD:
-  case Z80::ADDRdRr16:
-  case Z80::OR:
-  case Z80::XOR:
-    const MachineRegisterInfo &RI = MI.getParent()->getParent()->getRegInfo();
-
-    auto RegClass0 = RI.getRegClass(MI.getOperand(0).getReg())->getID();
-    auto RegClass1 = RI.getRegClass(MI.getOperand(1).getReg())->getID();
-    auto RegClass2 = RI.getRegClass(MI.getOperand(2).getReg())->getID();
-
-    return !(RegClass0 == Z80::ACCRegClassID &&
-             RegClass1 == Z80::ACCRegClassID &&
-             RegClass2 == Z80::GPR8RegClassID);
-  }
-}
-
 } // end of namespace llvm
 

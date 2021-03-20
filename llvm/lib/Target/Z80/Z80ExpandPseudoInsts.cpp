@@ -290,7 +290,7 @@ bool Z80ExpandPseudo::expand<Z80::CPW>(Block &MBB, BlockIt MBBI) {
 
   buildMI(MBB, MBBI, Z80::CLEARC);
 
-  auto MIBHI = buildMI(MBB, MBBI, Z80::SBCRdRr16)
+  auto MIBHI = buildMI(MBB, MBBI, Z80::SBCW)
       .addReg(DstReg, RegState::Define | getDeadRegState(true))
       .addReg(DstReg, getKillRegState(DstIsKill))
       .addReg(SrcReg, getKillRegState(SrcIsKill));
@@ -644,7 +644,7 @@ template <> bool Z80ExpandPseudo::expand<Z80::SEXT>(Block &MBB, BlockIt MBBI) {
       .addReg(Z80::A, RegState::Kill)
       .addReg(Z80::A, RegState::Kill);
 
-  buildMI(MBB, MBBI, Z80::SBCRdRr8)
+  buildMI(MBB, MBBI, Z80::SBC8)
       .addReg(Z80::A, RegState::Define)
       .addReg(Z80::A, RegState::Kill)
       .addReg(Z80::A, RegState::Kill);
@@ -696,17 +696,9 @@ template <> bool Z80ExpandPseudo::expand<Z80::ZEXT>(Block &MBB, BlockIt MBBI) {
       .addReg(SrcReg, getKillRegState(SrcIsKill));
   }
 
-  /*auto EOR = buildMI(MBB, MBBI, Z80::EORRdRr)
-    .addReg(DstHiReg, RegState::Define | getDeadRegState(DstIsDead))
-    .addReg(DstHiReg, RegState::Kill)
-    .addReg(DstHiReg, RegState::Kill);*/
-
   buildMI(MBB, MBBI, Z80::LDk)
           .addReg(DstHiReg, RegState::Define | getDeadRegState(DstIsDead))
           .addImm(0);
-
-  //if (ImpIsDead)
-  //  EOR->getOperand(3).setIsDead();
 
   MI.eraseFromParent();
   return true;
@@ -787,7 +779,7 @@ template <> bool Z80ExpandPseudo::expand<Z80::SUBW>(Block &MBB, BlockIt MBBI) {
   bool ImpIsDead = MI.getOperand(3).isDead();
 
   buildMI(MBB, MBBI, Z80::CLEARC);
-  auto mi = buildMI(MBB, MBBI, Z80::SBCRdRr16)
+  auto mi = buildMI(MBB, MBBI, Z80::SBCW)
                 .addReg(DstReg, RegState::Define | getDeadRegState(DstIsDead))
                 .addReg(DstReg, getKillRegState(DstIsKill))
                 .addReg(SrcReg, getKillRegState(SrcIsKill));

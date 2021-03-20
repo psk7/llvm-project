@@ -47,11 +47,6 @@ def ArgCC_Z80_Builtin_32BitArith : CallingConv
   CCIfType<[i16], CCAssignToStack<2, 1>>,
 ]>;
 
-def ArgCC_Z80_Builtin_MEMCPY : CallingConv
-<[
-  CCIfType<[i16], CCAssignToReg<[DE, HL, BC]>>
-]>;
-
 def ArgCC_Z80_C : CallingConv
 <[
   CCIfType<[i8], CCAssignToReg<[E, D, C, B]>>,

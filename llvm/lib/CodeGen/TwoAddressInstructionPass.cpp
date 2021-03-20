@@ -1084,8 +1084,6 @@ bool TwoAddressInstructionPass::tryInstructionCommute(MachineInstr *MI,
       AggressiveCommute = true;
     }
 
-    DoCommute &= TII->isCommuteAllowed(*MI);
-
     // If it's profitable to commute, try to do so.
     if (DoCommute && commuteInstruction(MI, DstOpIdx, BaseOpIdx, OtherOpIdx,
                                         Dist)) {

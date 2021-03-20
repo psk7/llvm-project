@@ -92,15 +92,11 @@ def BDREGS : RegisterClass<"Z80", [i16], 8, ( add BC, DE, HL, SP )>;
 let CopyCost = 3 in
 def XDREGS : RegisterClass<"Z80", [i16], 8, ( add IX, IY )>;
 
-def SPLITTABLEDREGS : RegisterClass<"Z80", [i16], 8, ( add BC, DE, HL, IX, IY )>;
-
 def DREGSTOSTACK : RegisterClass<"Z80", [i16], 8, ( add BC, DE, HL, IX, IY )>;
 
 def INCDECDREGS : RegisterClass<"Z80", [i16], 8, ( add BC, DE, HL, IX, IY )>;
 
 def LDITARGETREGS : RegisterClass<"Z80", [i16], 8, ( add BC, DE, HL, IX, IY )>;
-
-//def SPLITTABLEDREGS : RegisterClass<"Z80", [i16], 8, ( add BC, DE, HL, IX, IY )>;
 
 let CopyCost = 3 in
 def PTRREGS : RegisterClass<"Z80", [i16], 8, ( add HL, IX, IY ), ptr>;
