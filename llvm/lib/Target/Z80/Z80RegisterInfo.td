@@ -76,14 +76,10 @@ def SP     : Z80Reg<3, "sp">, DwarfRegNum<[88]>;
 //===----------------------------------------------------------------------===//
 
 // Main 8-bit register class.
-def GPR8 : RegisterClass<"Z80", [i8], 8, ( add A, B, C, D, E, H, L )>;
+def BGPR8 : RegisterClass<"Z80", [i8], 8, ( add A, B, C, D, E, H, L )>;
+def GPR8 : RegisterClass<"Z80", [i8], 8, ( add A, B, C, D, E, H, L, XL, XH, YL, YH )>;
 
 def GPR8_NoHL : RegisterClass<"Z80", [i8], 8, ( add A, B, C, D, E )>;
-
-def GPR8ANDXY : RegisterClass<"Z80", [i8], 8,
-  (
-    add A, B, C, D, E, H, L, XL, XH, YL, YH
-  )>;
 
 def HandL : RegisterClass<"Z80", [i8], 8, ( add H, L )>;
 def XY_HandL : RegisterClass<"Z80", [i8], 8, ( add XL, XH, YL, YH )>;

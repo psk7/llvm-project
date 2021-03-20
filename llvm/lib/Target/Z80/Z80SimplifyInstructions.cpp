@@ -149,10 +149,10 @@ bool Z80SimplifyInstructions::expand<Z80::OR>(Block &MBB, BlockIt MBBI) {
 
   auto OpCode = PMI.getOpcode();
 
-  if (OpCode != Z80::AND && OpCode != Z80::OR && OpCode != Z80::ANDimm8 &&
-      OpCode != Z80::ORimm8 && OpCode != Z80::XOR &&
-      OpCode != Z80::XORimm8 && OpCode != Z80::ANDrr8PTR &&
-      OpCode != Z80::ORrr8PTR && OpCode != Z80::XORrr8PTR)
+  if (OpCode != Z80::AND && OpCode != Z80::OR && OpCode != Z80::ANDk &&
+      OpCode != Z80::ORk && OpCode != Z80::XOR &&
+      OpCode != Z80::XORk && OpCode != Z80::ANDPTR &&
+      OpCode != Z80::ORPTR && OpCode != Z80::XORPTR)
     return false;
 
   MI.eraseFromParent();
@@ -169,7 +169,7 @@ bool Z80SimplifyInstructions::expand<Z80::TESTBIT>(Block &MBB, BlockIt MBBI) {
   if (!(Op0.isReg() && Z80::A == Op0.getReg() && Op0.isKill() && Op1.isImm()))
     return false;
 
-  buildMI(MBB, MBBI, Z80::ANDimm8)
+  buildMI(MBB, MBBI, Z80::ANDk)
       .addReg(Z80::A, RegState::Define | getDeadRegState(true))
       .addReg(Z80::A, getKillRegState(true))
       .addImm(1 << Op1.getImm());

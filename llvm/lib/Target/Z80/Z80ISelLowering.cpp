@@ -38,7 +38,6 @@ Z80TargetLowering::Z80TargetLowering(const Z80TargetMachine &TM,
   // Set up the register classes.
   addRegisterClass(MVT::i8, &Z80::GPR8RegClass);
   addRegisterClass(MVT::i16, &Z80::DREGSRegClass);
-  // addRegisterClass(MVT::i16, &Z80::XDREGSRegClass);
 
   // Compute derived properties from the register classes.
   computeRegisterProperties(Subtarget.getRegisterInfo());
@@ -1404,7 +1403,7 @@ MachineBasicBlock *Z80TargetLowering::insertBrcond(MachineInstr &MI,
         .addReg(CR.getReg(), RegState::Kill, Z80::sub_hi);
   }
 
-  BuildMI(xorMBB, dl, TII.get(Z80::XORimm8))
+  BuildMI(xorMBB, dl, TII.get(Z80::XORk))
       .addReg(RI.createVirtualRegister(&Z80::ACCRegClass), RegState::Define | RegState::Dead)
       .addReg(tr, RegState::Kill)
       .addImm(0x80);
@@ -1520,7 +1519,7 @@ Z80TargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
           .addReg(CR.getReg(), RegState::Kill, Z80::sub_hi);
     }
 
-    BuildMI(xorMBB, dl, TII.get(Z80::XORimm8))
+    BuildMI(xorMBB, dl, TII.get(Z80::XORk))
         .addReg(RI.createVirtualRegister(&Z80::ACCRegClass), RegState::Define | RegState::Dead)
         .addReg(tr, RegState::Kill)
         .addImm(0x80);

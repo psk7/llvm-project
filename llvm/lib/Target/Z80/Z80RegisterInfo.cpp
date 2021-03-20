@@ -288,8 +288,15 @@ Z80RegisterInfo::getPointerRegClass(const MachineFunction &MF,
 
 void Z80RegisterInfo::splitReg(Register Reg, Register &LoReg,
                                Register &HiReg) const {
-  assert(Z80::SPLITTABLEDREGSRegClass.contains(Reg)
-         && "can only split 16-bit registers");
+  static Register SplittableDregs[] = {Z80::BC, Z80::DE, Z80::HL, Z80::IX,
+                                       Z80::IY};
+
+  bool f = false;
+
+  for(Register r : SplittableDregs)
+    f |= (r == Reg);
+
+  assert(f && "can only split 16-bit registers");
 
   LoReg = getSubReg(Reg, Z80::sub_lo);
   HiReg = getSubReg(Reg, Z80::sub_hi);

@@ -274,6 +274,16 @@ bool Z80FrameLowering::spillCalleeSavedRegisters(
       MBB.addLiveIn(Reg);
     }
 
+    if (IsNotLiveIn && Reg == Z80::BC &&
+        (MBB.isLiveIn(Z80::B) || MBB.isLiveIn(Z80::C)))
+      IsNotLiveIn = false;
+    if (IsNotLiveIn && Reg == Z80::DE &&
+        (MBB.isLiveIn(Z80::D) || MBB.isLiveIn(Z80::E)))
+      IsNotLiveIn = false;
+    if (IsNotLiveIn && Reg == Z80::HL &&
+        (MBB.isLiveIn(Z80::H) || MBB.isLiveIn(Z80::L)))
+      IsNotLiveIn = false;
+
     // Do not kill the register when it is an input argument.
     BuildMI(MBB, MI, DL, TII.get(Z80::PUSH))
         .addReg(Reg, getKillRegState(IsNotLiveIn))
