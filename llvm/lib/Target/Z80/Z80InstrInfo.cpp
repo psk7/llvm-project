@@ -45,92 +45,28 @@ void Z80InstrInfo::copyPhysReg(MachineBasicBlock &MBB,
                                MCRegister SrcReg, bool KillSrc) const {
   const Z80Subtarget &STI = MBB.getParent()->getSubtarget<Z80Subtarget>();
   const Z80RegisterInfo &TRI = *STI.getRegisterInfo();
+
   unsigned Opc;
 
-  if ((Z80::XDREGSRegClass.contains(DestReg) &&
-       (Z80::DE == SrcReg || Z80::BC == SrcReg)) ||
-      (Z80::XDREGSRegClass.contains(SrcReg) &&
-       (Z80::DE == DestReg || Z80::BC == DestReg))) {
-    Register DestLo, DestHi, SrcLo, SrcHi;
-
-    TRI.splitReg(DestReg, DestLo, DestHi);
-    TRI.splitReg(SrcReg, SrcLo, SrcHi);
-
-    // Copy each individual register with the `LD` instruction.
-    BuildMI(MBB, MI, DL, get(Z80::LDRdRr8), DestLo)
-        .addReg(SrcLo, getKillRegState(KillSrc));
-    BuildMI(MBB, MI, DL, get(Z80::LDRdRr8), DestHi)
-        .addReg(SrcHi, getKillRegState(KillSrc));
-
-    return;
-  }
-
-  if ((Z80::XDREGSRegClass.contains(DestReg) &&
-       Z80::DREGSRegClass.contains(SrcReg)) ||
-      (Z80::XDREGSRegClass.contains(SrcReg) &&
-       Z80::DREGSRegClass.contains(DestReg))) {
-
-    BuildMI(MBB, MI, DL, get(Z80::COPYREG), DestReg)
-        .addReg(SrcReg, getKillRegState(KillSrc));
-
-     /*BuildMI(MBB, MI, DL, get(Z80::PUSHRr))
-         .addReg(SrcReg, getKillRegState(KillSrc));
-
-     BuildMI(MBB, MI, DL, get(Z80::POPRd), DestReg);*/
-
-    return;
-  }
-
-  if (Z80::DREGSRegClass.contains(DestReg, SrcReg)) {
-    Register DestLo, DestHi, SrcLo, SrcHi;
-
-    TRI.splitReg(DestReg, DestLo, DestHi);
-    TRI.splitReg(SrcReg,  SrcLo,  SrcHi);
-
-    // Copy each individual register with the `LD` instruction.
-    BuildMI(MBB, MI, DL, get(Z80::LDRdRr8), DestLo)
-        .addReg(SrcLo, getKillRegState(KillSrc));
-    BuildMI(MBB, MI, DL, get(Z80::LDRdRr8), DestHi)
-        .addReg(SrcHi, getKillRegState(KillSrc));
-
-
-    /*if (STI.hasMOVW() && Z80::DREGSMOVWRegClass.contains(DestReg, SrcReg)) {
-      BuildMI(MBB, MI, DL, get(Z80::MOVWRdRr), DestReg)
-          .addReg(SrcReg, getKillRegState(KillSrc));
-    } else {
-      Register DestLo, DestHi, SrcLo, SrcHi;
-
-      TRI.splitReg(DestReg, DestLo, DestHi);
-      TRI.splitReg(SrcReg,  SrcLo,  SrcHi);
-
-      // Copy each individual register with the `MOV` instruction.
-      BuildMI(MBB, MI, DL, get(Z80::MOVRdRr), DestLo)
-        .addReg(SrcLo, getKillRegState(KillSrc));
-      BuildMI(MBB, MI, DL, get(Z80::MOVRdRr), DestHi)
-        .addReg(SrcHi, getKillRegState(KillSrc));
-    }*/
+  if (Z80::DREGSRegClass.contains(SrcReg, DestReg) ||
+      Z80::XDREGSRegClass.contains(SrcReg, DestReg) ||
+      (Z80::DREGSRegClass.contains(DestReg) &&
+       Z80::XDREGSRegClass.contains(SrcReg)) ||
+      (Z80::DREGSRegClass.contains(SrcReg) &&
+       Z80::XDREGSRegClass.contains(DestReg))) {
+    Opc = Z80::COPYREGW;
+  } else if (Z80::GPR8RegClass.contains(SrcReg, DestReg)){
+    Opc = Z80::COPYREG;
   } else {
-    if (Z80::GPR8RegClass.contains(DestReg, SrcReg)) {
-
-      if ((Z80::XY_HandLRegClass.contains(SrcReg) &&
-           Z80::HandLRegClass.contains(DestReg)) ||
-          (Z80::XY_HandLRegClass.contains(DestReg) &&
-           Z80::HandLRegClass.contains(SrcReg))) {
-        llvm_unreachable("Impossible reg-to-reg copy");
-      }
-
-      Opc = Z80::LDRdRr8;
-    } /*else if (SrcReg == Z80::SP && Z80::DREGSRegClass.contains(DestReg)) {
-      Opc = Z80::SPREAD;
-    } else if (DestReg == Z80::SP && Z80::DREGSRegClass.contains(SrcReg)) {
-      Opc = Z80::SPWRITE;
-    }*/ else {
-      llvm_unreachable("Impossible reg-to-reg copy");
-    }
-
-    BuildMI(MBB, MI, DL, get(Opc), DestReg)
-        .addReg(SrcReg, getKillRegState(KillSrc));
+    TRI.dumpReg(SrcReg, 0, &TRI);
+    TRI.dumpReg(DestReg, 0, &TRI);
+    llvm_unreachable("Impossible reg-to-reg copy");
   }
+
+  BuildMI(MBB, MI, DL, get(Opc), DestReg)
+      .addReg(SrcReg, getKillRegState(KillSrc));
+
+  return;
 }
 
 unsigned Z80InstrInfo::isLoadFromStackSlot(const MachineInstr &MI,

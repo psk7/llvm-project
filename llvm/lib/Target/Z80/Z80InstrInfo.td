@@ -693,12 +693,11 @@ Uses = [SREG] in
 // 8 and 16-bit register move instructions.
 let hasSideEffects = 0 in
 {
-    def LDRdRr8 : FormG<0x40, (outs GPR8ANDXY:$rd), (ins GPR8ANDXY:$rr), "ld   $rd, $rr", []>;
-
+    def LD : FormG<0x40, (outs GPR8ANDXY:$rd), (ins GPR8ANDXY:$rr), "ld   $rd, $rr", []>;
     def LDSP : FormA<0xf9, (outs SPREG:$rd), (ins HLIXIYREGS:$rr), "ld   sp, $rr", []>;
+    def COPYREG : Pseudo<(outs GPR8:$d), (ins GPR8:$s), "!copyreg $d, $s", []>;
+    def COPYREGW : Pseudo<(outs DREGS:$d), (ins DREGS:$s), "!copyregw $d, $s", []>;
 }
-
-def COPYREG : Pseudo<(outs DREGS:$d), (ins DREGS:$s), "copyreg $d, $s", []>;
 
 // Load immediate values into registers.
 let isReMaterializable = 1 in
@@ -803,11 +802,11 @@ hasSideEffects = 0 in
 {
   // Stack push operations.
   let mayStore = 1 in
-    def PUSHRr : FormC<0b11000101, (outs), (ins DREGSTOSTACK:$rr), "push $rr", []>;
+    def PUSH : FormC<0b11000101, (outs), (ins DREGSTOSTACK:$rr), "push $rr", []>;
 
   // Stack pop operations.
   let mayLoad = 1 in
-    def POPRd : FormC<0b11000001, (outs DREGSTOSTACK:$rr), (ins), "pop  $rr", []>;
+    def POP : FormC<0b11000001, (outs DREGSTOSTACK:$rr), (ins), "pop  $rr", []>;
 }
 
 ////===----------------------------------------------------------------------===//
@@ -976,6 +975,12 @@ def CPL : FormA<0x2f, (outs ACC:$rd), (ins ACC:$rs), "cpl", [(set i8:$rd, (xor i
 
 let Defs = [SREG] in
 def CLEARC : FormA<0xb7, (outs), (ins), "or   a", []>;
+
+let Defs = [BC, DE, HL] in
+def EXX : FormA<0xd9, (outs), (ins), "exx", []>;
+
+let Defs = [AF] in
+def EXAF : FormA<0x08, (outs), (ins), "ex   af, af'", []>;
 
 //===----------------------------------------------------------------------===//
 // Special/Control instructions

@@ -232,6 +232,13 @@ unsigned Z80MCCodeEmitter::encodeMemri(const MCInst &MI, unsigned OpNo,
 
   assert(RegOp.isReg() && "Expected register operand");
 
+  bool OpIsHL = Z80::HL == RegOp.getReg();
+
+  if(OpIsHL) {
+    MI.dump();
+    assert(OffsetOp.isImm() && OffsetOp.getImm() == 0);
+  }
+
   if (OffsetOp.isImm()) {
     return OffsetOp.getImm();
   } else if (OffsetOp.isExpr()) {

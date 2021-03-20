@@ -53,20 +53,23 @@ def XL  : Z80Reg<5,  "xl">,  DwarfRegNum<[6]>;
 def YH  : Z80Reg<4,  "yh">,  DwarfRegNum<[7]>;
 def YL  : Z80Reg<5,  "yl">,  DwarfRegNum<[8]>;
 
+// Status register.
+def SREG : Z80Reg<14, "F">, DwarfRegNum<[89]>;
+
 let SubRegIndices = [sub_lo, sub_hi],
 CoveredBySubRegs = 1 in
 {
-  // 16 bit GPR pairs.
   def HL     : Z80Reg<2, "hl",      [L, H]>, DwarfRegNum<[5]>;
   def DE     : Z80Reg<1, "de",      [E, D]>, DwarfRegNum<[3]>;
   def BC     : Z80Reg<0, "bc",      [C, B]>, DwarfRegNum<[1]>;
 
   def IX     : Z80Reg<2, "ix",      [XL, XH]>, DwarfRegNum<[5]>;
   def IY     : Z80Reg<2, "iy",      [YL, YH]>, DwarfRegNum<[7]>;
+
+  def AF     : Z80Reg<2, "af",      [A, SREG]>, DwarfRegNum<[8]>;
 }
 
 def SP     : Z80Reg<3, "sp">, DwarfRegNum<[88]>;
-
 
 //===----------------------------------------------------------------------===//
 // Register Classes
@@ -195,9 +198,6 @@ def SPREG : RegisterClass<"Z80", [i16], 8, (add SP)>;
 
 let CopyCost = 3 in
 def HLIXIYREGS : RegisterClass<"Z80", [i16], 8, (add HL, IX, IY)>;
-
-// Status register.
-def SREG : Z80Reg<14, "FLAGS">, DwarfRegNum<[88]>;
 
 def CCR : RegisterClass<"Z80", [i8], 8, (add SREG)>
 {
