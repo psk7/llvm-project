@@ -155,7 +155,14 @@ void Z80RegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
 
     assert(Offset >= 0 && "Invalid offset");
 
-    MI.setDesc(TII.get(Z80::ADDRdRr16));
+    if ((Z80::IX == r) || (Z80::IY == r)) {
+      MI.setDesc(TII.get(Z80::XADDW));
+    } else if (Z80::HL == r) {
+      MI.setDesc(TII.get(Z80::ADDW));
+    } else {
+      llvm_unreachable("wrong register");
+    }
+
     MI.getOperand(FIOperandNum).ChangeToRegister(r, false);
     MI.getOperand(FIOperandNum + 1).ChangeToRegister(Z80::SP, false);
 
@@ -218,7 +225,7 @@ void Z80RegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
   //:TODO: consider using only one adiw/sbiw chain for more than one frame index
   if (Offset > 126) {
     BuildMI(MBB, II, dl, TII.get(Z80::LDIWRdK), Z80::IX).addImm(Offset);
-    BuildMI(MBB, II, dl, TII.get(Z80::ADDRdRr16))
+    BuildMI(MBB, II, dl, TII.get(Z80::XADDW))
         .addReg(Z80::IX, RegState::Define)
         .addReg(Z80::IX)
         .addReg(Z80::SP);
@@ -283,7 +290,7 @@ Register Z80RegisterInfo::getFrameRegister(const MachineFunction &MF) const {
 const TargetRegisterClass *
 Z80RegisterInfo::getPointerRegClass(const MachineFunction &MF,
                                     unsigned Kind) const {
-  return &Z80::PTRDISPREGSRegClass;
+  return &Z80::PTRREGSRegClass;
 }
 
 void Z80RegisterInfo::splitReg(Register Reg, Register &LoReg,

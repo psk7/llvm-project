@@ -255,7 +255,7 @@ void Z80InstPrinter::printMemriz(const MCInst *MI, unsigned OpNo,
 
   assert(Op.isReg() && "Expected a register for the first operand");
 
-  assert(Op.getReg() == Z80::HL && "Operand MUST be HL");
+  //assert(Op.getReg() == Z80::HL && "Operand MUST be HL");
 
   O << "(";
   printOperand(MI, OpNo, O);

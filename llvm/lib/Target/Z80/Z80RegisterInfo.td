@@ -87,30 +87,19 @@ def XY_HandL : RegisterClass<"Z80", [i8], 8, ( add XL, XH, YL, YH )>;
 def ACC : RegisterClass<"Z80", [i8], 8, (add A)>;
 
 // Main 16-bit pair register class.
-def DREGS : RegisterClass<"Z80", [i16], 8, ( add BC, DE, HL, SP )>;
+def DREGS : RegisterClass<"Z80", [i16], 8, ( add BC, DE, HL, IX, IY, SP )>;
 def BDREGS : RegisterClass<"Z80", [i16], 8, ( add BC, DE, HL, SP )>;
-let CopyCost = 3 in
 def XDREGS : RegisterClass<"Z80", [i16], 8, ( add IX, IY )>;
 
-def DREGSTOSTACK : RegisterClass<"Z80", [i16], 8, ( add BC, DE, HL, IX, IY )>;
+def REGSTOSTACK : RegisterClass<"Z80", [i16], 8, ( add BC, DE, HL, IX, IY, AF )>;
 
-def INCDECDREGS : RegisterClass<"Z80", [i16], 8, ( add BC, DE, HL, IX, IY )>;
-
-def LDITARGETREGS : RegisterClass<"Z80", [i16], 8, ( add BC, DE, HL, IX, IY )>;
-
-let CopyCost = 3 in
-def PTRREGS : RegisterClass<"Z80", [i16], 8, ( add HL, IX, IY ), ptr>;
-
-let CopyCost = 10 in
-def PTRDISPREGS : RegisterClass<"Z80", [i16], 8, ( add IX, IY ), ptr>;
+def PTRDISPREGS : RegisterClass<"Z80", [i16], 8, ( add IX, IY )>;
+def PTRREGS : RegisterClass<"Z80", [i16], 8, ( add HL, IX, IY )>;
 
 def BCREG : RegisterClass<"Z80", [i16], 8, (add BC)>;
 def HLREG : RegisterClass<"Z80", [i16], 8, (add HL)>;
 def DEREG : RegisterClass<"Z80", [i16], 8, (add DE)>;
 def SPREG : RegisterClass<"Z80", [i16], 8, (add SP)>;
-
-let CopyCost = 3 in
-def HLIXIYREGS : RegisterClass<"Z80", [i16], 8, (add HL, IX, IY)>;
 
 def CCR : RegisterClass<"Z80", [i8], 8, (add SREG)>
 {

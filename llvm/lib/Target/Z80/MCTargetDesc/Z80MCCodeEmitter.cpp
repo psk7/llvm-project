@@ -90,13 +90,12 @@ InstPrefixInfo::InstPrefixInfo(const T &B, const T &E, const MCInstrDesc &MD,
     }
   }
 
-  if (!MD.isPseudo())
-  if (!MD.isPseudo())
+  /*if (!MD.isPseudo())
     if (HasHL && (HasXExtension || HasYExtension)) {
       // Inst.dump();
       report_fatal_error(
           "Unable to mix IX, IY and HL registers in same instruction");
-    }
+    }*/
 
   Z80II::Prefix Prefixes = static_cast<Z80II::Prefix>(MD.TSFlags & 7);
 
@@ -105,10 +104,12 @@ InstPrefixInfo::InstPrefixInfo(const T &B, const T &E, const MCInstrDesc &MD,
   HasDD = Prefixes == DD || Prefixes == DDCB || HasXExtension;
   HasFD = Prefixes == FD || Prefixes == FDCB || HasYExtension;
 
+/*
   if (!MD.isPseudo())
     if (HasDD && HasFD)
       report_fatal_error(
           "Unable to mix IX and IY registers in same instruction");
+*/
 
   InstrSize = PureSize;
   if (HasCB)

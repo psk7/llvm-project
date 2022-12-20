@@ -79,6 +79,14 @@ private:
 
   /// Scavenges a free GPR8 register for use.
   Register scavengeGPR8(MachineInstr &MI, const TargetRegisterClass *RC);
+
+  bool emitIndirectWordLoad(Block &MBB, BlockIt MBBI, MachineInstr &MI,
+                            Register Dst, Register Ptr, int Displacement,
+                            bool PtrIsKill, bool DstIsDead);
+
+  bool emitIndirectWordStore(Block &MBB, BlockIt MBBI, MachineInstr &MI,
+                            Register Data, Register Ptr, int Displacement,
+                            bool PtrIsKill, bool DataIsKill);
 };
 
 char Z80ExpandPseudo::ID = 0;
@@ -153,31 +161,6 @@ expandArith(unsigned OpLo, unsigned OpHi, Block &MBB, BlockIt MBBI) {
 
   // SREG is always implicitly killed
   MIBHI->getOperand(4).setIsKill();
-
-  MI.eraseFromParent();
-  return true;
-}
-
-template <>
-bool Z80ExpandPseudo::expand<Z80::ADDWRdRr>(Block &MBB, BlockIt MBBI) {
-  MachineInstr &MI = *MBBI;
-  Register DstReg = MI.getOperand(0).getReg();
-  Register SrcReg = MI.getOperand(2).getReg();
-  bool DstIsDead = MI.getOperand(0).isDead();
-  bool DstIsKill = MI.getOperand(1).isKill();
-  bool SrcIsKill = MI.getOperand(2).isKill();
-  bool ImpIsDead = MI.getOperand(3).isDead();
-
-  auto MIBHI = buildMI(MBB, MBBI, Z80::ADDRdRr16)
-      .addReg(DstReg, RegState::Define | getDeadRegState(DstIsDead))
-      .addReg(DstReg, getKillRegState(DstIsKill))
-      .addReg(SrcReg, getKillRegState(SrcIsKill));
-
-  if (ImpIsDead)
-    MIBHI->getOperand(3).setIsDead();
-
-  // SREG is always implicitly killed
-  //MIBHI.addReg(Z80::SREG, RegState::ImplicitKill);
 
   MI.eraseFromParent();
   return true;
@@ -355,6 +338,136 @@ bool Z80ExpandPseudo::expand<Z80::LDSWRdK>(Block &MBB, BlockIt MBBI) {
   return true;
 }
 
+bool Z80ExpandPseudo::emitIndirectWordStore(Block &MBB, BlockIt MBBI,
+                                            MachineInstr &MI, Register Data,
+                                            Register Ptr, int Displacement,
+                                            bool PtrIsKill, bool DataIsKill) {
+
+  Register DataLoReg, DataHiReg;
+  TRI->splitReg(Data, DataLoReg, DataHiReg);
+
+  auto PtrRegState = getKillRegState(PtrIsKill);
+  auto DataRegState = getKillRegState(DataIsKill);
+
+  if (Z80::HL == Ptr && Displacement == 0){
+    if (Z80::HL != Data && Z80::IX != Data && Z80::IY != Data) {
+      buildMI(MBB, MBBI, Z80::STPTR)
+          .addReg(Ptr)
+          .addReg(DataLoReg, DataRegState)
+          .setMemRefs(MI.memoperands());
+
+      buildMI(MBB, MBBI, Z80::INCW, Ptr).addReg(Ptr);
+
+      buildMI(MBB, MBBI, Z80::STPTR)
+          .addReg(Ptr, PtrRegState)
+          .addReg(DataHiReg, DataRegState)
+          .setMemRefs(MI.memoperands());
+
+      if(!PtrIsKill) {
+        buildMI(MBB, MBBI, Z80::DECW, Ptr).addReg(Ptr, PtrRegState);
+      }
+
+      return true;
+    }
+
+    bool DataIsHL = Z80::HL == Data;
+
+    auto TmpReg = scavengeGPR8(MI, &Z80::GPR8_NoHLRegClass);
+
+    if (TmpReg == -1)
+      return false;
+
+    if(DataIsHL) {
+      buildMI(MBB, MBBI, Z80::LD, TmpReg).addReg(DataHiReg, DataRegState);
+
+      buildMI(MBB, MBBI, Z80::STPTR)
+          .addReg(Ptr)
+          .addReg(DataLoReg, DataRegState)
+          .setMemRefs(MI.memoperands());
+
+      buildMI(MBB, MBBI, Z80::INCW, Ptr).addReg(Ptr);
+
+      buildMI(MBB, MBBI, Z80::STPTR)
+          .addReg(Ptr, PtrRegState)
+          .addReg(TmpReg, getKillRegState(true))
+          .setMemRefs(MI.memoperands());
+    } else {
+      buildMI(MBB, MBBI, Z80::LD, TmpReg).addReg(DataLoReg, DataRegState);
+      buildMI(MBB, MBBI, Z80::STPTR)
+          .addReg(Ptr)
+          .addReg(TmpReg, getKillRegState(true))
+          .setMemRefs(MI.memoperands());
+
+      buildMI(MBB, MBBI, Z80::INCW, Ptr).addReg(Ptr);
+
+      buildMI(MBB, MBBI, Z80::LD, TmpReg).addReg(DataHiReg, DataRegState);
+      buildMI(MBB, MBBI, Z80::STPTR)
+          .addReg(Ptr, PtrRegState)
+          .addReg(TmpReg, getKillRegState(true))
+          .setMemRefs(MI.memoperands());
+    }
+
+    if (!PtrIsKill) {
+      buildMI(MBB, MBBI, Z80::DECW, Ptr).addReg(Ptr, PtrRegState);
+    }
+
+    return true;
+  }
+
+  if (Z80::IX == Ptr || Z80::IY == Ptr) {
+    if (Z80::IX != Data && Z80::IY != Data) {
+      buildMI(MBB, MBBI, Z80::STDPTR)
+          .addReg(Ptr)
+          .addImm(Displacement)
+          .addReg(DataLoReg, DataRegState)
+          .setMemRefs(MI.memoperands());
+
+      buildMI(MBB, MBBI, Z80::STDPTR)
+          .addReg(Ptr, PtrRegState)
+          .addImm(Displacement + 1)
+          .addReg(DataHiReg, DataRegState)
+          .setMemRefs(MI.memoperands());
+
+      return true;
+    }
+
+    auto TempPair = scavengeGPR8(MI, &Z80::BDREGSRegClass);
+    bool UseAltBank = false;
+
+    if (TempPair == -1) {
+      UseAltBank = true;
+      TempPair = Z80::BC;
+      buildMI(MBB, MBBI, Z80::EXX);
+    }
+
+    buildMI(MBB, MBBI, Z80::COPYREGW, TempPair)
+        .addReg(Data, DataRegState);
+
+    Register TmpLoReg, TmpHiReg;
+    TRI->splitReg(TempPair, TmpLoReg, TmpHiReg);
+
+    buildMI(MBB, MBBI, Z80::STDPTR)
+        .addReg(Ptr)
+        .addImm(Displacement)
+        .addReg(TmpLoReg, getKillRegState(true))
+        .setMemRefs(MI.memoperands());
+
+    buildMI(MBB, MBBI, Z80::STDPTR)
+        .addReg(Ptr, PtrRegState)
+        .addImm(Displacement + 1)
+        .addReg(TmpHiReg, getKillRegState(true))
+        .setMemRefs(MI.memoperands());
+
+    if (UseAltBank) {
+      buildMI(MBB, MBBI, Z80::EXX);
+    }
+
+    return true;
+  }
+
+  return false;
+}
+
 template <>
 bool Z80ExpandPseudo::expand<Z80::LDWRdPtr>(Block &MBB, BlockIt MBBI) {
   MachineInstr &MI = *MBBI;
@@ -435,7 +548,7 @@ bool Z80ExpandPseudo::expand<Z80::LDDWRdPtrQ>(Block &MBB, BlockIt MBBI) {
         .addReg(TmpReg, RegState::Kill);
 
     if (haspush) {
-      buildMI(MBB, MI, Z80::POP).addReg(Z80::BC);
+      buildMI(MBB, MI, Z80::POP, Z80::BC);
     }
   } else {
     // Load low byte.
@@ -497,119 +610,38 @@ bool Z80ExpandPseudo::expand<Z80::STSWKRr>(Block &MBB, BlockIt MBBI) {
 template <>
 bool Z80ExpandPseudo::expand<Z80::STWPtrRr>(Block &MBB, BlockIt MBBI) {
   MachineInstr &MI = *MBBI;
-  Register SrcLoReg, SrcHiReg;
-  Register DstReg = MI.getOperand(0).getReg();
-  Register SrcReg = MI.getOperand(1).getReg();
-  bool SrcIsKill = MI.getOperand(1).isKill();
-  TRI->splitReg(SrcReg, SrcLoReg, SrcHiReg);
+  Register PtrReg = MI.getOperand(0).getReg();
+  Register DataReg = MI.getOperand(1).getReg();
+  bool PtrIsKill = MI.getOperand(0).isKill();
+  bool DataIsKill = MI.getOperand(1).isKill();
 
-  auto MIBLO = buildMI(MBB, MBBI, Z80::STDPtrQRr)
-    .addReg(DstReg)
-    .addImm(0)
-    .addReg(SrcLoReg, getKillRegState(SrcIsKill));
+  auto r = emitIndirectWordStore(MBB, MBBI, MI, DataReg, PtrReg, 0, PtrIsKill,
+                                 DataIsKill);
 
-  auto MIBHI = buildMI(MBB, MBBI, Z80::STDPtrQRr)
-    .addReg(DstReg)
-    .addImm(1)
-    .addReg(SrcHiReg, getKillRegState(SrcIsKill));
+  if (r)
+    MI.eraseFromParent();
 
-  MIBLO.setMemRefs(MI.memoperands());
-  MIBHI.setMemRefs(MI.memoperands());
-
-  MI.eraseFromParent();
-  return true;
+  return r;
 }
 
 template <>
 bool Z80ExpandPseudo::expand<Z80::STDWPtrQRr>(Block &MBB, BlockIt MBBI) {
   MachineInstr &MI = *MBBI;
-  Register SrcLoReg, SrcHiReg;
-  Register DstReg = MI.getOperand(0).getReg();
-  Register SrcReg = MI.getOperand(2).getReg();
-  int Imm = MI.getOperand(1).getImm();
-  bool DstIsKill = MI.getOperand(0).isKill();
-  bool SrcIsKill = MI.getOperand(2).isKill();
-  TRI->splitReg(SrcReg, SrcLoReg, SrcHiReg);
-  Register TmpReg;
-  auto SrcKillState = getKillRegState(SrcIsKill);
+  Register PtrReg = MI.getOperand(0).getReg();
+  Register DataReg = MI.getOperand(2).getReg();
+  int Displacement = MI.getOperand(1).getImm();
+  bool PtrIsKill = MI.getOperand(0).isKill();
+  bool DataIsKill = MI.getOperand(2).isKill();
 
-  // Since we add 1 to the Imm value for the high byte below, and 63 is the highest Imm value
-  // allowed for the instruction, 62 is the limit here.
-  assert(Imm <= 126 && Imm >= -126 && "Offset is out of range");
+  assert(Displacement <= 126 && Displacement >= -126 && "Offset is out of range");
 
-  assert(DstReg == Z80::IX || DstReg == Z80::IY);
+  auto r = emitIndirectWordStore(MBB, MBBI, MI, DataReg, PtrReg, Displacement,
+                                 PtrIsKill, DataIsKill);
 
-  if (MBBI != MBB.begin()) {
-    auto pi = std::prev(MBBI);
+  if (r)
+    MI.eraseFromParent();
 
-    if (pi->getOpcode() == Z80::COPYREG) {
-      if (pi->getOperand(0).getReg() == SrcReg) {
-        if (pi->getOperand(1).getReg() != Z80::HL) {
-          auto k = pi->getOperand(1).isKill();
-
-          SrcReg = pi->getOperand(1).getReg();
-          pi->getOperand(1).setIsKill(false);
-
-          SrcIsKill = k;
-
-          llvm_unreachable("UNTESTED CODE!!!! CHECK IT!!!");
-        }
-      }
-    }
-  }
-
-  bool NeedAcc = Z80::IX == SrcReg || Z80::IY == SrcReg;
-
-  bool haspush = false;
-
-  if (NeedAcc) {
-    TmpReg = scavengeGPR8(MI, &Z80::GPR8_NoHLRegClass);
-
-    if (TmpReg == -1) {
-      TmpReg = Z80::B;
-      buildMI(MBB, MI, Z80::PUSH).addReg(Z80::BC);
-      haspush = true;
-    }
-
-    buildMI(MBB, MI, Z80::COPYREG)
-        .addReg(TmpReg, RegState::Define)
-        .addReg(SrcLoReg, SrcKillState);
-
-    SrcLoReg = TmpReg;
-    SrcKillState = getKillRegState(true);
-  }
-
-  auto MIBLO = buildMI(MBB, MBBI, Z80::STDPtrQRr)
-    .addReg(DstReg)
-    .addImm(Imm)
-    .addReg(SrcLoReg, SrcKillState);
-
-  if (NeedAcc) {
-    SrcKillState = getKillRegState(SrcIsKill);
-
-    buildMI(MBB, MI, Z80::COPYREG)
-        .addReg(TmpReg, RegState::Define)
-        .addReg(SrcHiReg, SrcKillState);
-
-    SrcHiReg = TmpReg;
-    SrcKillState = getKillRegState(true);
-  }
-
-  auto MIBHI = buildMI(MBB, MBBI, Z80::STDPtrQRr)
-    .addReg(DstReg, getKillRegState(DstIsKill))
-    .addImm(Imm + 1)
-    .addReg(SrcHiReg, SrcKillState);
-
-  if (haspush) {
-    buildMI(MBB, MI, Z80::POP).addReg(Z80::BC);
-  }
-
-  MIBLO.setMemRefs(MI.memoperands());
-  MIBHI.setMemRefs(MI.memoperands());
-
-  MI.eraseFromParent();
-
-  return true;
+  return r;
 }
 
 template <> bool Z80ExpandPseudo::expand<Z80::SEXT>(Block &MBB, BlockIt MBBI) {
@@ -955,7 +987,6 @@ bool Z80ExpandPseudo::expandMI(Block &MBB, BlockIt MBBI) {
     return expand<Op>(MBB, MI)
 
   switch (Opcode) {
-    EXPAND(Z80::ADDWRdRr);
     EXPAND(Z80::RESBITW);
     EXPAND(Z80::SETBITWPTR);
     EXPAND(Z80::RESBITWPTR);

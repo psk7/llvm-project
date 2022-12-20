@@ -132,16 +132,6 @@ def MemriAsmOperand : AsmOperandClass {
   let ParserMethod = "parseMemriOperand";
 }
 
-def memriall : Operand<iPTR>
-{
-  let MIOperandInfo = (ops HLIXIYREGS, i16imm);
-
-  let PrintMethod = "printMemri";
-  let EncoderMethod = "encodeMemri";
-
-  let ParserMatchClass = MemriAsmOperand;
-}
-
 /// Address operand for `reg+imm` used by STD and LDD.
 def memri : Operand<iPTR>
 {
@@ -156,7 +146,7 @@ def memri : Operand<iPTR>
 /// Address operand for `reg+0` used by STD and LDD.
 def memriz : Operand<iPTR>
 {
-  let MIOperandInfo = (ops HLIXIYREGS);
+  let MIOperandInfo = (ops PTRREGS);
 
   let PrintMethod = "printMemriz";
   //let EncoderMethod = "encodeMemri";
@@ -167,12 +157,6 @@ def memriz : Operand<iPTR>
 def rottype : Operand<i8>
 {
   let MIOperandInfo = (ops i8imm);
-}
-
-// Address operand for `SP+imm` used by STD{W}SPQRr
-def memspi : Operand<iPTR>
-{
-  let MIOperandInfo = (ops SPREG, i16imm);
 }
 
 def relbrtarget : Operand<OtherVT>
@@ -257,23 +241,18 @@ Defs = [SREG] in
     def ADD : FormB<0x80, (outs ACC:$rd), (ins ACC:$src, GPR8:$rr), "add  $rr",
                        [(set i8:$rd, (add i8:$src, i8:$rr)), (implicit SREG)]>;
 
-    def ADDRdRr16 : FormC<0b00001001, (outs HLIXIYREGS:$rd), (ins HLIXIYREGS:$src, DREGS:$rr), "add  $rd, $rr", []>;
+    def ADDW : FormC<0b00001001, (outs HLREG:$rd), (ins HLREG:$src, BDREGS:$rr), "add  $rd, $rr",
+                       [(set i16:$rd, (add i16:$src, i16:$rr)), (implicit SREG)]>;
 
-    let isCommutable = 1 in
-    def ADDWRdRr : Pseudo<(outs HLREG:$rd),
-                        (ins HLREG:$src, DREGS:$rr),
-                        "addw\t$rd, $rr",
-                        [(set i16:$rd, (add i16:$src, i16:$rr)),
-                         (implicit SREG)]>;
+    def XADDW : FormC<0b00001001, (outs PTRREGS:$rd), (ins PTRREGS:$src, BDREGS:$rr), "add  $rd, $rr", []>;
 
-
-    let Uses = [SREG] in
-    def ADC : FormB<0x88, (outs ACC:$rd), (ins ACC:$src, GPR8:$rr), "adc  $rr",
+    let Uses = [SREG] in {
+       def ADC : FormB<0x88, (outs ACC:$rd), (ins ACC:$src, GPR8:$rr), "adc  $rr",
                        [(set i8:$rd, (adde i8:$src, i8:$rr)), (implicit SREG)]>;
 
-    let Uses = [SREG] in
-    def ADCW : FormC<0b01001010, (outs HLREG:$rd), (ins HLREG:$src, BDREGS:$rr), "adc  $rd, $rr",
+       def ADCW : FormC<0b01001010, (outs HLREG:$rd), (ins HLREG:$src, BDREGS:$rr), "adc  $rd, $rr",
                        [(set i16:$rd, (adde i16:$src, i16:$rr)), (implicit SREG)]>, ED;
+    }
 }
 
 //===----------------------------------------------------------------------===//
@@ -299,8 +278,10 @@ Defs = [SREG] in
       def SBCk : FormI<0xde, (outs ACC:$rd), (ins ACC:$src, i8imm:$d8), "sbc  $d8",
                      [(set i8:$rd, (sube i8:$src, imm:$d8)), (implicit SREG)]>;
 
-      def SBCW : FormC<0x42, (outs HLREG:$rd), (ins HLREG:$src, DREGS:$rr), "sbc  $rd, $rr",
+      def SBCW : FormC<0x42, (outs HLREG:$rd), (ins HLREG:$src, BDREGS:$rr), "sbc  $rd, $rr",
                      [(set i16:$rd, (sube i16:$src, i16:$rr)), (implicit SREG)]>, ED;
+
+      def XSBCW : FormC<0x42, (outs PTRREGS:$rd), (ins PTRREGS:$src, BDREGS:$rr), "sbc  $rd, $rr", []>, ED;
   }
 }
 
@@ -366,17 +347,6 @@ def RESBITPTR : FormH<0x86, (outs), (ins memri:$addr, i8imm:$rd), "res  $rd, $ad
 def RESBITWPTR : Pseudo<(outs), (ins memri:$addr, i8imm:$rd), "res  $rd, $addr",
                       [(store (i16 (and (i16 (load addr:$addr)), iobitposn16:$rd)), addr:$addr)]>;
 
-let Defs = [SREG] in {
-    let rr=6, mayLoad=1 in
-        def TESTBITPTR : FormG<0x40, (outs), (ins memriall:$addr, i8imm:$rd), "bit  $rd, $addr", []>, CB, IsPtrInstr;
-}
-
-//def : Pat<(i16 (and i16:$rr, iobitposn16h:$rd)),
-//            (INSERT_SUBREG
-//                (INSERT_SUBREG (i16 (IMPLICIT_DEF)), (RESBIT (EXTRACT_SUBREG $rr, sub_hi), (i16 iobitposn16h:$rd) ), sub_hi),
-//                (i8 (EXTRACT_SUBREG $rr, sub_lo)),
-//                sub_lo)>;
-
 let Constraints = "$src = $rd",
 Defs = [SREG] in
 {
@@ -432,6 +402,9 @@ def SETRESBITWPTR : Pseudo<(outs), (ins memri:$addr, i16imm:$resbit, i16imm:$set
                            "!setres $addr, $resbit, $setbit", []>;
 
 let Defs = [SREG] in {
+    let rr=6, mayLoad=1 in
+        def TESTBITPTR : FormG<0x40, (outs), (ins memri:$addr, i8imm:$rd), "bit  $rd, $addr", []>, CB, IsPtrInstr;
+
     def TESTBIT : FormG<0x40, (outs), (ins BGPR8:$rr, i8imm:$rd), "bit  $rd, $rr", []>, CB;
 }
 
@@ -517,7 +490,7 @@ Uses = [SREG] in
 let hasSideEffects = 0 in
 {
     def LD : FormG<0x40, (outs GPR8:$rd), (ins GPR8:$rr), "ld   $rd, $rr", []>;
-    def LDSP : FormA<0xf9, (outs SPREG:$rd), (ins HLIXIYREGS:$rr), "ld   sp, $rr", []>;
+    def LDSP : FormA<0xf9, (outs SPREG:$rd), (ins PTRREGS:$rr), "ld   sp, $rr", []>;
     def COPYREG : Pseudo<(outs GPR8:$d), (ins GPR8:$s), "!copyreg $d, $s", []>;
     def COPYREGW : Pseudo<(outs DREGS:$d), (ins DREGS:$s), "!copyregw $d, $s", []>;
 }
@@ -525,12 +498,12 @@ let hasSideEffects = 0 in
 // Load immediate values into registers.
 let isReMaterializable = 1 in
 {
-  def LDWk: FormE<0x01, (outs LDITARGETREGS:$rd), (ins i16imm:$d16), "ld   $rd, $d16", []>;
+  def LDWk: FormE<0x01, (outs DREGS:$rd), (ins i16imm:$d16), "ld   $rd, $d16", []>;
 
   def LDk : FormD<0x06, (outs GPR8:$rd), (ins imm_ldi8:$d8), "ld   $rd, $d8",
        [(set i8:$rd, imm:$d8)]>;
 
-  def LDIWRdK : Pseudo<(outs LDITARGETREGS:$dst), (ins i16imm:$src), "LDIWRdK\t$dst, $src",
+  def LDIWRdK : Pseudo<(outs DREGS:$dst), (ins i16imm:$src), "!LDIWRdK\t$dst, $src",
                        [(set i16:$dst, imm:$src)]>;
 }
 
@@ -605,10 +578,14 @@ def IN8K  : FormI<0xDB, (outs ACC:$rd), (ins i16imm:$d8), "in   $rd, ($d8 )",
                         [(set i8:$rd, (inport uimm8:$d8, PORTS_SHORT))]>;
 
 // Indirect stores.
-def STPtrRr : FormB<0x70, (outs), (ins memriz:$ptr, BGPR8:$rr), "ld   $ptr, $rr", [(store i8:$rr, i16:$ptr)]>;
+def STPTR : FormB<0x70, (outs), (ins memriz:$ptr, BGPR8:$rr), "ld   $ptr, $rr", [(store i8:$rr, i16:$ptr)]>;
 
 def STWPtrRr : Pseudo<(outs), (ins PTRDISPREGS:$ptrreg, DREGS:$reg), "stw  $ptrreg, $reg",
                      [(store i16:$reg, i16:$ptrreg)]>;
+
+def STDPTR : FormB<0x70, (outs), (ins memri:$d8, BGPR8:$rr), "ld   $d8, $rr", []>, IsPtrInstr;
+
+def STDPTR_P : Pseudo<(outs), (ins memri:$d8, GPR8:$rr), "!ld   $d8, $rr", []>;
 
 def STDPtrQRr : FormB<0x70, (outs), (ins memri:$d8, BGPR8:$rr), "ld   $d8, $rr",
                       [(store i8:$rr, addr:$d8)]>, IsPtrInstr;
@@ -623,11 +600,11 @@ hasSideEffects = 0 in
 {
   // Stack push operations.
   let mayStore = 1 in
-    def PUSH : FormC<0b11000101, (outs), (ins DREGSTOSTACK:$rr), "push $rr", []>;
+    def PUSH : FormC<0b11000101, (outs), (ins REGSTOSTACK:$rr), "push $rr", []>;
 
   // Stack pop operations.
   let mayLoad = 1 in
-    def POP : FormC<0b11000001, (outs DREGSTOSTACK:$rr), (ins), "pop  $rr", []>;
+    def POP : FormC<0b11000001, (outs REGSTOSTACK:$rr), (ins), "pop  $rr", []>;
 }
 
 ////===----------------------------------------------------------------------===//
@@ -755,16 +732,14 @@ let Defs=[SREG] in {
 }
 
 // This pseudo gets expanded into a movw+adiw thus it clobbers SREG.
-let Defs = [SREG],
-    hasSideEffects = 0 in
-def FRMIDX : Pseudo<(outs HLIXIYREGS:$dst),
-                    (ins HLIXIYREGS:$src, i16imm:$src2),
+let Defs = [SREG], hasSideEffects = 0 in
+def FRMIDX : Pseudo<(outs PTRREGS:$dst),
+                    (ins PTRREGS:$src, i16imm:$src2),
                     "!frmidx\t$dst, $src, $src2",
                     []>;
 
-// This pseudo is either converted to a regular store or a push which clobbers
-// SP.
-def STDSPQRr : StorePseudo<(outs), (ins memspi:$dst, BGPR8:$src), "!stdstk\t$dst, $src",
+// This pseudo is either converted to a regular store or a push which clobbers SP.
+def STDSPQRr : StorePseudo<(outs), (ins memri:$dst, BGPR8:$src), "!stdstk\t$dst, $src",
                            [(store i8:$src, addr:$dst)]>;
 
 // This pseudo is either converted to a regular store or a push which clobbers SP.
@@ -782,8 +757,8 @@ def Select16 : SelectPseudo<(outs DREGS:$dst), (ins DREGS:$src, DREGS:$src2, var
 // add x, 128 -> sub x, -128. Clang is emitting an eor for this (ldi+eor)
 
 // the add instruction always writes the carry flag
-def : Pat<(addc i8:$src, i8:$src2), (ADD i8:$src, i8:$src2)>;
-def : Pat<(addc DREGS:$src, DREGS:$src2), (ADDRdRr16 DREGS:$src, DREGS:$src2)>;
+def : Pat<(addc i8:$src, i8:$src2), (ADD $src, $src2)>;
+def : Pat<(addc i16:$src, i16:$src2), (ADDW $src, $src2)>;
 
 //// all sub instruction variants always writes the carry flag
 //def : Pat<(subc i8:$src, i8:$src2),

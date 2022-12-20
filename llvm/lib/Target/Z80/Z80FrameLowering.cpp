@@ -119,7 +119,7 @@ void Z80FrameLowering::emitPrologue(MachineFunction &MF,
       .addImm(-FrameSize)
       .setMIFlag(MachineInstr::FrameSetup);
 
-  BuildMI(MBB, MBBI, DL, TII.get(Z80::ADDRdRr16), Z80::IY)
+  BuildMI(MBB, MBBI, DL, TII.get(Z80::XADDW), Z80::IY)
       .addReg(Z80::IY)
       .addReg(Z80::SP)
       .setMIFlag(MachineInstr::FrameSetup);
@@ -198,7 +198,7 @@ void Z80FrameLowering::emitEpilogue(MachineFunction &MF,
       .addImm(FrameSize)
       .setMIFlag(MachineInstr::FrameDestroy);
 
-  BuildMI(MBB, MBBI, DL, TII.get(Z80::ADDRdRr16), Z80::IY)
+  BuildMI(MBB, MBBI, DL, TII.get(Z80::XADDW), Z80::IY)
       .addReg(Z80::IY)
       .addReg(Z80::SP)
       .setMIFlag(MachineInstr::FrameDestroy);
@@ -391,7 +391,7 @@ MachineBasicBlock::iterator Z80FrameLowering::eliminateCallFramePseudoInstr(
       BuildMI(MBB, MI, DL, TII.get(Z80::LDIWRdK), Z80::IY)
           .addImm(-Amount);
 
-      BuildMI(MBB, MI, DL, TII.get(Z80::ADDRdRr16), Z80::IY)
+      BuildMI(MBB, MI, DL, TII.get(Z80::XADDW), Z80::IY)
           .addReg(Z80::IY)
           .addReg(Z80::SP, RegState::Kill);
 
@@ -407,7 +407,7 @@ MachineBasicBlock::iterator Z80FrameLowering::eliminateCallFramePseudoInstr(
       BuildMI(MBB, MI, DL, TII.get(Z80::LDIWRdK), Z80::IY)
           .addImm(Amount);
 
-      BuildMI(MBB, MI, DL, TII.get(Z80::ADDRdRr16), Z80::IY)
+      BuildMI(MBB, MI, DL, TII.get(Z80::XADDW), Z80::IY)
           .addReg(Z80::IY)
           .addReg(Z80::SP, RegState::Kill);
 
