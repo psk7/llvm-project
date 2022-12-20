@@ -176,9 +176,6 @@ void RenamerClangTidyCheck::addUsage(
   if (!Failure.RawUsageLocs.insert(FixLocation).second)
     return;
 
-  if (!Failure.RawUsageLocs.insert(FixLocation.getRawEncoding()).second)
-    return;
-
   if (!Failure.ShouldFix())
     return;
 

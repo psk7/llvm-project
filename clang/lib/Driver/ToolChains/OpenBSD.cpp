@@ -307,14 +307,6 @@ std::string OpenBSD::getCompilerRT(const ArgList &Args,
   return std::string(Path.str());
 }
 
-std::string OpenBSD::getCompilerRT(const ArgList &Args,
-                                   StringRef Component,
-                                   FileType Type) const {
-  SmallString<128> Path(getDriver().SysRoot);
-  llvm::sys::path::append(Path, "/usr/lib/libcompiler_rt.a");
-  return std::string(Path.str());
-}
-
 Tool *OpenBSD::buildAssembler() const {
   return new tools::openbsd::Assembler(*this);
 }

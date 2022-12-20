@@ -784,7 +784,6 @@ TEST_F(FileCheckTest, Binop) {
   Value = Binop.eval();
   expectUndefErrors({"FOO", "BAR"}, Value.takeError());
 
-  {
   // Literal + Variable has format of variable.
   ExprStr = bufferize(SM, "FOO+18");
   FooStr = ExprStr.take_front(3);
@@ -807,7 +806,6 @@ TEST_F(FileCheckTest, Binop) {
   ImplicitFormat = Binop.getImplicitFormat(SM);
   ASSERT_THAT_EXPECTED(ImplicitFormat, Succeeded());
   EXPECT_EQ(*ImplicitFormat, ExpressionFormat::Kind::Unsigned);
-  }
 
   // Variables with different implicit format conflict.
   ExprStr = bufferize(SM, "FOO+BAZ");
