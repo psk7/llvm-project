@@ -119,6 +119,37 @@ static const NoteTag *getNoteTag(CheckerContext &C,
           Out << "Assuming ";
 
         if (const auto *DRE = dyn_cast<DeclRefExpr>(Object)) {
+          Out << '\'' << DRE->getDecl()->getDeclName() << '\'';
+        } else if (const auto *ME = dyn_cast<MemberExpr>(Object)) {
+          Out << (IsKnownCast ? "Field '" : "field '")
+              << ME->getMemberDecl()->getDeclName() << '\'';
+        } else {
+          Out << (IsKnownCast ? "The object" : "the object");
+        }
+
+        Out << ' ' << (CastSucceeds ? "is a" : "is not a") << " '" << CastToName
+            << '\'';
+
+        return std::string(Out.str());
+      },
+      /*IsPrunable=*/true);
+}
+
+static const NoteTag *getNoteTag(CheckerContext &C,
+                                 SmallVector<QualType, 4> CastToTyVec,
+                                 const Expr *Object,
+                                 bool IsKnownCast) {
+  Object = Object->IgnoreParenImpCasts();
+
+  return C.getNoteTag(
+      [=]() -> std::string {
+        SmallString<128> Msg;
+        llvm::raw_svector_ostream Out(Msg);
+
+        if (!IsKnownCast)
+          Out << "Assuming ";
+
+        if (const auto *DRE = dyn_cast<DeclRefExpr>(Object)) {
           Out << '\'' << DRE->getDecl()->getNameAsString() << '\'';
         } else if (const auto *ME = dyn_cast<MemberExpr>(Object)) {
           Out << (IsKnownCast ? "Field '" : "field '")
@@ -126,9 +157,19 @@ static const NoteTag *getNoteTag(CheckerContext &C,
         } else {
           Out << (IsKnownCast ? "The object" : "the object");
         }
+        Out << " is";
 
-        Out << ' ' << (CastSucceeds ? "is a" : "is not a") << " '" << CastToName
-            << '\'';
+        bool First = true;
+        for (QualType CastToTy: CastToTyVec) {
+          std::string CastToName =
+            CastToTy->getAsCXXRecordDecl() ?
+            CastToTy->getAsCXXRecordDecl()->getNameAsString() :
+            CastToTy->getPointeeCXXRecordDecl()->getNameAsString();
+          Out << ' ' << ((CastToTyVec.size() == 1) ? "not" :
+                         (First ? "neither" : "nor")) << " a '" << CastToName
+              << '\'';
+          First = false;
+        }
 
         return std::string(Out.str());
       },

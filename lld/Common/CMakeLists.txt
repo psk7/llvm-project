@@ -1,5 +1,7 @@
-if(NOT LLD_BUILT_STANDALONE)
-  set(tablegen_deps intrinsics_gen)
+set(LLD_SYSTEM_LIBS ${LLVM_PTHREAD_LIB})
+
+if(NOT HAVE_CXX_ATOMICS64_WITHOUT_LIB)
+  list(APPEND LLD_SYSTEM_LIBS atomic)
 endif()
 
 set(LLD_SYSTEM_LIBS ${LLVM_PTHREAD_LIB})
@@ -29,9 +31,6 @@ add_custom_command(OUTPUT "${version_inc}"
 set_source_files_properties("${version_inc}"
   PROPERTIES GENERATED TRUE
   HEADER_FILE_ONLY TRUE)
-
-set_property(SOURCE Version.cpp APPEND PROPERTY
-  COMPILE_DEFINITIONS "HAVE_VCS_VERSION_INC")
 
 add_lld_library(lldCommon
   Args.cpp
@@ -63,5 +62,5 @@ add_lld_library(lldCommon
   ${LLD_SYSTEM_LIBS}
 
   DEPENDS
-  ${tablegen_deps}
+  intrinsics_gen
   )

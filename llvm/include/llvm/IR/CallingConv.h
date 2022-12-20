@@ -241,6 +241,9 @@ namespace CallingConv {
     /// The remainder matches the regular calling convention.
     WASM_EmscriptenInvoke = 99,
 
+    /// Calling convention used for AMD graphics targets.
+    AMDGPU_Gfx = 100,
+
     Z80_BUILTIN = 120,
     Z80_BUILTIN_32BITARITH = 121,
 
