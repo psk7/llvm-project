@@ -51,6 +51,9 @@ private:
   void printCustomAliasOperand(const MCInst *MI, uint64_t Address,
                                unsigned OpIdx, unsigned PrintMethodIdx,
                                raw_ostream &O);
+
+public:
+  std::pair<const char *, uint64_t> getMnemonic(const MCInst *MI) override;
 };
 
 } // end namespace llvm

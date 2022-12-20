@@ -9,7 +9,15 @@ add_llvm_component_library(LLVMZ80Desc
         Z80MCExpr.cpp
         Z80MCTargetDesc.cpp
         Z80TargetStreamer.cpp
-        )
+
+  LINK_COMPONENTS
+  MC
+  Z80Info
+  Support
+
+  ADD_TO_COMPONENT
+  Z80
+)
 
 add_dependencies(LLVMZ80Desc Z80CommonTableGen)
 

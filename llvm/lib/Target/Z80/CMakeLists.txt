@@ -1,3 +1,5 @@
+add_llvm_component_group(Z80)
+
 set(LLVM_TARGET_DEFINITIONS Z80.td)
 
 tablegen(LLVM Z80GenAsmMatcher.inc -gen-asm-matcher)
@@ -33,6 +35,20 @@ add_llvm_target(Z80CodeGen
 
   DEPENDS
   intrinsics_gen
+
+  LINK_COMPONENTS
+  AsmPrinter
+  CodeGen
+  Core
+  MC
+  Z80Desc
+  Z80Info
+  SelectionDAG
+  Support
+  Target
+
+  ADD_TO_COMPONENT
+  Z80
 )
 
 add_subdirectory(AsmParser)

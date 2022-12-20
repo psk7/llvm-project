@@ -53,7 +53,7 @@ static MCRegisterInfo *createZ80MCRegisterInfo(const Triple &TT) {
 
 static MCSubtargetInfo *createZ80MCSubtargetInfo(const Triple &TT,
                                                  StringRef CPU, StringRef FS) {
-  return createZ80MCSubtargetInfoImpl(TT, CPU, FS);
+  return createZ80MCSubtargetInfoImpl(TT, CPU, CPU, FS);
 }
 
 static MCInstPrinter *createZ80MCInstPrinter(const Triple &T,

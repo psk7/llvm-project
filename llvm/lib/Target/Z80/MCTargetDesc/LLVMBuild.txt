@@ -1,6 +1,0 @@
-[component_0]
-type = Library
-name = Z80Desc
-parent = Z80
-required_libraries = MC Z80Info Support
-add_to_library_groups = Z80
