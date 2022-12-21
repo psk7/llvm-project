@@ -83,12 +83,24 @@ class FormA<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
 {
 }
 
+class FormA_ED<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
+  : Z80Inst<outs, ins, asmstr, pattern>
+{
+  field bits<16> Inst;
+
+  let Inst{7-0} = 0xED;
+  let Inst{15-8} = opcode;
+  let Size = 2;
+}
+
 class FormB<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
   : Z80Inst<outs, ins, asmstr, pattern>, Form8<opcode>
 {
   bits<3> rr;
 
   let Inst{2-0} = rr;
+
+  let DecoderMethod = "DecodeFormB";
 }
 
 class FormB_CB<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
@@ -118,13 +130,15 @@ class FormC_ED<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> patte
 {
   field bits<16> Inst;
 
-  let Inst{15-8} = 0xED;
-  let Inst{7-0} = opcode;
+  let Inst{7-0} = 0xED;
+  let Inst{15-8} = opcode;
   let Size = 2;
 
   bits<2> rr;
 
-  let Inst{5-4} = rr;
+  let Inst{13-12} = rr;
+
+  let DecoderMethod = "DecodeFormC_ED";
 }
 
 class FormD<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
@@ -148,13 +162,27 @@ class FormE<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
   let Inst{5-4} = rd;
 }
 
+class FormE_ED<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
+  : Z80Inst<outs, ins, asmstr, pattern>, Has16BitPayload
+{
+  field bits<32> Inst;
+  int Size = 4;
+
+  bits<2> rd;
+  bits<16> d16;
+
+  let Inst{31-16} = d16;
+  let Inst{15-8} = opcode;
+  let Inst{7-0} = 0xED;
+  let Inst{13-12} = rd;
+}
+
 class FormF<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
   : Z80Inst<outs, ins, asmstr, pattern>, Has16BitPayload, Form24<opcode>
 {
   bits<16> d16;
 
-  let Inst{23-16} = d16{15-8};
-  let Inst{15-8} = d16{7-0};
+  let Inst{23-8} = d16;
 }
 
 class FormG<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>

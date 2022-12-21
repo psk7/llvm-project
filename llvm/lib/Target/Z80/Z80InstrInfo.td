@@ -183,6 +183,7 @@ def call_target : Operand<iPTR>
 def imm16 : Operand<i16>
 {
     let EncoderMethod = "encodeImm<Z80::fixup_16, 1>";
+    let DecoderMethod = "DecodeImm";
 }
 
 /// An 8-bit immediate inside an instruction with the same format
@@ -279,13 +280,14 @@ Defs = [SREG] in
       def SBCk : FormI<0xde, (outs ACC:$rd), (ins ACC:$src, i8imm:$d8), "sbc  $d8",
                      [(set i8:$rd, (sube i8:$src, imm:$d8)), (implicit SREG)]>;
 
-      def SBCW : FormC_ED<0x42, (outs HLREG:$rd), (ins HLREG:$src, BDREGS:$rr), "sbc  $rd, $rr",
+      def SBCW : Pseudo<(outs HLREG:$rd), (ins HLREG:$src, BDREGS:$rr), "sbc  $rd, $rr",
                      [(set i16:$rd, (sube i16:$src, i16:$rr)), (implicit SREG)]>;
 
-      let isPseudo = 1 in
-      def XSBCW : FormC<0x42, (outs PTRREGS:$rd), (ins PTRREGS:$src, BDREGS:$rr), "sbc  $rd, $rr", []>, ED;
+      def XSBCW : Pseudo<(outs PTRREGS:$rd), (ins PTRREGS:$src, BDREGS:$rr), "sbc  $rd, $rr", []>, ED;
   }
 }
+
+def SBCWD : FormC_ED<0x42, (outs HLREG:$rd), (ins HLREG:$src, BDREGS:$rr), "sbc  $rd, $rr", []>;
 
 //===----------------------------------------------------------------------===//
 // Increment and Decrement
@@ -378,17 +380,14 @@ Defs = [SREG] in
       def ANDk : FormI<0xe6, (outs ACC:$rd), (ins ACC:$src, i8imm:$d8), "and  $d8",
                        [(set i8:$rd, (and i8:$src, imm:$d8)), (implicit SREG)]>;
 
-      let rr=6 in
-      {
-        def ORPTR : FormB<0xb0, (outs ACC:$rd), (ins ACC:$src, memri:$addr), "or   $addr",
+        def ORPTR : Pseudo<(outs ACC:$rd), (ins ACC:$src, memri:$addr), "or   $addr",
                        [(set i8:$rd, (or i8:$src, (i8 (load addr:$addr)))), (implicit SREG)]>, IsPtrInstr;
 
-        def XORPTR : FormB<0xa8, (outs ACC:$rd), (ins ACC:$src, memri:$addr), "xor  $addr",
+        def XORPTR : Pseudo<(outs ACC:$rd), (ins ACC:$src, memri:$addr), "xor  $addr",
                        [(set i8:$rd, (xor i8:$src, (i8 (load addr:$addr)))), (implicit SREG)]>, IsPtrInstr;
 
-        def ANDPTR : FormB<0xa0, (outs ACC:$rd), (ins ACC:$src, memri:$addr), "and  $addr",
+        def ANDPTR : Pseudo<(outs ACC:$rd), (ins ACC:$src, memri:$addr), "and  $addr",
                        [(set i8:$rd, (and i8:$src, (i8 (load addr:$addr)))), (implicit SREG)]>, IsPtrInstr;
-      }
   } // let isCommutable = 0 in
 } // let Constraints = "$src = $rd", Defs = [SREG] in
 
@@ -430,6 +429,15 @@ isTerminator = 1 in
   def JMPk : FormF<0xc3, (outs), (ins call_target:$d16), "jp   $d16", []>;
 }
 
+let isBarrier = 1,
+isBranch = 1,
+isTerminator = 1,
+Uses = [B], Defs = [B] in
+{
+  def DJNZ : FormI<0x10, (outs), (ins relbrtarget:$d8), "djnz $d8", []>;
+}
+
+
 //===----------------------------------------------------------------------===//
 // Call instructions
 //===----------------------------------------------------------------------===//
@@ -469,8 +477,7 @@ let Defs = [SREG] in
 {
     def CP : FormB<0xb8, (outs), (ins ACC:$rd, GPR8:$rr), "cp   $rr", []>;
 
-    let rr = 6 in
-        def CPRr8Ptr : FormB<0xb8, (outs), (ins ACC:$rd, memri:$addr), "cp   $addr", []>, IsPtrInstr;
+    def CPRr8Ptr : Pseudo<(outs), (ins ACC:$rd, memri:$addr), "cp   $addr", []>, IsPtrInstr;
 
     def CPImm8 : FormI<0xfe, (outs), (ins ACC:$rd, i8imm:$d8), "cp   $d8", []>;
 
@@ -516,6 +523,8 @@ let isReMaterializable = 1 in
   def LDIWRdK : Pseudo<(outs DREGS:$dst), (ins i16imm:$src), "!LDIWRdK\t$dst, $src",
                        [(set i16:$dst, imm:$src)]>;
 }
+
+def LDWMEM: FormE_ED<0x4B, (outs DREGS:$rd), (ins i16imm:$d16), "ld   $rd, ($d16 )", []>;
 
 //// Load from data space into register.
 let canFoldAsLoad = 1,
@@ -565,9 +574,13 @@ isReMaterializable = 1 in
 }
 
 // Indirect store from register to data space.
-def STSKRr : FormF<0x32, (outs), (ins imm16:$d16, ACC:$rd), "ld   ($d16 ), $rd", [(store i8:$rd, imm:$d16)]>;
+def STSKRr : Pseudo<(outs), (ins imm16:$d16, ACC:$rd), "ld   ($d16 ), $rd", [(store i8:$rd, imm:$d16)]>;
 def STSWKRrOp : FormF<0x22, (outs), (ins imm16:$d16, HLREG:$rd), "ld   ($d16 ), $rd", [(store i16:$rd, imm:$d16)]>;
 def STSWKRrOpExt : FormE<0x43, (outs), (ins imm16:$d16, DREGS:$rd), "ld   ($d16 ), $rd", [(store i16:$rd, imm:$d16)]>, ED;
+
+def STMEMA : FormF<0x32, (outs), (ins imm16:$d16), "ld   ($d16 ), a", []>;
+def STDEA : FormA<0x12, (outs), (ins), "ld   (de), a", []>;
+def STBCA : FormA<0x2, (outs), (ins), "ld   (bc), a", []>;
 
 def STSWKRr : Pseudo<(outs), (ins i16imm:$dst, DREGS:$src), "stsw\t$dst, $src", [(store i16:$src, imm:$dst)]>;
 
@@ -675,11 +688,8 @@ Defs = [SREG] in
 }
 
 class RotRdPtr<PatFrag Rot, string n, bits<3> rc> :
-    FormH_CB<0x06, (outs), (ins memri:$src), !strconcat(n, "  $src"),
-              [(store (i8 (singlerotshift (i8 (load addr:$src)), Rot)), addr:$src), (implicit SREG)]>, CB, IsPtrInstr
-{
-    let rd = rc;
-}
+    Pseudo<(outs), (ins memri:$src), !strconcat(n, "  $src"),
+              [(store (i8 (singlerotshift (i8 (load addr:$src)), Rot)), addr:$src), (implicit SREG)]>, CB, IsPtrInstr;
 
 class RotWPtr<PatFrag Rot, string n> :
     Pseudo<(outs), (ins memri:$src), !strconcat(n, "!  $src"),
@@ -727,11 +737,11 @@ def NOP : FormA<0, (outs), (ins), "nop", []>;
 def HALT : FormA<0x76, (outs), (ins), "halt", []>;
 
 let Defs = [SREG, HL, DE, BC] in {
-    def LDIR : FormA<0xb0, (outs), (ins HLREG:$src, DEREG:$dst, BCREG:$cnt), "ldir", []>, ED;
-    def LDI  : FormA<0xa0, (outs), (ins HLREG:$src, DEREG:$dst, BCREG:$cnt), "ldi",  []>, ED;
+    def LDIR : FormA_ED<0xb0, (outs), (ins HLREG:$src, DEREG:$dst, BCREG:$cnt), "ldir", []>;
+    def LDI  : FormA_ED<0xa0, (outs), (ins HLREG:$src, DEREG:$dst, BCREG:$cnt), "ldi",  []>;
 
-    def LDDR : FormA<0xb8, (outs), (ins HLREG:$src, DEREG:$dst, BCREG:$cnt), "lddr", []>, ED;
-    def LDD  : FormA<0xa8, (outs), (ins HLREG:$src, DEREG:$dst, BCREG:$cnt), "ldd",  []>, ED;
+    def LDDR : FormA_ED<0xb8, (outs), (ins HLREG:$src, DEREG:$dst, BCREG:$cnt), "lddr", []>;
+    def LDD  : FormA_ED<0xa8, (outs), (ins HLREG:$src, DEREG:$dst, BCREG:$cnt), "ldd",  []>;
 }
 
 //===----------------------------------------------------------------------===//
