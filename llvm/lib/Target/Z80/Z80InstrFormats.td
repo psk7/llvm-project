@@ -50,8 +50,6 @@ class Z80Inst<dag outs, dag ins, string asmstr, list<dag> pattern> : Instruction
   let TSFlags{3} = IsPtrInstruction;
   let TSFlags{2-0} = OpPrefixBits;
 
-  field bits<64> Inst;
-
   field bits<32> SoftFail = 0;
 }
 
@@ -62,18 +60,49 @@ class IsPtrInstr {
 class Has8BitPayload { bits<2> payloadSize = 1; }
 class Has16BitPayload { bits<2> payloadSize = 2; }
 
-class FormA<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
-  : Z80Inst<outs, ins, asmstr, pattern>
-{
+class Form8<bits<8> opcode> {
+  field bits<8> Inst;
+  int Size = 1;
   let Inst{7-0} = opcode;
 }
 
+class Form16<bits<8> opcode> {
+  field bits<16> Inst;
+  int Size = 2;
+  let Inst{7-0} = opcode;
+}
+
+class Form24<bits<8> opcode> {
+  field bits<24> Inst;
+  int Size = 3;
+  let Inst{7-0} = opcode;
+}
+
+class FormA<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
+  : Z80Inst<outs, ins, asmstr, pattern>, Form8<opcode>
+{
+}
+
 class FormB<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
-  : FormA<opcode, outs, ins, asmstr, pattern>
+  : Z80Inst<outs, ins, asmstr, pattern>, Form8<opcode>
 {
   bits<3> rr;
 
   let Inst{2-0} = rr;
+}
+
+class FormB_CB<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
+  : Z80Inst<outs, ins, asmstr, pattern>
+{
+  field bits<16> Inst;
+
+  let Inst{7-0} = 0xCB;
+  let Inst{15-8} = opcode;
+  let Size = 2;
+
+  bits<3> rr;
+
+  let Inst{10-8} = rr;
 }
 
 class FormC<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
@@ -84,8 +113,22 @@ class FormC<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
   let Inst{5-4} = rr;
 }
 
+class FormC_ED<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
+  : Z80Inst<outs, ins, asmstr, pattern>
+{
+  field bits<16> Inst;
+
+  let Inst{15-8} = 0xED;
+  let Inst{7-0} = opcode;
+  let Size = 2;
+
+  bits<2> rr;
+
+  let Inst{5-4} = rr;
+}
+
 class FormD<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
-  : FormA<opcode, outs, ins, asmstr, pattern>, Has8BitPayload
+  : Z80Inst<outs, ins, asmstr, pattern>, Has8BitPayload, Form16<opcode>
 {
   bits<3> rd;
   bits<8> d8;
@@ -95,7 +138,7 @@ class FormD<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
 }
 
 class FormE<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
-  : FormA<opcode, outs, ins, asmstr, pattern>, Has16BitPayload
+  : Z80Inst<outs, ins, asmstr, pattern>, Has16BitPayload, Form24<opcode>
 {
   bits<2> rd;
   bits<16> d16;
@@ -106,7 +149,7 @@ class FormE<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
 }
 
 class FormF<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
-  : FormA<opcode, outs, ins, asmstr, pattern>, Has16BitPayload
+  : Z80Inst<outs, ins, asmstr, pattern>, Has16BitPayload, Form24<opcode>
 {
   bits<16> d16;
 
@@ -124,6 +167,22 @@ class FormG<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
   let Inst{2-0} = rr;
 }
 
+class FormG_CB<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
+  : Z80Inst<outs, ins, asmstr, pattern>
+{
+  field bits<16> Inst;
+
+  let Inst{15-8} = 0xCB;
+  let Inst{7-0} = opcode;
+  let Size = 2;
+
+  bits<3> rd;
+  bits<3> rr;
+
+  let Inst{5-3} = rd;
+  let Inst{2-0} = rr;
+}
+
 class FormH<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
   : FormA<opcode, outs, ins, asmstr, pattern>
 {
@@ -132,8 +191,36 @@ class FormH<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
   let Inst{5-3} = rd;
 }
 
+class FormH_ED<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
+  : Z80Inst<outs, ins, asmstr, pattern>
+{
+  field bits<16> Inst;
+
+  let Inst{15-8} = 0xED;
+  let Inst{7-0} = opcode;
+  let Size = 2;
+
+  bits<3> rd;
+
+  let Inst{5-3} = rd;
+}
+
+class FormH_CB<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
+  : Z80Inst<outs, ins, asmstr, pattern>
+{
+  field bits<16> Inst;
+
+  let Inst{7-0} = 0xCB;
+  let Inst{15-8} = opcode;
+  let Size = 2;
+
+  bits<3> rd;
+
+  let Inst{13-11} = rd;
+}
+
 class FormI<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
-  : FormA<opcode, outs, ins, asmstr, pattern>, Has8BitPayload
+  : Z80Inst<outs, ins, asmstr, pattern>, Has8BitPayload, Form16<opcode>
 {
   bits<8> d8;
 
@@ -141,7 +228,7 @@ class FormI<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
 }
 
 class FormJ<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
-  : FormA<opcode, outs, ins, asmstr, pattern>, Has8BitPayload
+  : Z80Inst<outs, ins, asmstr, pattern>, Has8BitPayload, Form16<opcode>
 {
   bits<2> cc;
   bits<8> d8;
@@ -151,7 +238,7 @@ class FormJ<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
 }
 
 class FormK<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
-  : FormA<opcode, outs, ins, asmstr, pattern>, Has8BitPayload
+  : Z80Inst<outs, ins, asmstr, pattern>, Has8BitPayload, Form16<opcode>
 {
   bits<8> d8;
   bits<3> rr;
@@ -161,7 +248,7 @@ class FormK<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
 }
 
 class FormL<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
-  : FormA<opcode, outs, ins, asmstr, pattern>, Has16BitPayload
+  : Z80Inst<outs, ins, asmstr, pattern>, Has16BitPayload, Form24<opcode>
 {
   bits<3> cc;
   bits<16> d16;

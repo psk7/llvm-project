@@ -244,14 +244,15 @@ Defs = [SREG] in
     def ADDW : FormC<0b00001001, (outs HLREG:$rd), (ins HLREG:$src, BDREGS:$rr), "add  $rd, $rr",
                        [(set i16:$rd, (add i16:$src, i16:$rr)), (implicit SREG)]>;
 
+    let isPseudo = 1 in
     def XADDW : FormC<0b00001001, (outs PTRREGS:$rd), (ins PTRREGS:$src, BDREGS:$rr), "add  $rd, $rr", []>;
 
     let Uses = [SREG] in {
        def ADC : FormB<0x88, (outs ACC:$rd), (ins ACC:$src, GPR8:$rr), "adc  $rr",
                        [(set i8:$rd, (adde i8:$src, i8:$rr)), (implicit SREG)]>;
 
-       def ADCW : FormC<0b01001010, (outs HLREG:$rd), (ins HLREG:$src, BDREGS:$rr), "adc  $rd, $rr",
-                       [(set i16:$rd, (adde i16:$src, i16:$rr)), (implicit SREG)]>, ED;
+       def ADCW : FormC_ED<0b01001010, (outs HLREG:$rd), (ins HLREG:$src, BDREGS:$rr), "adc  $rd, $rr",
+                       [(set i16:$rd, (adde i16:$src, i16:$rr)), (implicit SREG)]>;
     }
 }
 
@@ -278,9 +279,10 @@ Defs = [SREG] in
       def SBCk : FormI<0xde, (outs ACC:$rd), (ins ACC:$src, i8imm:$d8), "sbc  $d8",
                      [(set i8:$rd, (sube i8:$src, imm:$d8)), (implicit SREG)]>;
 
-      def SBCW : FormC<0x42, (outs HLREG:$rd), (ins HLREG:$src, BDREGS:$rr), "sbc  $rd, $rr",
-                     [(set i16:$rd, (sube i16:$src, i16:$rr)), (implicit SREG)]>, ED;
+      def SBCW : FormC_ED<0x42, (outs HLREG:$rd), (ins HLREG:$src, BDREGS:$rr), "sbc  $rd, $rr",
+                     [(set i16:$rd, (sube i16:$src, i16:$rr)), (implicit SREG)]>;
 
+      let isPseudo = 1 in
       def XSBCW : FormC<0x42, (outs PTRREGS:$rd), (ins PTRREGS:$src, BDREGS:$rr), "sbc  $rd, $rr", []>, ED;
   }
 }
@@ -319,33 +321,39 @@ def : Pat<(add i8:$src, -2), (DEC (DEC $src))>;
 def : Pat<(add i8:$src, -3), (DEC (DEC (DEC $src)))>;
 def : Pat<(add i8:$src, -4), (DEC (DEC (DEC (DEC $src))))>;
 
-let Defs = [SREG], rd = 6 in
+let Defs = [SREG] in
 {
-  def INCPTR : FormH<0x04, (outs), (ins memri:$addr), "inc  $addr",
+  def INCPTR : Pseudo<(outs), (ins memri:$addr), "inc  $addr",
                       [(store (i8 (add (i8 (load addr:$addr)), 1)), addr:$addr)]>, IsPtrInstr;
 
-  def DECPTR : FormH<0x05, (outs), (ins memri:$addr), "dec  $addr",
+  def DECPTR : Pseudo<(outs), (ins memri:$addr), "dec  $addr",
                       [(store (i8 (add (i8 (load addr:$addr)), -1)), addr:$addr)]>, IsPtrInstr;
 }
 
 //===----------------------------------------------------------------------===//
 // Logic
 //===----------------------------------------------------------------------===//
-def SETBITPTR : FormH<0xC6, (outs), (ins memri:$addr, i8imm:$rd), "set  $rd, $addr",
-                      [(store (i8 (or (i8 (load addr:$addr)), iobitpos8:$rd)), addr:$addr)]>, IsPtrInstr, CB;
+def SETBITPTR : FormH_CB<0xC6, (outs), (ins memri:$addr, i8imm:$rd), "set  $rd, $addr",
+                      [(store (i8 (or (i8 (load addr:$addr)), iobitpos8:$rd)), addr:$addr)]>, IsPtrInstr;
 
 def SETBITWPTR : Pseudo<(outs), (ins memri:$addr, i8imm:$rd), "set  $rd, $addr",
                       [(store (i16 (or (i16 (load addr:$addr)), iobitpos16:$rd)), addr:$addr)]>;
 
-def SETBITPTRE : FormH<0xC6, (outs GPR8:$o), (ins memri:$addr, i8imm:$rd), "ld   $o, set $rd, $addr",
+def SETBITPTRE : Pseudo<(outs GPR8:$o), (ins memri:$addr, i8imm:$rd), "ld   $o, set $rd, $addr",
                       [(store (i8 (or (i8 (load addr:$addr)), iobitpos8:$rd)), addr:$addr),
                        (set i8:$o, (i8 (or (i8 (load addr:$addr)), iobitpos8:$rd)))]>, IsPtrInstr, CB;
 
-def RESBITPTR : FormH<0x86, (outs), (ins memri:$addr, i8imm:$rd), "res  $rd, $addr",
-                      [(store (i8 (and (i8 (load addr:$addr)), iobitposn8:$rd)), addr:$addr)]>, IsPtrInstr, CB;
+def RESBITPTR : FormH_CB<0x86, (outs), (ins memri:$addr, i8imm:$rd), "res  $rd, $addr",
+                      [(store (i8 (and (i8 (load addr:$addr)), iobitposn8:$rd)), addr:$addr)]>, IsPtrInstr;
 
 def RESBITWPTR : Pseudo<(outs), (ins memri:$addr, i8imm:$rd), "res  $rd, $addr",
                       [(store (i16 (and (i16 (load addr:$addr)), iobitposn16:$rd)), addr:$addr)]>;
+
+let Defs = [SREG] in
+{
+  def SCF : FormA<0x37, (outs), (ins), "scf", []>;
+  def CCF : FormA<0x3F, (outs), (ins), "ccf", []>;
+}
 
 let Constraints = "$src = $rd",
 Defs = [SREG] in
@@ -385,8 +393,8 @@ Defs = [SREG] in
 } // let Constraints = "$src = $rd", Defs = [SREG] in
 
 let Constraints = "$dst = $rr" in {
-    def RESBIT : FormG<0x80, (outs BGPR8:$dst), (ins BGPR8:$rr, i16imm:$rd), "res  $rd, $rr", []>, CB;
-    def SETBIT : FormG<0xC0, (outs BGPR8:$dst), (ins BGPR8:$rr, i16imm:$rd), "set  $rd, $rr", []>, CB;
+    def RESBIT : FormG_CB<0x80, (outs BGPR8:$dst), (ins BGPR8:$rr, i16imm:$rd), "res  $rd, $rr", []>;
+    def SETBIT : FormG_CB<0xC0, (outs BGPR8:$dst), (ins BGPR8:$rr, i16imm:$rd), "set  $rd, $rr", []>;
 }
 
 let Constraints = "$src = $rd" in
@@ -402,10 +410,10 @@ def SETRESBITWPTR : Pseudo<(outs), (ins memri:$addr, i16imm:$resbit, i16imm:$set
                            "!setres $addr, $resbit, $setbit", []>;
 
 let Defs = [SREG] in {
-    let rr=6, mayLoad=1 in
-        def TESTBITPTR : FormG<0x40, (outs), (ins memri:$addr, i8imm:$rd), "bit  $rd, $addr", []>, CB, IsPtrInstr;
+    let rr=6, mayLoad=1, isPseudo = 1 in
+        def TESTBITPTR : FormG_CB<0x40, (outs), (ins memri:$addr, i8imm:$rd), "bit  $rd, $addr", []>, IsPtrInstr;
 
-    def TESTBIT : FormG<0x40, (outs), (ins BGPR8:$rr, i8imm:$rd), "bit  $rd, $rr", []>, CB;
+    def TESTBIT : FormG_CB<0x40, (outs), (ins BGPR8:$rr, i8imm:$rd), "bit  $rd, $rr", []>;
 }
 
 def : Pat<(store (i16 (or (i16 (and (i16 (load addr:$src)), imm:$resbit)), imm:$setbit)), addr:$src),
@@ -430,7 +438,7 @@ let isCall = 1 in
   // SP is marked as a use to prevent stack-pointer assignments that appear
   // immediately before calls from potentially appearing dead.
   let Uses = [SP, HL] in
-  def ICALL : FormF<0xcd, (outs), (ins call_target:$d16), "call $d16", []>;
+  def ICALL : Pseudo<(outs), (ins call_target:$d16), "call $d16", []>;
 
   // SP is marked as a use to prevent stack-pointer assignments that appear
   // immediately before calls from potentially appearing dead.
@@ -438,6 +446,8 @@ let isCall = 1 in
     def CALLk : FormF<0xcd, (outs), (ins call_target:$d16), "call $d16", [(Z80call imm:$d16)]>;
 
     def CALLCCk : FormL<0xc4, (outs), (ins condcode:$cc, call_target:$d16), "call $cc, $d16", []>;
+
+    def RST : FormH<0xc7, (outs), (ins i16imm:$rd), "rst  $rd", []>;
   }
 }
 
@@ -489,7 +499,7 @@ Uses = [SREG] in
 //===----------------------------------------------------------------------===//
 let hasSideEffects = 0 in
 {
-    def LD : FormG<0x40, (outs GPR8:$rd), (ins GPR8:$rr), "ld   $rd, $rr", []>;
+    def LD : Pseudo<(outs GPR8:$rd), (ins GPR8:$rr), "ld   $rd, $rr", []>;
     def LDSP : FormA<0xf9, (outs SPREG:$rd), (ins PTRREGS:$rr), "ld   sp, $rr", []>;
     def COPYREG : Pseudo<(outs GPR8:$d), (ins GPR8:$s), "!copyreg $d, $s", []>;
     def COPYREGW : Pseudo<(outs DREGS:$d), (ins DREGS:$s), "!copyregw $d, $s", []>;
@@ -518,14 +528,17 @@ isReMaterializable = 1 in
 
   def LDSWRdK : Pseudo<(outs DREGS:$dst), (ins i16imm:$src), "ldsw\t$dst, $src", [(set i16:$dst, (load imm:$src))]>;
 
-  def LDSWRdKOp : FormF<0x22, (outs HLREG:$rd), (ins i16imm:$d16), "ld   $rd, ( $d16 )", []>;
-  def LDSWRdKOpExt : FormE<0x4b, (outs DREGS:$rd), (ins i16imm:$d16), "ld   $rd, ( $d16 )", []>, ED;
+  def LDSWRdKOp : Pseudo<(outs HLREG:$rd), (ins i16imm:$d16), "ld   $rd, ( $d16 )", []>;
+  def LDSWRdKOpExt : Pseudo<(outs DREGS:$rd), (ins i16imm:$d16), "ld   $rd, ( $d16 )", []>;
+
+  def LDADE : FormA<0x1a, (outs ACC:$rd), (ins DEREG:$rs), "ld   a, (de)", []>;
+  def LDABC : FormA<0x0a, (outs ACC:$rd), (ins BCREG:$rs), "ld   a, (bc)", []>;
 }
 
 let canFoldAsLoad = 1,
 isReMaterializable = 1 in
 {
-  def LDRdPtr : FormH<0x46, (outs BGPR8:$rd), (ins memriz:$ptrreg), "ld   $rd, $ptrreg",
+  def LDRdPtr : Pseudo<(outs BGPR8:$rd), (ins memriz:$ptrreg), "ld   $rd, $ptrreg",
                       [(set i8:$rd, (load i16:$ptrreg))]>;
 
   let Constraints = "@earlyclobber $reg" in
@@ -539,7 +552,7 @@ isReMaterializable = 1 in
 {
 
   let Constraints = "@earlyclobber $rd" in
-  def LDDRdPtrQ : FormH<0x46, (outs BGPR8:$rd), (ins memri:$d8), "ld   $rd, $d8",
+  def LDDRdPtrQ : Pseudo<(outs BGPR8:$rd), (ins memri:$d8), "ld   $rd, $d8",
                          [(set i8:$rd, (load addr:$d8))]>, IsPtrInstr;
 
   let Constraints = "@earlyclobber $dst" in
@@ -558,8 +571,8 @@ def STSWKRrOpExt : FormE<0x43, (outs), (ins imm16:$d16, DREGS:$rd), "ld   ($d16 
 
 def STSWKRr : Pseudo<(outs), (ins i16imm:$dst, DREGS:$src), "stsw\t$dst, $src", [(store i16:$src, imm:$dst)]>;
 
-def OUT16K : FormH<0x41, (outs), (ins BCREG:$port, BGPR8:$rd), "out  (c), $rd", []>, ED;
-def OUT8K  : FormI<0xd3, (outs), (ins i16imm:$d8, ACC:$rd), "out  ($d8 ), $rd", []>;
+def OUT16K : FormH_ED<0x41, (outs), (ins BCREG:$port, BGPR8:$rd), "out  (c), $rd", []>;
+def OUT8K  : FormI<0xd3, (outs), (ins i16imm:$d8, ACC:$rd), "out  ($d8 ), a", []>;
 
 def PORTS_LONG : PatLeaf<(i8 2)>;
 def PORTS_SHORT : PatLeaf<(i8 3)>;
@@ -571,23 +584,25 @@ def : Pat<(outport i8:$rd, uimm8:$port, PORTS_SHORT), (OUT8K uimm8:$port, $rd)>;
 //def OUT16Z : FormA<0x71, (outs), (ins BCREG:$port, i8imm:$imm), "out  (c), $imm", [(outport immzero:$imm, i16:$port)]>, ED;
 
 let Defs = [SREG] in
-def IN16K : FormH<0x40, (outs BGPR8:$rd), (ins BCREG:$port), "in   $rd, (c)",
-                        [(set i8:$rd, (inport i16:$port, PORTS_LONG))]>, ED;
+def IN16K : FormH_ED<0x40, (outs BGPR8:$rd), (ins BCREG:$port), "in   $rd, (c)",
+                        [(set i8:$rd, (inport i16:$port, PORTS_LONG))]>;
 
-def IN8K  : FormI<0xDB, (outs ACC:$rd), (ins i16imm:$d8), "in   $rd, ($d8 )",
+def IN8K  : FormI<0xDB, (outs ACC:$rd), (ins i16imm:$d8), "in   a, ($d8 )",
                         [(set i8:$rd, (inport uimm8:$d8, PORTS_SHORT))]>;
 
 // Indirect stores.
-def STPTR : FormB<0x70, (outs), (ins memriz:$ptr, BGPR8:$rr), "ld   $ptr, $rr", [(store i8:$rr, i16:$ptr)]>;
+def STPTR : Pseudo<(outs), (ins memriz:$ptr, BGPR8:$rr), "ld   $ptr, $rr", [(store i8:$rr, i16:$ptr)]>;
+
+def MOVE : FormG<0x40, (outs BGPR8:$rd), (ins BGPR8:$rr), "ld   $rd, $rr", []>;
 
 def STWPtrRr : Pseudo<(outs), (ins PTRDISPREGS:$ptrreg, DREGS:$reg), "stw  $ptrreg, $reg",
                      [(store i16:$reg, i16:$ptrreg)]>;
 
-def STDPTR : FormB<0x70, (outs), (ins memri:$d8, BGPR8:$rr), "ld   $d8, $rr", []>, IsPtrInstr;
+def STDPTR : Pseudo<(outs), (ins memri:$d8, BGPR8:$rr), "ld   $d8, $rr", []>, IsPtrInstr;
 
 def STDPTR_P : Pseudo<(outs), (ins memri:$d8, GPR8:$rr), "!ld   $d8, $rr", []>;
 
-def STDPtrQRr : FormB<0x70, (outs), (ins memri:$d8, BGPR8:$rr), "ld   $d8, $rr",
+def STDPtrQRr : Pseudo<(outs), (ins memri:$d8, BGPR8:$rr), "ld   $d8, $rr",
                       [(store i8:$rr, addr:$d8)]>, IsPtrInstr;
 
 def STDWPtrQRr : Pseudo<(outs), (ins memri:$memri, DREGS:$src), "stdw\t$memri, $src",
@@ -626,41 +641,41 @@ Defs = [SREG] in
   def ROT16 : Pseudo<(outs BDREGS:$rr), (ins BDREGS:$src, Operand<i8>:$rot), "#ROT16 $rr, $rot",
                      [(set i16:$rr, (Z80rotshift i16:$src, rot:$rot, (i8 1))), (implicit SREG)]>;
 
-  def SRL : FormB<0x38, (outs BGPR8:$rr), (ins BGPR8:$src), "srl  $rr",
-                    [(set i8:$rr, (singlerotshift i8:$src, Z80_ROT_SRL)), (implicit SREG)]>, CB;
+  def SRL : FormB_CB<0x38, (outs BGPR8:$rr), (ins BGPR8:$src), "srl  $rr",
+                    [(set i8:$rr, (singlerotshift i8:$src, Z80_ROT_SRL)), (implicit SREG)]>;
 
-  def SRA : FormB<0x28, (outs BGPR8:$rr), (ins BGPR8:$src), "sra  $rr",
-                    [(set i8:$rr, (singlerotshift i8:$src, Z80_ROT_SRA)), (implicit SREG)]>, CB;
+  def SRA : FormB_CB<0x28, (outs BGPR8:$rr), (ins BGPR8:$src), "sra  $rr",
+                    [(set i8:$rr, (singlerotshift i8:$src, Z80_ROT_SRA)), (implicit SREG)]>;
 
-  def RLC : FormB<0x00, (outs BGPR8:$rr), (ins BGPR8:$src), "rlc  $rr",
-                    [(set i8:$rr, (singlerotshift i8:$src, Z80_ROT_RLC)), (implicit SREG)]>, CB;
+  def RLC : FormB_CB<0x00, (outs BGPR8:$rr), (ins BGPR8:$src), "rlc  $rr",
+                    [(set i8:$rr, (singlerotshift i8:$src, Z80_ROT_RLC)), (implicit SREG)]>;
 
   def RLCA : FormA<0x07, (outs ACC:$rr), (ins ACC:$src), "rlca", []>;
 
-  def RRC : FormB<0x08, (outs BGPR8:$rr), (ins BGPR8:$src), "rrc  $rr",
-                    [(set i8:$rr, (singlerotshift i8:$src, Z80_ROT_RRC)), (implicit SREG)]>, CB;
+  def RRC : FormB_CB<0x08, (outs BGPR8:$rr), (ins BGPR8:$src), "rrc  $rr",
+                    [(set i8:$rr, (singlerotshift i8:$src, Z80_ROT_RRC)), (implicit SREG)]>;
 
   def RRCA : FormA<0x0f, (outs ACC:$rr), (ins ACC:$src), "rrca", []>;
 
-  def SLA : FormB<0x20, (outs BGPR8:$rr), (ins BGPR8:$src), "sla  $rr",
-                    [(set i8:$rr, (singlerotshift i8:$src, Z80_ROT_SLA)), (implicit SREG)]>, CB;
+  def SLA : FormB_CB<0x20, (outs BGPR8:$rr), (ins BGPR8:$src), "sla  $rr",
+                    [(set i8:$rr, (singlerotshift i8:$src, Z80_ROT_SLA)), (implicit SREG)]>;
 
   let Uses = [SREG] in
   {
-    def RR : FormB<0x18, (outs BGPR8:$rr), (ins BGPR8:$src), "rr   $rr",
-                     [(set i8:$rr, (singlerotshift i8:$src, Z80_ROT_RR)), (implicit SREG)]>, CB;
+    def RR : FormB_CB<0x18, (outs BGPR8:$rr), (ins BGPR8:$src), "rr   $rr",
+                     [(set i8:$rr, (singlerotshift i8:$src, Z80_ROT_RR)), (implicit SREG)]>;
 
     def RRA  : FormA<0x1f, (outs ACC:$rr), (ins ACC:$src), "rra", []>;
 
-    def RL : FormB<0x10, (outs BGPR8:$rr), (ins BGPR8:$src), "rl   $rr",
-                     [(set i8:$rr, (singlerotshift i8:$src, Z80_ROT_RL)), (implicit SREG)]>, CB;
+    def RL : FormB_CB<0x10, (outs BGPR8:$rr), (ins BGPR8:$src), "rl   $rr",
+                     [(set i8:$rr, (singlerotshift i8:$src, Z80_ROT_RL)), (implicit SREG)]>;
 
     def RLA  : FormA<0x17, (outs ACC:$rr), (ins ACC:$src), "rla", []>;
   }
 }
 
 class RotRdPtr<PatFrag Rot, string n, bits<3> rc> :
-    FormH<0x06, (outs), (ins memri:$src), !strconcat(n, "  $src"),
+    FormH_CB<0x06, (outs), (ins memri:$src), !strconcat(n, "  $src"),
               [(store (i8 (singlerotshift (i8 (load addr:$src)), Rot)), addr:$src), (implicit SREG)]>, CB, IsPtrInstr
 {
     let rd = rc;
@@ -748,6 +763,12 @@ def STDWSPQRr : StorePseudo<(outs), (ins memri:$dst, DREGS:$src), "!stdwstk\t$ds
 
 def Select8 : SelectPseudo<(outs GPR8:$dst), (ins GPR8:$src, GPR8:$src2, variable_ops), "# Select8 PSEUDO", []>;
 def Select16 : SelectPseudo<(outs DREGS:$dst), (ins DREGS:$src, DREGS:$src2, variable_ops), "# Select16 PSEUDO", []>;
+
+//==============================================================================
+def DI : FormA<0xf3, (outs), (ins), "di", []>;
+def EI : FormA<0xfb, (outs), (ins), "ei", []>;
+
+//==============================================================================
 
 //===----------------------------------------------------------------------===//
 // Non-Instruction Patterns

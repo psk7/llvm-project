@@ -311,6 +311,8 @@ static const StringMap<MachineInfo> TargetMap{
     {"elf32-sparc", {ELF::EM_SPARC, false, false}},
     {"elf32-sparcel", {ELF::EM_SPARC, false, true}},
     {"elf32-hexagon", {ELF::EM_HEXAGON, false, true}},
+    // Z80
+    {"elf-z80", {ELF::EM_Z80, false, true}},
 };
 
 static Expected<TargetInfo>

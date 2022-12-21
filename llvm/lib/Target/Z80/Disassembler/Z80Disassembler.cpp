@@ -64,15 +64,12 @@ static const uint16_t GPRDecoderTable[] = {
 
 static DecodeStatus DecodeGPR8RegisterClass(MCInst &Inst, unsigned RegNo,
                                             uint64_t Address, const void *Decoder) {
-  llvm_unreachable("DecodeGPR8RegisterClass");
-  /*
-  if (RegNo > 31)
+  if (RegNo > 7)
     return MCDisassembler::Fail;
 
   unsigned Register = GPRDecoderTable[RegNo];
   Inst.addOperand(MCOperand::createReg(Register));
   return MCDisassembler::Success;
-*/
 }
 
 static DecodeStatus DecodeLD8RegisterClass(MCInst &Inst, unsigned RegNo,
@@ -125,7 +122,90 @@ static DecodeStatus decodeFWRdK(MCInst &Inst, unsigned Insn,
 static DecodeStatus decodeFMUL2RdRr(MCInst &Inst, unsigned Insn,
                                     uint64_t Address, const void *Decoder);
 
+static DecodeStatus DecodeBDREGSRegisterClass(MCInst &Inst, unsigned Insn,
+                                    uint64_t Address, const void *Decoder);
+
+static DecodeStatus DecodeBGPR8RegisterClass(MCInst &Inst, unsigned Insn,
+                                    uint64_t Address, const void *Decoder);
+
+static DecodeStatus DecodeREGSTOSTACKRegisterClass(MCInst &Inst, unsigned Insn,
+                                    uint64_t Address, const void *Decoder);
+
+static DecodeStatus DecodeDREGSRegisterClass(MCInst &Inst, unsigned Insn,
+                                    uint64_t Address, const void *Decoder);
+
 #include "Z80GenDisassemblerTables.inc"
+
+static DecodeStatus DecodeBDREGSRegisterClass(MCInst &Inst, unsigned Insn,
+                                              uint64_t Address,
+                                              const void *Decoder) {
+  llvm_unreachable("Decode");
+}
+
+static DecodeStatus DecodeBGPR8RegisterClass(MCInst &Inst, unsigned RegNo,
+                                             uint64_t Address,
+                                             const void *Decoder) {
+  if (RegNo > 7)
+    return MCDisassembler::Fail;
+
+  unsigned Register = GPRDecoderTable[RegNo];
+  Inst.addOperand(MCOperand::createReg(Register));
+  return MCDisassembler::Success;
+}
+
+static DecodeStatus DecodeREGSTOSTACKRegisterClass(MCInst &Inst, unsigned Insn,
+                                                   uint64_t Address,
+                                                   const void *Decoder) {
+  unsigned Register;
+
+  switch(Insn) {
+  case 0:
+    Register = Z80::BC;
+    break;
+  case 1:
+    Register = Z80::DE;
+    break;
+  case 2:
+    Register = Z80::HL;
+    break;
+  case 3:
+    Register = Z80::SP;
+    break;
+
+  default:
+    return MCDisassembler::Fail;
+  }
+
+  Inst.addOperand(MCOperand::createReg(Register));
+  return MCDisassembler::Success;
+}
+
+static DecodeStatus DecodeDREGSRegisterClass(MCInst &Inst, unsigned Insn,
+                                             uint64_t Address,
+                                             const void *Decoder) {
+  unsigned Register;
+
+  switch(Insn) {
+  case 0: 
+    Register = Z80::BC;
+    break;
+  case 1:
+    Register = Z80::DE;
+    break;
+  case 2:
+    Register = Z80::HL;
+    break;
+  case 3:
+    Register = Z80::SP;
+    break;
+
+  default:
+    return MCDisassembler::Fail;
+  }
+
+  Inst.addOperand(MCOperand::createReg(Register));
+  return MCDisassembler::Success;
+}
 
 static DecodeStatus decodeFIOARr(MCInst &Inst, unsigned Insn,
                                  uint64_t Address, const void *Decoder) {
@@ -234,7 +314,19 @@ static DecodeStatus decodeFMUL2RdRr(MCInst &Inst, unsigned Insn,
   return MCDisassembler::Success;
 }
 
-static DecodeStatus readInstruction16(ArrayRef<uint8_t> Bytes, uint64_t Address,
+static DecodeStatus readInstruction8(ArrayRef<uint8_t> Bytes, uint64_t Offset,
+                                      uint64_t &Size, uint32_t &Insn) {
+  if (Bytes.size() < 1) {
+    Size = 0;
+    return MCDisassembler::Fail;
+  }
+
+  Size = 1;
+  Insn = Bytes[Offset];
+
+  return MCDisassembler::Success;
+}
+static DecodeStatus readInstruction16(ArrayRef<uint8_t> Bytes, uint64_t Offset,
                                       uint64_t &Size, uint32_t &Insn) {
   if (Bytes.size() < 2) {
     Size = 0;
@@ -242,35 +334,75 @@ static DecodeStatus readInstruction16(ArrayRef<uint8_t> Bytes, uint64_t Address,
   }
 
   Size = 2;
-  Insn = (Bytes[0] << 0) | (Bytes[1] << 8);
+  Insn = (Bytes[Offset] << 0) | (Bytes[Offset+1] << 8);
 
   return MCDisassembler::Success;
 }
 
-static DecodeStatus readInstruction32(ArrayRef<uint8_t> Bytes, uint64_t Address,
+static DecodeStatus readInstruction24(ArrayRef<uint8_t> Bytes, uint64_t Offset,
                                       uint64_t &Size, uint32_t &Insn) {
 
-  if (Bytes.size() < 4) {
+  if (Bytes.size() < 3) {
     Size = 0;
     return MCDisassembler::Fail;
   }
 
-  Size = 4;
-  Insn = (Bytes[0] << 16) | (Bytes[1] << 24) | (Bytes[2] << 0) | (Bytes[3] << 8);
+  Size = 3;
+  Insn = (Bytes[Offset] << 0) | (Bytes[Offset+1] << 8) | (Bytes[Offset+2] << 16);
 
   return MCDisassembler::Success;
 }
 
 static const uint8_t *getDecoderTable(uint64_t Size) {
-
-  llvm_unreachable("getDecoderTable");
-  /*
   switch (Size) {
+    case 1: return DecoderTable8;
     case 2: return DecoderTable16;
-    case 4: return DecoderTable32;
-    default: llvm_unreachable("instructions must be 16 or 32-bits");
+    case 3: return DecoderTable24;
+    default: llvm_unreachable("Wrong instruction size");
   }
-*/
+}
+
+static DecodeStatus AdjustPrefix(DecodeStatus Status, MCInst &Instr,
+                                 uint64_t &Size, uint8_t Prefix) {
+
+  bool HasDD = Prefix == 0xDD;
+  bool HasFD = Prefix == 0xFD;
+
+  if (HasDD || HasFD) {
+    ++Size;
+
+    switch (Instr.getNumOperands()) {
+    case 2:
+      auto &op0 = Instr.getOperand(1);
+
+      switch (op0.getReg()) {
+      case Z80::HL:
+        if (HasDD)
+          op0.setReg(Z80::IX);
+        else if (HasFD)
+          op0.setReg(Z80::IY);
+        break;
+
+      case Z80::H:
+        if (HasDD)
+          op0.setReg(Z80::XH);
+        else if (HasFD)
+          op0.setReg(Z80::YH);
+        break;
+
+      case Z80::L:
+        if (HasDD)
+          op0.setReg(Z80::XL);
+        else if (HasFD)
+          op0.setReg(Z80::YL);
+        break;
+      }
+
+      break;
+    }
+  }
+
+  return Status;
 }
 
 DecodeStatus Z80Disassembler::getInstruction(MCInst &Instr, uint64_t &Size,
@@ -278,38 +410,57 @@ DecodeStatus Z80Disassembler::getInstruction(MCInst &Instr, uint64_t &Size,
                                              uint64_t Address,
                                              raw_ostream &CStream) const {
   uint32_t Insn;
+  uint8_t Prefix = 0;
+  uint64_t Offset = 0;
 
   DecodeStatus Result;
 
+  auto &b = Bytes[Offset];
+
+  if (Bytes.size() > 0 && ((b == 0xFD) || (b == 0xDD)))
+    Prefix = b;
+
+  if (Prefix != 0)
+    ++Offset;
+
   // Try decode a 16-bit instruction.
-  {
-    Result = readInstruction16(Bytes, Address, Size, Insn);
+  Result = readInstruction8(Bytes, Offset, Size, Insn);
 
-    if (Result == MCDisassembler::Fail) return MCDisassembler::Fail;
-
-    // Try to auto-decode a 16-bit instruction.
-    Result = decodeInstruction(getDecoderTable(Size), Instr,
-                               Insn, Address, this, STI);
-
-    if (Result != MCDisassembler::Fail)
-      return Result;
-  }
-
-  // Try decode a 32-bit instruction.
-  {
-    Result = readInstruction32(Bytes, Address, Size, Insn);
-
-    if (Result == MCDisassembler::Fail) return MCDisassembler::Fail;
-
-    Result = decodeInstruction(getDecoderTable(Size), Instr, Insn,
-                               Address, this, STI);
-
-    if (Result != MCDisassembler::Fail) {
-      return Result;
-    }
-
+  if (Result == MCDisassembler::Fail)
     return MCDisassembler::Fail;
-  }
+
+  Result =
+      decodeInstruction(getDecoderTable(Size), Instr, Insn, Address, this, STI);
+
+  if (Result != MCDisassembler::Fail)
+    return AdjustPrefix(Result, Instr, Size, Prefix);
+
+  // Try decode a 16-bit instruction.
+  Result = readInstruction16(Bytes, Offset, Size, Insn);
+
+  if (Result == MCDisassembler::Fail)
+    return MCDisassembler::Fail;
+
+  // Try to auto-decode a 16-bit instruction.
+  Result =
+      decodeInstruction(getDecoderTable(Size), Instr, Insn, Address, this, STI);
+
+  if (Result != MCDisassembler::Fail)
+    return AdjustPrefix(Result, Instr, Size, Prefix);
+
+  // Try decode a 24-bit instruction.
+  Result = readInstruction24(Bytes, Offset, Size, Insn);
+
+  if (Result == MCDisassembler::Fail)
+    return MCDisassembler::Fail;
+
+  Result =
+      decodeInstruction(getDecoderTable(Size), Instr, Insn, Address, this, STI);
+
+  if (Result == MCDisassembler::Fail)
+    return MCDisassembler::Fail;
+
+  return AdjustPrefix(Result, Instr, Size, Prefix);
 }
 
 typedef DecodeStatus (*DecodeFunc)(MCInst &MI, unsigned insn, uint64_t Address,

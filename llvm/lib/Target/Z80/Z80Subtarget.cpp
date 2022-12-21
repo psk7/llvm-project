@@ -29,7 +29,7 @@ namespace llvm {
 
 Z80Subtarget::Z80Subtarget(const Triple &TT, const std::string &CPU,
                            const std::string &FS, const Z80TargetMachine &TM)
-    : Z80GenSubtargetInfo(TT, CPU, FS), ELFArch(0),
+    : Z80GenSubtargetInfo(TT, CPU, /*TuneCPU*/ CPU, FS), ELFArch(0),
 
       // Subtarget features
       m_FeatureSetDummy(false),
@@ -37,14 +37,14 @@ Z80Subtarget::Z80Subtarget(const Triple &TT, const std::string &CPU,
       InstrInfo(), FrameLowering(),
       TLInfo(TM, initializeSubtargetDependencies(CPU, FS, TM)), TSInfo() {
   // Parse features string.
-  ParseSubtargetFeatures(CPU, FS);
+  ParseSubtargetFeatures(CPU, /*TuneCPU*/ CPU, FS);
 }
 
 Z80Subtarget &
 Z80Subtarget::initializeSubtargetDependencies(StringRef CPU, StringRef FS,
                                               const TargetMachine &TM) {
   // Parse features string.
-  ParseSubtargetFeatures(CPU, FS);
+  ParseSubtargetFeatures(CPU, /*TuneCPU*/ CPU, FS);
   return *this;
 }
 
