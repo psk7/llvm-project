@@ -30,8 +30,9 @@ void dumpBytes(ArrayRef<uint8_t> Bytes, raw_ostream &OS);
 namespace HexStyle {
 
 enum Style {
-  C,  ///< 0xff
-  Asm ///< 0ffh
+  C,   ///< 0xff
+  Asm, ///< 0ffh
+  Z80  ///< #ff
 };
 
 } // end namespace HexStyle

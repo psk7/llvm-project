@@ -203,6 +203,8 @@ format_object<int64_t> MCInstPrinter::formatHex(int64_t Value) const {
       return format("-0x%" PRIx64, -Value);
     }
     return format("0x%" PRIx64, Value);
+  case HexStyle::Z80:
+    return format("#%" PRIx64, Value);
   case HexStyle::Asm:
     if (Value < 0) {
       if (Value == std::numeric_limits<int64_t>::min())
@@ -222,6 +224,8 @@ format_object<uint64_t> MCInstPrinter::formatHex(uint64_t Value) const {
   switch(PrintHexStyle) {
   case HexStyle::C:
      return format("0x%" PRIx64, Value);
+  case HexStyle::Z80:
+     return format("#%" PRIx64, Value);
   case HexStyle::Asm:
     if (needsLeadingZero(Value))
       return format("0%" PRIx64 "h", Value);

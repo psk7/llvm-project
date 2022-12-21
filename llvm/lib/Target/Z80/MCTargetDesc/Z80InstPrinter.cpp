@@ -36,7 +36,8 @@ namespace llvm {
 Z80InstPrinter::Z80InstPrinter(const MCAsmInfo &MAI, const MCInstrInfo &MII,
                  const MCRegisterInfo &MRI)
       : MCInstPrinter(MAI, MII, MRI) {
-  //PrintImmHex = true;
+  PrintImmHex = false;
+  PrintHexStyle = HexStyle::Z80;
 }
 
 void Z80InstPrinter::printInst(const MCInst *MI, uint64_t Address,
