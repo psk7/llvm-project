@@ -45,7 +45,9 @@ class Z80Inst<dag outs, dag ins, string asmstr, list<dag> pattern> : Instruction
   bits<3> OpPrefixBits = OpPrefix.Value;
 
   bits<2> payloadSize = 0;
+  bits<1> HasDisplacement = 0;
 
+  let TSFlags{6} = HasDisplacement;
   let TSFlags{5-4} = payloadSize;
   let TSFlags{3} = IsPtrInstruction;
   let TSFlags{2-0} = OpPrefixBits;
@@ -55,6 +57,10 @@ class Z80Inst<dag outs, dag ins, string asmstr, list<dag> pattern> : Instruction
 
 class IsPtrInstr {
   bits<1> IsPtrInstruction = 1;
+}
+
+class HasDisplacement {
+  bits<1> HasDisplacement = 1;
 }
 
 class Has8BitPayload { bits<2> payloadSize = 1; }
@@ -117,12 +123,38 @@ class FormB_CB<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> patte
   let Inst{10-8} = rr;
 }
 
+class FormIM<bits<8> opcode, string asmstr>
+  : Z80Inst<(outs), (ins i8imm:$n), asmstr, []>
+{
+  field bits<16> Inst;
+
+  let Inst{7-0} = 0xED;
+  let Inst{15-8} = opcode;
+  let Size = 2;
+
+  bits<2> n;
+
+  let Inst{12-11} = n;
+
+  let DecoderMethod="DecodeIM";
+}
+
 class FormC<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
   : FormA<opcode, outs, ins, asmstr, pattern>
 {
   bits<2> rr;
 
   let Inst{5-4} = rr;
+}
+
+class FormHLRP<bits<8> opcode, string asmstr, list<dag> pattern>
+  : FormA<opcode, (outs HLREG:$rd), (ins HLREG:$src, BDREGS:$rr), asmstr, pattern>
+{
+  let Constraints = "$src = $rd";
+  bits<2> rr;
+  let Inst{5-4} = rr;
+
+  let DecoderMethod = "DecodeHLRP";
 }
 
 class FormC_ED<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
@@ -200,15 +232,15 @@ class FormG_CB<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> patte
 {
   field bits<16> Inst;
 
-  let Inst{15-8} = 0xCB;
-  let Inst{7-0} = opcode;
+  let Inst{7-0} = 0xCB;
+  let Inst{15-8} = opcode;
   let Size = 2;
 
   bits<3> rd;
   bits<3> rr;
 
-  let Inst{5-3} = rd;
-  let Inst{2-0} = rr;
+  let Inst{13-11} = rd;
+  let Inst{10-8} = rr;
 }
 
 class FormH<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
@@ -224,13 +256,13 @@ class FormH_ED<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> patte
 {
   field bits<16> Inst;
 
-  let Inst{15-8} = 0xED;
-  let Inst{7-0} = opcode;
+  let Inst{7-0} = 0xED;
+  let Inst{15-8} = opcode;
   let Size = 2;
 
   bits<3> rd;
 
-  let Inst{5-3} = rd;
+  let Inst{13-11} = rd;
 }
 
 class FormH_CB<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
@@ -253,6 +285,12 @@ class FormI<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
   bits<8> d8;
 
   let Inst{15-8} = d8;
+}
+
+class FormIA<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
+  : FormI<opcode, outs, ins, asmstr, pattern>
+{
+    let DecoderMethod = "DecodeFormIA";
 }
 
 class FormJ<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>

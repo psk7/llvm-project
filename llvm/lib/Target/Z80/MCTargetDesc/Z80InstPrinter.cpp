@@ -180,8 +180,8 @@ void Z80InstPrinter::printPCRelImm(const MCInst *MI, unsigned OpNo,
 void Z80InstPrinter::printCondCode(const MCInst *MI, unsigned OpNo,
                                    raw_ostream &O) {
   const unsigned opcode = MI->getOpcode();
-  assert((Z80::JRCC == opcode || Z80::JPCC == opcode || Z80::CALLCCk == opcode) &&
-         "Opcode MUST BE JRCC or JPCC or CALLCC");
+  assert((Z80::JRCC == opcode || Z80::JPCC == opcode || Z80::CALLCCk == opcode || Z80::RETCC == opcode) &&
+         "Opcode MUST BE JRCC or JPCC or CALLCC or RETCC");
 
   auto cc = static_cast<Z80CC::CondCodes>(MI->getOperand(OpNo).getImm());
 
@@ -213,6 +213,26 @@ void Z80InstPrinter::printCondCode(const MCInst *MI, unsigned OpNo,
   default:
     llvm_unreachable("wrong cond code");
   }
+}
+
+void Z80InstPrinter::printAddr8(const MCInst *MI, unsigned OpNo,
+                                raw_ostream &O) {
+  O << "(";
+  printOperand(MI, OpNo, O);
+  O << ")";
+}
+
+void Z80InstPrinter::printRegref(const MCInst *MI, unsigned OpNo,
+                                raw_ostream &O) {
+  O << "(";
+  printOperand(MI, OpNo, O);
+
+  if (MI->getOperand(OpNo).getReg() != Z80::HL) {
+    O << "+";
+    printOperand(MI, OpNo + 1, O);
+  }
+
+  O << ")";
 }
 
 void Z80InstPrinter::printMemri(const MCInst *MI, unsigned OpNo,

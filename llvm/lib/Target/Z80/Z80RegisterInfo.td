@@ -95,6 +95,7 @@ def REGSTOSTACK : RegisterClass<"Z80", [i16], 8, ( add BC, DE, HL, IX, IY, AF )>
 
 def PTRDISPREGS : RegisterClass<"Z80", [i16], 8, ( add IX, IY )>;
 def PTRREGS : RegisterClass<"Z80", [i16], 8, ( add HL, IX, IY )>;
+def HLIXIY : RegisterClass<"Z80", [i16], 8, ( add HL, IX, IY )>;
 
 def BCREG : RegisterClass<"Z80", [i16], 8, (add BC)>;
 def HLREG : RegisterClass<"Z80", [i16], 8, (add HL)>;

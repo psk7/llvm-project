@@ -70,6 +70,7 @@ def Z80_ROT_RL  : PatLeaf<(i8 2)>;
 def Z80_ROT_RR  : PatLeaf<(i8 3)>;
 def Z80_ROT_SLA : PatLeaf<(i8 4)>;
 def Z80_ROT_SRA : PatLeaf<(i8 5)>;
+def Z80_ROT_SLI : PatLeaf<(i8 6)>;
 def Z80_ROT_SRL : PatLeaf<(i8 7)>;
 
 def Z80_CC_NZ   : PatLeaf<(i8 0)>;
@@ -141,6 +142,21 @@ def memri : Operand<iPTR>
   let EncoderMethod = "encodeMemri";
 
   let ParserMatchClass = MemriAsmOperand;
+}
+
+def addr8: Operand<i16>
+{
+    let MIOperandInfo = (ops i16imm);
+
+    let PrintMethod = "printAddr8";
+}
+
+def regref: Operand<i16>
+{
+    let MIOperandInfo = (ops PTRREGS, i8imm);
+
+    let DecoderMethod = "DecodeRegref";
+    let PrintMethod = "printRegref";
 }
 
 /// Address operand for `reg+0` used by STD and LDD.
@@ -242,15 +258,23 @@ Defs = [SREG] in
     def ADD : FormB<0x80, (outs ACC:$rd), (ins ACC:$src, GPR8:$rr), "add  $rr",
                        [(set i8:$rd, (add i8:$src, i8:$rr)), (implicit SREG)]>;
 
-    def ADDW : FormC<0b00001001, (outs HLREG:$rd), (ins HLREG:$src, BDREGS:$rr), "add  $rd, $rr",
+    let DecoderMethod = "DecodeAAk" in
+    def ADDk : FormI<0xC6,
+                       (outs ACC:$rd), (ins ACC:$src, i8imm:$d8), "add  $d8",
+                       [(set i8:$rd, (add i8:$src, imm:$d8)), (implicit SREG)]>;
+
+    def ADDW : FormHLRP<0x9, "add  $rd, $rr",
                        [(set i16:$rd, (add i16:$src, i16:$rr)), (implicit SREG)]>;
 
-    let isPseudo = 1 in
-    def XADDW : FormC<0b00001001, (outs PTRREGS:$rd), (ins PTRREGS:$src, BDREGS:$rr), "add  $rd, $rr", []>;
+    def XADDW : Pseudo<(outs PTRREGS:$rd), (ins PTRREGS:$src, BDREGS:$rr), "add  $rd, $rr", []>;
 
     let Uses = [SREG] in {
        def ADC : FormB<0x88, (outs ACC:$rd), (ins ACC:$src, GPR8:$rr), "adc  $rr",
                        [(set i8:$rd, (adde i8:$src, i8:$rr)), (implicit SREG)]>;
+
+       let DecoderMethod = "DecodeAAk" in
+       def ADCk : FormI<0xCE, (outs ACC:$rd), (ins ACC:$src, i8imm:$d8), "adc  $d8",
+                       [(set i8:$rd, (adde i8:$src, imm:$d8)), (implicit SREG)]>;
 
        def ADCW : FormC_ED<0b01001010, (outs HLREG:$rd), (ins HLREG:$src, BDREGS:$rr), "adc  $rd, $rr",
                        [(set i16:$rd, (adde i16:$src, i16:$rr)), (implicit SREG)]>;
@@ -266,7 +290,8 @@ Defs = [SREG] in
    def SUB : FormB<0x90, (outs ACC:$rd), (ins ACC:$src, GPR8:$rr), "sub  $rr",
                      [(set i8:$rd, (sub i8:$src, i8:$rr)), (implicit SREG)]>;
 
-   def SUBRdK : FormI<0xd6,
+   let DecoderMethod = "DecodeAAk" in
+   def SUBk : FormI<0xd6,
                      (outs ACC:$rd), (ins ACC:$src, i8imm:$d8), "sub  $d8",
                      [(set i8:$rd, (sub i8:$src, imm:$d8)), (implicit SREG)]>;
 
@@ -277,6 +302,7 @@ Defs = [SREG] in
       def SBC8 : FormB<0x98, (outs ACC:$rd), (ins ACC:$src, GPR8:$rr), "sbc  $rr",
                      [(set i8:$rd, (sube i8:$src, i8:$rr)), (implicit SREG)]>;
 
+      let DecoderMethod = "DecodeAAk" in
       def SBCk : FormI<0xde, (outs ACC:$rd), (ins ACC:$src, i8imm:$d8), "sbc  $d8",
                      [(set i8:$rd, (sube i8:$src, imm:$d8)), (implicit SREG)]>;
 
@@ -302,9 +328,12 @@ let Constraints = "$src = $rd" in
     def DEC : FormH<0x05, (outs GPR8:$rd), (ins GPR8:$src), "dec  $rd",
                       [(set i8:$rd, (add i8:$src, -1)), (implicit SREG)]>;
   }
+}
 
-  def INCW : FormC<0x03, (outs DREGS:$rd), (ins DREGS:$src), "inc  $rd", [(set i16:$rd, (add i16:$src, 1))]>;
-  def DECW : FormC<0x0b, (outs DREGS:$rd), (ins DREGS:$src), "dec  $rd", [(set i16:$rd, (add i16:$src, -1))]>;
+let Constraints = "$src = $rr" in
+{
+  def INCW : FormC<0x03, (outs DREGS:$rr), (ins DREGS:$src), "inc  $rr", [(set i16:$rr, (add i16:$src, 1))]>;
+  def DECW : FormC<0x0b, (outs DREGS:$rr), (ins DREGS:$src), "dec  $rr", [(set i16:$rr, (add i16:$src, -1))]>;
 }
 
 def : Pat<(add i16:$src, 2), (INCW (INCW $src))>;
@@ -355,6 +384,7 @@ let Defs = [SREG] in
 {
   def SCF : FormA<0x37, (outs), (ins), "scf", []>;
   def CCF : FormA<0x3F, (outs), (ins), "ccf", []>;
+  def NEG : FormA_ED<0x44, (outs), (ins), "neg", []>;
 }
 
 let Constraints = "$src = $rd",
@@ -371,14 +401,17 @@ Defs = [SREG] in
       def AND : FormB<0xa0, (outs ACC:$rd), (ins ACC:$src, GPR8:$rr), "and  $rr",
                        [(set i8:$rd, (and i8:$src, i8:$rr)), (implicit SREG)]>;
 
-      def ORk : FormI<0xf6, (outs ACC:$rd), (ins ACC:$src, i8imm:$d8), "or   $d8",
-                       [(set i8:$rd, (or i8:$src, imm:$d8)), (implicit SREG)]>;
+      let DecoderMethod = "DecodeAAk" in
+      {
+          def ORk : FormI<0xf6, (outs ACC:$rd), (ins ACC:$src, i8imm:$d8), "or   $d8",
+                           [(set i8:$rd, (or i8:$src, imm:$d8)), (implicit SREG)]>;
 
-      def XORk : FormI<0xee, (outs ACC:$rd), (ins ACC:$src, i8imm:$d8), "xor  $d8",
-                       [(set i8:$rd, (xor i8:$src, imm:$d8)), (implicit SREG)]>;
+          def XORk : FormI<0xee, (outs ACC:$rd), (ins ACC:$src, i8imm:$d8), "xor  $d8",
+                           [(set i8:$rd, (xor i8:$src, imm:$d8)), (implicit SREG)]>;
 
-      def ANDk : FormI<0xe6, (outs ACC:$rd), (ins ACC:$src, i8imm:$d8), "and  $d8",
-                       [(set i8:$rd, (and i8:$src, imm:$d8)), (implicit SREG)]>;
+          def ANDk : FormI<0xe6, (outs ACC:$rd), (ins ACC:$src, i8imm:$d8), "and  $d8",
+                           [(set i8:$rd, (and i8:$src, imm:$d8)), (implicit SREG)]>;
+      }
 
         def ORPTR : Pseudo<(outs ACC:$rd), (ins ACC:$src, memri:$addr), "or   $addr",
                        [(set i8:$rd, (or i8:$src, (i8 (load addr:$addr)))), (implicit SREG)]>, IsPtrInstr;
@@ -412,6 +445,7 @@ let Defs = [SREG] in {
     let rr=6, mayLoad=1, isPseudo = 1 in
         def TESTBITPTR : FormG_CB<0x40, (outs), (ins memri:$addr, i8imm:$rd), "bit  $rd, $addr", []>, IsPtrInstr;
 
+    //let DecoderMethod="DecodeBITOps" in
     def TESTBIT : FormG_CB<0x40, (outs), (ins BGPR8:$rr, i8imm:$rd), "bit  $rd, $rr", []>;
 }
 
@@ -427,6 +461,9 @@ isTerminator = 1 in
 {
   def JRk : FormI<0x18, (outs), (ins relbrtarget:$d8), "jr   $d8", [(br bb:$d8)]>;
   def JMPk : FormF<0xc3, (outs), (ins call_target:$d16), "jp   $d16", []>;
+
+  let DecoderMethod = "DecodeJMPHL" in
+  def JMPHL : FormA<0xE9, (outs), (ins addr8:$ptr), "jp   $ptr", []>;
 }
 
 let isBarrier = 1,
@@ -468,6 +505,8 @@ isBarrier = 1 in
 {
     def RET : FormA<0xc9, (outs), (ins), "ret", [(Z80retflag)]>;
     def RETI : FormA<0x4d, (outs), (ins), "reti", [(Z80retiflag)]>, ED;
+
+    def RETCC : FormH<0xC0, (outs), (ins condcode:$rd), "ret  $rd", []>;
 }
 
 //===----------------------------------------------------------------------===//
@@ -479,6 +518,7 @@ let Defs = [SREG] in
 
     def CPRr8Ptr : Pseudo<(outs), (ins ACC:$rd, memri:$addr), "cp   $addr", []>, IsPtrInstr;
 
+    let DecoderMethod = "DecodeAk" in
     def CPImm8 : FormI<0xfe, (outs), (ins ACC:$rd, i8imm:$d8), "cp   $d8", []>;
 
     let Constraints = "$dst = $src" in
@@ -507,6 +547,8 @@ Uses = [SREG] in
 let hasSideEffects = 0 in
 {
     def LD : Pseudo<(outs GPR8:$rd), (ins GPR8:$rr), "ld   $rd, $rr", []>;
+
+    let DecoderMethod = "DecodeLDSPHL" in
     def LDSP : FormA<0xf9, (outs SPREG:$rd), (ins PTRREGS:$rr), "ld   sp, $rr", []>;
     def COPYREG : Pseudo<(outs GPR8:$d), (ins GPR8:$s), "!copyreg $d, $s", []>;
     def COPYREGW : Pseudo<(outs DREGS:$d), (ins DREGS:$s), "!copyregw $d, $s", []>;
@@ -524,13 +566,18 @@ let isReMaterializable = 1 in
                        [(set i16:$dst, imm:$src)]>;
 }
 
-def LDWMEM: FormE_ED<0x4B, (outs DREGS:$rd), (ins i16imm:$d16), "ld   $rd, ($d16 )", []>;
+let DecoderMethod = "DecodeLDPTRk" in
+def LDPTRk : FormI<0x36, (outs), (ins regref:$rd, imm_ldi8:$d8), "ld   $rd, $d8", []>, HasDisplacement;
+
+def LDWMEM_: FormE<0x2A, (outs HLREG:$rd), (ins addr8:$d16), "ld   $rd, $d16", []>;
+def LDWMEM: FormE_ED<0x4B, (outs DREGS:$rd), (ins addr8:$d16), "ld   $rd, $d16", []>;
 
 //// Load from data space into register.
 let canFoldAsLoad = 1,
 isReMaterializable = 1 in
 {
-  def LDSRdK : FormF<0x3a, (outs ACC:$rd), (ins imm16:$d16), "ld   $rd, ( $d16 )",
+  let DecoderMethod = "DecodeLDAMEM" in
+  def LDSRdK : FormF<0x3a, (outs ACC:$rd), (ins addr8:$d16), "ld   $rd, $d16",
                      [(set i8:$rd, (load imm:$d16))]>;
 
   //def LD16MEMPTR : FormE<0x4b, (outs DREGS:$rd), (ins imm16:$ptr), "ld   $rd, ($ptr)", []>, ED;
@@ -575,23 +622,28 @@ isReMaterializable = 1 in
 
 // Indirect store from register to data space.
 def STSKRr : Pseudo<(outs), (ins imm16:$d16, ACC:$rd), "ld   ($d16 ), $rd", [(store i8:$rd, imm:$d16)]>;
-def STSWKRrOp : FormF<0x22, (outs), (ins imm16:$d16, HLREG:$rd), "ld   ($d16 ), $rd", [(store i16:$rd, imm:$d16)]>;
-def STSWKRrOpExt : FormE<0x43, (outs), (ins imm16:$d16, DREGS:$rd), "ld   ($d16 ), $rd", [(store i16:$rd, imm:$d16)]>, ED;
 
-def STMEMA : FormF<0x32, (outs), (ins imm16:$d16), "ld   ($d16 ), a", []>;
+let DecoderMethod="DecodeSTSWMEM" in
+def STSWMEM : FormF<0x22, (outs), (ins addr8:$d16, HLREG:$rd), "ld   $d16, $rd", [(store i16:$rd, imm:$d16)]>;
+
+def STSWMEMEXT : FormE<0x43, (outs), (ins imm16:$d16, DREGS:$rd), "ld   ($d16 ), $rd", [(store i16:$rd, imm:$d16)]>, ED;
+
+def STMEMA : FormF<0x32, (outs), (ins addr8:$d16), "ld   $d16, a", []>;
 def STDEA : FormA<0x12, (outs), (ins), "ld   (de), a", []>;
 def STBCA : FormA<0x2, (outs), (ins), "ld   (bc), a", []>;
 
 def STSWKRr : Pseudo<(outs), (ins i16imm:$dst, DREGS:$src), "stsw\t$dst, $src", [(store i16:$src, imm:$dst)]>;
 
+let DecoderMethod = "DecodeOUT16" in
 def OUT16K : FormH_ED<0x41, (outs), (ins BCREG:$port, BGPR8:$rd), "out  (c), $rd", []>;
-def OUT8K  : FormI<0xd3, (outs), (ins i16imm:$d8, ACC:$rd), "out  ($d8 ), a", []>;
+
+def OUT8K  : FormIA<0xd3, (outs), (ins ACC:$rd, addr8:$d8), "out  $d8, $rd", []>;
 
 def PORTS_LONG : PatLeaf<(i8 2)>;
 def PORTS_SHORT : PatLeaf<(i8 3)>;
 
 def : Pat<(outport i8:$rd, i16:$port, PORTS_LONG), (OUT16K $port, $rd)>;
-def : Pat<(outport i8:$rd, uimm8:$port, PORTS_SHORT), (OUT8K uimm8:$port, $rd)>;
+def : Pat<(outport i8:$rd, uimm8:$port, PORTS_SHORT), (OUT8K $rd, uimm8:$port)>;
 
 // Unstable command on CMOS chip
 //def OUT16Z : FormA<0x71, (outs), (ins BCREG:$port, i8imm:$imm), "out  (c), $imm", [(outport immzero:$imm, i16:$port)]>, ED;
@@ -600,7 +652,7 @@ let Defs = [SREG] in
 def IN16K : FormH_ED<0x40, (outs BGPR8:$rd), (ins BCREG:$port), "in   $rd, (c)",
                         [(set i8:$rd, (inport i16:$port, PORTS_LONG))]>;
 
-def IN8K  : FormI<0xDB, (outs ACC:$rd), (ins i16imm:$d8), "in   a, ($d8 )",
+def IN8K  : FormIA<0xDB, (outs ACC:$rd), (ins addr8:$d8), "in   $rd, $d8",
                         [(set i8:$rd, (inport uimm8:$d8, PORTS_SHORT))]>;
 
 // Indirect stores.
@@ -673,6 +725,9 @@ Defs = [SREG] in
   def SLA : FormB_CB<0x20, (outs BGPR8:$rr), (ins BGPR8:$src), "sla  $rr",
                     [(set i8:$rr, (singlerotshift i8:$src, Z80_ROT_SLA)), (implicit SREG)]>;
 
+  def SLI : FormB_CB<0x30, (outs BGPR8:$rr), (ins BGPR8:$src), "sli  $rr",
+                    [(set i8:$rr, (singlerotshift i8:$src, Z80_ROT_SLI)), (implicit SREG)]>;
+
   let Uses = [SREG] in
   {
     def RR : FormB_CB<0x18, (outs BGPR8:$rr), (ins BGPR8:$src), "rr   $rr",
@@ -699,6 +754,7 @@ let Defs = [SREG] in
 {
     def : RotRdPtr<Z80_ROT_SLA, "sla", 4>;
     def : RotRdPtr<Z80_ROT_SRA, "sra", 5>;
+    def : RotRdPtr<Z80_ROT_SLI, "sli", 6>;
     def : RotRdPtr<Z80_ROT_SRL, "srl", 7>;
     def : RotRdPtr<Z80_ROT_RLC, "rlc", 0>;
     def : RotRdPtr<Z80_ROT_RRC, "rrc", 1>;
@@ -723,6 +779,9 @@ def CPL : FormA<0x2f, (outs ACC:$rd), (ins ACC:$rs), "cpl", [(set i8:$rd, (xor i
 let Defs = [SREG] in
 def CLEARC : FormA<0xb7, (outs), (ins), "or   a", []>;
 
+let Defs = [DE, HL] in
+def EXD : FormA<0xEB, (outs), (ins), "ex   de, hl", []>;
+
 let Defs = [BC, DE, HL] in
 def EXX : FormA<0xd9, (outs), (ins), "exx", []>;
 
@@ -735,6 +794,8 @@ def EXAF : FormA<0x08, (outs), (ins), "ex   af, af'", []>;
 
 def NOP : FormA<0, (outs), (ins), "nop", []>;
 def HALT : FormA<0x76, (outs), (ins), "halt", []>;
+
+def IM : FormIM<0x46, "im   $n">;
 
 let Defs = [SREG, HL, DE, BC] in {
     def LDIR : FormA_ED<0xb0, (outs), (ins HLREG:$src, DEREG:$dst, BCREG:$cnt), "ldir", []>;
@@ -864,7 +925,7 @@ def : Pat<(Z80tsts i16:$rd), (TESTBIT (EXTRACT_SUBREG $rd, sub_hi), 7)>;
 //
 
 def : Pat<(Z80cps i8:$rd, (i8 1)), (DEC $rd)>;
-def : Pat<(Z80cps i8:$rd, (i8 imm:$rr)), (SUBRdK $rd, imm:$rr)>;
+def : Pat<(Z80cps i8:$rd, (i8 imm:$rr)), (SUBk $rd, imm:$rr)>;
 def : Pat<(Z80cps i8:$rd, i8:$rr), (SUB $rd, $rr)>;
 def : Pat<(Z80cps i16:$rd, i16:$rr), (SUBW $rd, $rr)>;
 

@@ -601,7 +601,7 @@ bool Z80ExpandPseudo::expand<Z80::STSWKRr>(Block &MBB, BlockIt MBBI) {
 
   Register SrcReg = MI.getOperand(1).getReg();
 
-  auto op = SrcReg == Z80::HL ? Z80::STSWKRrOp : Z80::STSWKRrOpExt;
+  auto op = SrcReg == Z80::HL ? Z80::STSWMEM : Z80::STSWMEMEXT;
   MI.setDesc(TII->get(op));
 
   return true;

@@ -42,6 +42,8 @@ private:
     printPCRelImm(MI, OpNo, O);
   }
   void printMemri(const MCInst *MI, unsigned OpNo, raw_ostream &O);
+  void printAddr8(const MCInst *MI, unsigned OpNo, raw_ostream &O);
+  void printRegref(const MCInst *MI, unsigned OpNo, raw_ostream &O);
   void printMemriz(const MCInst *MI, unsigned OpNo, raw_ostream &O);
   void printCondCode(const MCInst *MI, unsigned OpNo, raw_ostream &O);
 
