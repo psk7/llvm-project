@@ -64,6 +64,10 @@ static const uint16_t GPRDecoderTable[] = {
   Z80::H, Z80::L, Z80::A, Z80::A
 };
 
+static const uint16_t RTSDecoderTable[] = {
+  Z80::BC, Z80::DE, Z80::HL, Z80::AF
+};
+
 static DecodeStatus DecodeGPR8RegisterClass(MCInst &Inst, unsigned RegNo,
                                             uint64_t Address, const void *Decoder) {
   if (RegNo > 7)
@@ -144,7 +148,6 @@ static DecodeStatus DecodeHLREGRegisterClass(MCInst &Inst, unsigned Insn,
 
 static DecodeStatus DecodeBDREGSRegisterClass(MCInst &Inst, unsigned Insn,
                                     uint64_t Address, const void *Decoder);
-
 static DecodeStatus DecodeBGPR8RegisterClass(MCInst &Inst, unsigned Insn,
                                     uint64_t Address, const void *Decoder);
 
@@ -181,7 +184,28 @@ static DecodeStatus DecodeRegref(MCInst &Inst, unsigned Insn,
 static DecodeStatus DecodeLDPTRk(MCInst &Inst, unsigned Insn,
                                  uint64_t Address, const void *Decoder);
 
+static DecodeStatus DecodeLDPTR(MCInst &Inst, unsigned Insn,
+                                 uint64_t Address, const void *Decoder);
+
+static DecodeStatus DecodeSTPTR(MCInst &Inst, unsigned Insn,
+                                 uint64_t Address, const void *Decoder);
+
+static DecodeStatus DecodeCPPTR(MCInst &Inst, unsigned Insn,
+                                 uint64_t Address, const void *Decoder);
+
+static DecodeStatus DecodeADDPTR(MCInst &Inst, unsigned Insn,
+                                 uint64_t Address, const void *Decoder);
+
 static DecodeStatus DecodeIM(MCInst &Inst, unsigned Insn,
+                                 uint64_t Address, const void *Decoder);
+
+static DecodeStatus decodeRelTarget(MCInst &Inst, unsigned Insn,
+                                 uint64_t Address, const void *Decoder);
+
+static DecodeStatus DecodeExtBitOpsPtr(MCInst &Inst, unsigned Insn,
+                                 uint64_t Address, const void *Decoder);
+
+static DecodeStatus DecodePUSHPOP(MCInst &Inst, unsigned Insn,
                                  uint64_t Address, const void *Decoder);
 
 static DecodeStatus DecodeLDSPHL(MCInst &Inst, unsigned Insn,
@@ -199,6 +223,31 @@ static DecodeStatus DecodeJMPHL(MCInst &Inst, unsigned Insn,
 
 #include "Z80GenDisassemblerTables.inc"
 
+static DecodeStatus DecodePUSHPOP(MCInst &Inst, unsigned Insn,
+                                  uint64_t Address, const void *Decoder){
+  DecodeREGSTOSTACKRegisterClass(Inst, fieldFromInstruction(Insn, 4, 2),
+                                 Address, Decoder);
+  return MCDisassembler::Success;
+}
+
+static DecodeStatus DecodeExtBitOpsPtr(MCInst &Inst, unsigned Insn,
+                                    uint64_t Address, const void *Decoder)
+{
+  unsigned bit = fieldFromInstruction(Insn, 11, 3);
+  Inst.addOperand(MCOperand::createReg(Z80::HL));
+  Inst.addOperand(MCOperand::createImm(0));
+  Inst.addOperand(MCOperand::createImm(bit));
+
+  return MCDisassembler::Success;
+}
+
+static DecodeStatus decodeRelTarget(MCInst &Inst, unsigned Insn,
+                                    uint64_t Address, const void *Decoder){
+  int rel = (int8_t)fieldFromInstruction(Insn, 0, 8);
+  Inst.addOperand(MCOperand::createImm(rel));
+  return MCDisassembler::Success;
+}
+
 static DecodeStatus DecodeIM(MCInst &Inst, unsigned Insn,
                              uint64_t Address, const void *Decoder)
 {
@@ -212,6 +261,8 @@ static DecodeStatus DecodeIM(MCInst &Inst, unsigned Insn,
   }
 
   Inst.addOperand(MCOperand::createImm(n));
+
+  return MCDisassembler::Success;
 }
 
 
@@ -221,6 +272,45 @@ static DecodeStatus DecodeLDPTRk(MCInst &Inst, unsigned Insn,
   Inst.addOperand(MCOperand::createReg(Z80::HL));
   Inst.addOperand(MCOperand::createImm(0));
   Inst.addOperand(MCOperand::createImm(fieldFromInstruction(Insn, 8, 8)));
+  return MCDisassembler::Success;
+}
+
+static DecodeStatus DecodeLDPTR(MCInst &Inst, unsigned Insn,
+                                 uint64_t Address, const void *Decoder)
+{
+  unsigned reg = fieldFromInstruction(Insn, 3, 3);
+  DecodeGPR8RegisterClass(Inst, reg, Address, Decoder);
+  Inst.addOperand(MCOperand::createReg(Z80::HL));
+  Inst.addOperand(MCOperand::createImm(0));
+  return MCDisassembler::Success;
+}
+
+static DecodeStatus DecodeSTPTR(MCInst &Inst, unsigned Insn,
+                                 uint64_t Address, const void *Decoder)
+{
+  Inst.addOperand(MCOperand::createReg(Z80::HL));
+  Inst.addOperand(MCOperand::createImm(0));
+  unsigned reg = fieldFromInstruction(Insn, 0, 3);
+  DecodeGPR8RegisterClass(Inst, reg, Address, Decoder);
+  return MCDisassembler::Success;
+}
+
+static DecodeStatus DecodeCPPTR(MCInst &Inst, unsigned Insn,
+                                 uint64_t Address, const void *Decoder)
+{
+  Inst.addOperand(MCOperand::createReg(Z80::A));
+  Inst.addOperand(MCOperand::createReg(Z80::HL));
+  Inst.addOperand(MCOperand::createImm(0));
+  return MCDisassembler::Success;
+}
+
+static DecodeStatus DecodeADDPTR(MCInst &Inst, unsigned Insn,
+                                 uint64_t Address, const void *Decoder)
+{
+  Inst.addOperand(MCOperand::createReg(Z80::A));
+  Inst.addOperand(MCOperand::createReg(Z80::A));
+  Inst.addOperand(MCOperand::createReg(Z80::HL));
+  Inst.addOperand(MCOperand::createImm(0));
   return MCDisassembler::Success;
 }
 
@@ -537,7 +627,8 @@ static DecodeStatus decodeFMUL2RdRr(MCInst &Inst, unsigned Insn,
 }
 
 static DecodeStatus readInstruction8(ArrayRef<uint8_t> Bytes, uint64_t Offset,
-                                      uint64_t &Size, uint32_t &Insn) {
+                                     uint64_t &Size, uint32_t &Insn,
+                                     uint8_t Prefix, int &Displacement) {
   if (Bytes.size() < 1) {
     Size = 0;
     return MCDisassembler::Fail;
@@ -545,13 +636,25 @@ static DecodeStatus readInstruction8(ArrayRef<uint8_t> Bytes, uint64_t Offset,
 
   Size = 1;
   Insn = Bytes[Offset];
+  Displacement = HAS_NO_DISPLACEMENT;
+
+  auto opc = Bytes[Offset];
+  auto opcpp = (opc & 0xCB) == 0xC1; // PUSH and POP opcodes
+  auto opcadd = (opc & 0xCF) == 0x9; // ADDW opcodes
+
+  if (opcpp || opcadd)
+    return MCDisassembler::Success;
+
+  if (Prefix != 0)
+    Displacement = Bytes[Offset + 1];
 
   return MCDisassembler::Success;
 }
 static DecodeStatus readInstruction16(ArrayRef<uint8_t> Bytes, uint64_t Offset,
                                       uint64_t &Size, uint32_t &Insn,
                                       uint8_t Prefix, int &Displacement) {
-  auto hasDisp = ((Bytes[Offset] == 0x36) && (Prefix != 0));
+  auto &b = Bytes[Offset];
+  bool prefixCB = b == 0xCB;
 
   if (Bytes.size() < 2) {
     Size = 0;
@@ -561,12 +664,27 @@ static DecodeStatus readInstruction16(ArrayRef<uint8_t> Bytes, uint64_t Offset,
   Size = 2;
   Displacement = HAS_NO_DISPLACEMENT;
 
-  if (hasDisp) {
-    Insn = (Bytes[Offset] << 0) | (Bytes[Offset + 2] << 8);
-    Displacement = Bytes[Offset + 1];
+  if (prefixCB) {
+     if (Prefix != 0) {
+       Displacement = Bytes[Offset + 1];
+       Insn = (Bytes[Offset] << 0) | (Bytes[Offset + 2] << 8);
+     }
+     else {
+       Insn = (Bytes[Offset] << 0) | (Bytes[Offset + 1] << 8);
+     }
   }
-  else
-    Insn = (Bytes[Offset] << 0) | (Bytes[Offset+1] << 8);
+  else {
+    auto hasDisp = ((Prefix != 0) && (b == 0x36));
+
+    if (hasDisp) {
+      Insn = (Bytes[Offset] << 0) | (Bytes[Offset + 2] << 8);
+      Displacement = Bytes[Offset + 1];
+    }
+    else
+      Insn = (Bytes[Offset] << 0) | (Bytes[Offset + 1] << 8);
+  }
+
+
 
   return MCDisassembler::Success;
 }
@@ -613,6 +731,11 @@ static const uint8_t *getDecoderTable(uint64_t Size) {
 static DecodeStatus AdjustPrefix(DecodeStatus Status, MCInst &Instr,
                                  uint64_t &Size, uint8_t Prefix,
                                  int Displacement) {
+  if (Instr.getOpcode() == Z80::JMPHL)
+    return Status;  // jp [ix,iy] HAS NOT displacements
+
+  auto opc = Instr.getOpcode();
+
   bool HasDD = Prefix == 0xDD;
   bool HasFD = Prefix == 0xFD;
   bool HasDisplacement = Displacement != HAS_NO_DISPLACEMENT;
@@ -667,7 +790,7 @@ DecodeStatus Z80Disassembler::getInstruction(MCInst &Instr, uint64_t &Size,
   uint32_t Insn;
   uint8_t Prefix = 0;
   uint64_t Offset = 0;
-  int Displacement = -1000;
+  int Displacement = HAS_NO_DISPLACEMENT;
 
   DecodeStatus Result;
 
@@ -680,7 +803,7 @@ DecodeStatus Z80Disassembler::getInstruction(MCInst &Instr, uint64_t &Size,
     ++Offset;
 
   // Try decode a 16-bit instruction.
-  Result = readInstruction8(Bytes, Offset, Size, Insn);
+  Result = readInstruction8(Bytes, Offset, Size, Insn, Prefix, Displacement);
 
   if (Result == MCDisassembler::Fail)
     return MCDisassembler::Fail;

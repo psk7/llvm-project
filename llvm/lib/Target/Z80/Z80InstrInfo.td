@@ -179,6 +179,7 @@ def relbrtarget : Operand<OtherVT>
 {
     let PrintMethod   = "printPCRelImm";
     let EncoderMethod = "encodeRelCondBrTarget<Z80::fixup_8_pcrel>";
+    let DecoderMethod = "decodeRelTarget";
 }
 
 def condcode : Operand<i8>
@@ -257,6 +258,9 @@ Defs = [SREG] in
 {
     def ADD : FormB<0x80, (outs ACC:$rd), (ins ACC:$src, GPR8:$rr), "add  $rr",
                        [(set i8:$rd, (add i8:$src, i8:$rr)), (implicit SREG)]>;
+
+    let DecoderMethod="DecodeADDPTR" in
+    def ADDPTR : FormA<0x86, (outs ACC:$rd), (ins ACC:$src, regref:$ptr), "add  $ptr", []>;
 
     let DecoderMethod = "DecodeAAk" in
     def ADDk : FormI<0xC6,
@@ -364,8 +368,16 @@ let Defs = [SREG] in
 //===----------------------------------------------------------------------===//
 // Logic
 //===----------------------------------------------------------------------===//
-def SETBITPTR : FormH_CB<0xC6, (outs), (ins memri:$addr, i8imm:$rd), "set  $rd, $addr",
-                      [(store (i8 (or (i8 (load addr:$addr)), iobitpos8:$rd)), addr:$addr)]>, IsPtrInstr;
+let DecoderMethod="DecodeExtBitOpsPtr" in {
+    def SETBITPTR : FormH_CB<0xC6, (outs), (ins regref:$addr, i8imm:$rd), "set  $rd, $addr",
+                          [(store (i8 (or (i8 (load addr:$addr)), iobitpos8:$rd)), addr:$addr)]>, IsPtrInstr;
+
+    def RESBITPTR : FormH_CB<0x86, (outs), (ins regref:$addr, i8imm:$rd), "res  $rd, $addr",
+                          [(store (i8 (and (i8 (load addr:$addr)), iobitposn8:$rd)), addr:$addr)]>, IsPtrInstr;
+
+    let Defs = [SREG], mayLoad=1 in
+        def TESTBITPTR : FormH_CB<0x46, (outs), (ins regref:$addr, i8imm:$rd), "bit  $rd, $addr", []>, IsPtrInstr;
+}
 
 def SETBITWPTR : Pseudo<(outs), (ins memri:$addr, i8imm:$rd), "set  $rd, $addr",
                       [(store (i16 (or (i16 (load addr:$addr)), iobitpos16:$rd)), addr:$addr)]>;
@@ -373,9 +385,6 @@ def SETBITWPTR : Pseudo<(outs), (ins memri:$addr, i8imm:$rd), "set  $rd, $addr",
 def SETBITPTRE : Pseudo<(outs GPR8:$o), (ins memri:$addr, i8imm:$rd), "ld   $o, set $rd, $addr",
                       [(store (i8 (or (i8 (load addr:$addr)), iobitpos8:$rd)), addr:$addr),
                        (set i8:$o, (i8 (or (i8 (load addr:$addr)), iobitpos8:$rd)))]>, IsPtrInstr, CB;
-
-def RESBITPTR : FormH_CB<0x86, (outs), (ins memri:$addr, i8imm:$rd), "res  $rd, $addr",
-                      [(store (i8 (and (i8 (load addr:$addr)), iobitposn8:$rd)), addr:$addr)]>, IsPtrInstr;
 
 def RESBITWPTR : Pseudo<(outs), (ins memri:$addr, i8imm:$rd), "res  $rd, $addr",
                       [(store (i16 (and (i16 (load addr:$addr)), iobitposn16:$rd)), addr:$addr)]>;
@@ -442,9 +451,6 @@ def SETRESBITWPTR : Pseudo<(outs), (ins memri:$addr, i16imm:$resbit, i16imm:$set
                            "!setres $addr, $resbit, $setbit", []>;
 
 let Defs = [SREG] in {
-    let rr=6, mayLoad=1, isPseudo = 1 in
-        def TESTBITPTR : FormG_CB<0x40, (outs), (ins memri:$addr, i8imm:$rd), "bit  $rd, $addr", []>, IsPtrInstr;
-
     //let DecoderMethod="DecodeBITOps" in
     def TESTBIT : FormG_CB<0x40, (outs), (ins BGPR8:$rr, i8imm:$rd), "bit  $rd, $rr", []>;
 }
@@ -516,7 +522,8 @@ let Defs = [SREG] in
 {
     def CP : FormB<0xb8, (outs), (ins ACC:$rd, GPR8:$rr), "cp   $rr", []>;
 
-    def CPRr8Ptr : Pseudo<(outs), (ins ACC:$rd, memri:$addr), "cp   $addr", []>, IsPtrInstr;
+    let DecoderMethod = "DecodeCPPTR" in
+    def CPPTR : FormA<0xBE, (outs), (ins ACC:$rd, regref:$addr), "cp   $addr", []>, IsPtrInstr;
 
     let DecoderMethod = "DecodeAk" in
     def CPImm8 : FormI<0xfe, (outs), (ins ACC:$rd, i8imm:$d8), "cp   $d8", []>;
@@ -567,7 +574,11 @@ let isReMaterializable = 1 in
 }
 
 let DecoderMethod = "DecodeLDPTRk" in
-def LDPTRk : FormI<0x36, (outs), (ins regref:$rd, imm_ldi8:$d8), "ld   $rd, $d8", []>, HasDisplacement;
+def LDPTRk : FormI<0x36, (outs), (ins regref:$rd, imm_ldi8:$d8), "ld   $rd, $d8", []>;
+
+let DecoderMethod = "DecodeLDPTR" in
+def LDPTR : FormH<0x46, (outs GPR8:$rd), (ins regref:$ptr), "ld   $rd, $ptr", []>;
+
 
 def LDWMEM_: FormE<0x2A, (outs HLREG:$rd), (ins addr8:$d16), "ld   $rd, $d16", []>;
 def LDWMEM: FormE_ED<0x4B, (outs DREGS:$rd), (ins addr8:$d16), "ld   $rd, $d16", []>;
@@ -656,7 +667,8 @@ def IN8K  : FormIA<0xDB, (outs ACC:$rd), (ins addr8:$d8), "in   $rd, $d8",
                         [(set i8:$rd, (inport uimm8:$d8, PORTS_SHORT))]>;
 
 // Indirect stores.
-def STPTR : Pseudo<(outs), (ins memriz:$ptr, BGPR8:$rr), "ld   $ptr, $rr", [(store i8:$rr, i16:$ptr)]>;
+let DecoderMethod = "DecodeSTPTR" in
+def STPTR : FormB<0x70, (outs), (ins regref:$ptr, BGPR8:$rr), "ld   $ptr, $rr", [(store i8:$rr, addr:$ptr)]>;
 
 def MOVE : FormG<0x40, (outs BGPR8:$rd), (ins BGPR8:$rr), "ld   $rd, $rr", []>;
 
@@ -679,11 +691,11 @@ Uses = [SP],
 hasSideEffects = 0 in
 {
   // Stack push operations.
-  let mayStore = 1 in
+  let mayStore = 1, DecoderMethod="DecodePUSHPOP" in
     def PUSH : FormC<0b11000101, (outs), (ins REGSTOSTACK:$rr), "push $rr", []>;
 
   // Stack pop operations.
-  let mayLoad = 1 in
+  let mayLoad = 1, DecoderMethod="DecodePUSHPOP" in
     def POP : FormC<0b11000001, (outs REGSTOSTACK:$rr), (ins), "pop  $rr", []>;
 }
 
@@ -779,8 +791,14 @@ def CPL : FormA<0x2f, (outs ACC:$rd), (ins ACC:$rs), "cpl", [(set i8:$rd, (xor i
 let Defs = [SREG] in
 def CLEARC : FormA<0xb7, (outs), (ins), "or   a", []>;
 
+let Defs = [SREG, A], Uses = [SREG, A] in
+def DAA : FormA<0x27, (outs), (ins), "daa", []>;
+
 let Defs = [DE, HL] in
 def EXD : FormA<0xEB, (outs), (ins), "ex   de, hl", []>;
+
+let Defs = [HL] in
+def EXSPHL : FormA<0xE3, (outs), (ins), "ex   (sp), hl", []>;
 
 let Defs = [BC, DE, HL] in
 def EXX : FormA<0xd9, (outs), (ins), "exx", []>;
@@ -930,7 +948,7 @@ def : Pat<(Z80cps i8:$rd, i8:$rr), (SUB $rd, $rr)>;
 def : Pat<(Z80cps i16:$rd, i16:$rr), (SUBW $rd, $rr)>;
 
 def : Pat<(Z80cp i8:$rd, i8:$rr),(CP $rd, $rr)>;
-def : Pat<(Z80cp i8:$rd, (load addr:$addr)), (CPRr8Ptr $rd, memri:$addr)>;
+def : Pat<(Z80cp i8:$rd, (load addr:$addr)), (CPPTR $rd, regref:$addr)>;
 def : Pat<(Z80cp i8:$rd, imm:$d8), (CPImm8 $rd, (as_i8timm $d8))>;
 def : Pat<(Z80cp (and i8:$v, iobitpos8:$a),  0), (TESTBIT $v, iobitpos8:$a)>;
 //def : Pat<(Z80cp (and (i8 (load addr:$v)), iobitpos8:$a),  0), (TESTBITPTR addr:$v, iobitpos8:$a)>;

@@ -163,7 +163,7 @@ void Z80InstPrinter::printPCRelImm(const MCInst *MI, unsigned OpNo,
 
   if (Op.isImm()) {
     int64_t Imm = Op.getImm();
-    O << '.';
+    O << '$';
 
     // Print a position sign if needed.
     // Negative values have their sign printed automatically.
@@ -227,7 +227,7 @@ void Z80InstPrinter::printRegref(const MCInst *MI, unsigned OpNo,
   O << "(";
   printOperand(MI, OpNo, O);
 
-  if (MI->getOperand(OpNo).getReg() != Z80::HL) {
+  if ((MI->getOperand(OpNo).getReg() != Z80::HL) && (MI->getOperand(OpNo+1).getImm() != 0)) {
     O << "+";
     printOperand(MI, OpNo + 1, O);
   }
