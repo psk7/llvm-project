@@ -162,15 +162,17 @@ void Z80InstPrinter::printPCRelImm(const MCInst *MI, unsigned OpNo,
   const MCOperand &Op = MI->getOperand(OpNo);
 
   if (Op.isImm()) {
-    int64_t Imm = Op.getImm();
+    int64_t Imm = Op.getImm()+2;
     O << '$';
 
-    // Print a position sign if needed.
-    // Negative values have their sign printed automatically.
-    if (Imm >= 0)
-      O << '+';
+    if (Imm != 0) {
+      // Print a position sign if needed.
+      // Negative values have their sign printed automatically.
+      if (Imm >= 0)
+        O << '+';
 
-    O << Imm;
+      O << Imm;
+    }
   } else {
     assert(Op.isExpr() && "Unknown pcrel immediate operand");
     O << *Op.getExpr();
@@ -240,6 +242,11 @@ void Z80InstPrinter::printRegref(const MCInst *MI, unsigned OpNo,
   }
 
   O << ")";
+}
+
+void Z80InstPrinter::printRST(const MCInst *MI, unsigned OpNo,
+                                 raw_ostream &O) {
+  O << formatImm(MI->getOperand(OpNo).getImm() * 8);
 }
 
 void Z80InstPrinter::printMemri(const MCInst *MI, unsigned OpNo,

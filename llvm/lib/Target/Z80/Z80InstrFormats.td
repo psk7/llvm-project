@@ -99,6 +99,16 @@ class FormA_ED<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> patte
   let Size = 2;
 }
 
+class FormA_CB<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
+  : Z80Inst<outs, ins, asmstr, pattern>
+{
+  field bits<16> Inst;
+
+  let Inst{7-0} = 0xCB;
+  let Inst{15-8} = opcode;
+  let Size = 2;
+}
+
 class FormB<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
   : Z80Inst<outs, ins, asmstr, pattern>, Form8<opcode>
 {

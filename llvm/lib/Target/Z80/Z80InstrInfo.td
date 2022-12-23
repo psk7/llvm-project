@@ -159,6 +159,11 @@ def regref: Operand<i16>
     let PrintMethod = "printRegref";
 }
 
+def rstnum: Operand<i8>
+{
+    let PrintMethod = "printRST";
+}
+
 /// Address operand for `reg+0` used by STD and LDD.
 def memriz : Operand<iPTR>
 {
@@ -431,14 +436,16 @@ Defs = [SREG] in
                            [(set i8:$rd, (and i8:$src, imm:$d8)), (implicit SREG)]>;
       }
 
-        def ORPTR : Pseudo<(outs ACC:$rd), (ins ACC:$src, memri:$addr), "or   $addr",
-                       [(set i8:$rd, (or i8:$src, (i8 (load addr:$addr)))), (implicit SREG)]>, IsPtrInstr;
+        let DecoderMethod = "DecodeADDPTR" in {
+            def ORPTR : FormA<0xB6, (outs ACC:$rd), (ins ACC:$src, regref:$addr), "or   $addr",
+                           [(set i8:$rd, (or i8:$src, (i8 (load addr:$addr)))), (implicit SREG)]>, IsPtrInstr;
 
-        def XORPTR : Pseudo<(outs ACC:$rd), (ins ACC:$src, memri:$addr), "xor  $addr",
-                       [(set i8:$rd, (xor i8:$src, (i8 (load addr:$addr)))), (implicit SREG)]>, IsPtrInstr;
+            def XORPTR : FormA<0xAE, (outs ACC:$rd), (ins ACC:$src, regref:$addr), "xor  $addr",
+                           [(set i8:$rd, (xor i8:$src, (i8 (load addr:$addr)))), (implicit SREG)]>, IsPtrInstr;
 
-        def ANDPTR : Pseudo<(outs ACC:$rd), (ins ACC:$src, memri:$addr), "and  $addr",
-                       [(set i8:$rd, (and i8:$src, (i8 (load addr:$addr)))), (implicit SREG)]>, IsPtrInstr;
+            def ANDPTR : FormA<0xA6, (outs ACC:$rd), (ins ACC:$src, regref:$addr), "and  $addr",
+                           [(set i8:$rd, (and i8:$src, (i8 (load addr:$addr)))), (implicit SREG)]>, IsPtrInstr;
+        }
   } // let isCommutable = 0 in
 } // let Constraints = "$src = $rd", Defs = [SREG] in
 
@@ -507,7 +514,7 @@ let isCall = 1 in
 
     def CALLCCk : FormL<0xc4, (outs), (ins condcode:$cc, call_target:$d16), "call $cc, $d16", []>;
 
-    def RST : FormH<0xc7, (outs), (ins i16imm:$rd), "rst  $rd", []>;
+    def RST : FormH<0xc7, (outs), (ins rstnum:$rd), "rst  $rd", []>;
   }
 }
 
@@ -519,7 +526,7 @@ isReturn = 1,
 isBarrier = 1 in
 {
     def RET : FormA<0xc9, (outs), (ins), "ret", [(Z80retflag)]>;
-    def RETI : FormA<0x4d, (outs), (ins), "reti", [(Z80retiflag)]>, ED;
+    def RETI : FormA_ED<0x4d, (outs), (ins), "reti", [(Z80retiflag)]>;
 
     def RETCC : FormH<0xC0, (outs), (ins condcode:$rd), "ret  $rd", []>;
 }
@@ -775,6 +782,20 @@ Defs = [SREG] in
   }
 }
 
+let Defs = [SREG], DecoderMethod = "DecodeSingleRegref" in {
+  def RLCPTR : FormA_CB<0x06, (outs), (ins regref:$ptr), "rlc  $ptr", []>;
+  def RRCPTR : FormA_CB<0x0E, (outs), (ins regref:$ptr), "rrc  $ptr", []>;
+  def SLAPTR : FormA_CB<0x26, (outs), (ins regref:$ptr), "sla  $ptr", []>;
+  def SRAPTR : FormA_CB<0x2E, (outs), (ins regref:$ptr), "sra  $ptr", []>;
+  def SLIPTR : FormA_CB<0x36, (outs), (ins regref:$ptr), "sli  $ptr", []>;
+  def SRLPTR : FormA_CB<0x3E, (outs), (ins regref:$ptr), "srl  $ptr", []>;
+
+   let Uses = [SREG] in {
+      def RLPTR : FormA_CB<0x16, (outs), (ins regref:$ptr), "rl   $ptr", []>;
+      def RRPTR : FormA_CB<0x1E, (outs), (ins regref:$ptr), "rr   $ptr", []>;
+   }
+}
+
 class RotRdPtr<PatFrag Rot, string n, bits<3> rc> :
     Pseudo<(outs), (ins memri:$src), !strconcat(n, "  $src"),
               [(store (i8 (singlerotshift (i8 (load addr:$src)), Rot)), addr:$src), (implicit SREG)]>, CB, IsPtrInstr;
@@ -815,11 +836,11 @@ def CLEARC : FormA<0xb7, (outs), (ins), "or   a", []>;
 let Defs = [SREG, A], Uses = [SREG, A] in
 def DAA : FormA<0x27, (outs), (ins), "daa", []>;
 
-let Defs = [DE, HL] in
-def EXD : FormA<0xEB, (outs), (ins), "ex   de, hl", []>;
+let Defs = [DE], DecoderMethod = "DecodeSingleRegref" in
+def EXD : FormA<0xEB, (outs BDREGS:$r), (ins), "ex   de, $r", []>;
 
-let Defs = [HL] in
-def EXSPHL : FormA<0xE3, (outs), (ins), "ex   (sp), hl", []>;
+let DecoderMethod = "DecodeSingleRegref" in
+def EXSPRP : FormA<0xE3, (outs BDREGS:$r), (ins), "ex   (sp), $r", []>;
 
 let Defs = [BC, DE, HL] in
 def EXX : FormA<0xd9, (outs), (ins), "exx", []>;

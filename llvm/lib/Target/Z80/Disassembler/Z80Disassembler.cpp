@@ -439,7 +439,7 @@ static DecodeStatus DecodeREGSTOSTACKRegisterClass(MCInst &Inst, unsigned Insn,
     Register = Z80::HL;
     break;
   case 3:
-    Register = Z80::SP;
+    Register = Z80::AF;
     break;
 
   default:
@@ -456,7 +456,7 @@ static DecodeStatus DecodeDREGSRegisterClass(MCInst &Inst, unsigned Insn,
   unsigned Register;
 
   switch(Insn) {
-  case 0: 
+  case 0:
     Register = Z80::BC;
     break;
   case 1:
@@ -746,16 +746,10 @@ static DecodeStatus AdjustPrefix(DecodeStatus Status, MCInst &Instr,
       Z80::CPPTR,
       Z80::ADDPTR, Z80::ADCPTR, Z80::SUBPTR, Z80::SBCPTR,
       Z80::ORPTR, Z80::ANDPTR, Z80::XORPTR,
-      Z80::LDPTRk
+      Z80::LDPTRk,
+      Z80::RLCPTR, Z80::RRCPTR, Z80::RLPTR, Z80::RRPTR,
+      Z80::SLAPTR, Z80::SRAPTR, Z80::SLIPTR, Z80::SRLPTR
   };
-
-  bool HasDisplacement = false;
-
-  for (const auto &c : OpcodesHasDisplacement)
-    if (c == Instr.getOpcode()) {
-      HasDisplacement = true;
-      break;
-    }
 
   auto HasDD = Prefix == 0xDD;
   auto HasFD = Prefix == 0xFD;
@@ -763,39 +757,56 @@ static DecodeStatus AdjustPrefix(DecodeStatus Status, MCInst &Instr,
   if (HasDD || HasFD) {
     ++Size;
 
-    for(auto it = Instr.begin(); it != Instr.end(); it++ ) {
+    bool MixedIPtrAndReg = false;
+
+    if ((Instr.getOpcode() == Z80::LDPTR) ||
+        (Instr.getOpcode() == Z80::STPTR)) {
+      for (auto it = Instr.begin(); it != Instr.end(); it++) {
+        auto &Op = *it;
+        if (Op.isReg() && (Op.getReg() == Z80::HL)) {
+          MixedIPtrAndReg = true;
+          break;
+        }
+      }
+    }
+
+    for (auto it = Instr.begin(); it != Instr.end(); it++) {
       auto &Op = *it;
 
       if (!Op.isReg())
         continue;
 
-      switch (Op.getReg()) {
-      case Z80::HL:
+      auto reg = Op.getReg();
+
+      if (reg == Z80::HL) {
         if (HasDD)
           Op.setReg(Z80::IX);
         else if (HasFD)
           Op.setReg(Z80::IY);
 
+        bool HasDisplacement = false;
+
+        for (const auto &c : OpcodesHasDisplacement)
+          if (c == Instr.getOpcode()) {
+            HasDisplacement = true;
+            break;
+          }
+
         if (HasDisplacement && (HasDD || HasFD)) {
-          //Instr.insert(++it, MCOperand::createImm(Displacement));
+          // Instr.insert(++it, MCOperand::createImm(Displacement));
           (++it)->setImm(Displacement);
           Size++;
         }
-        break;
-
-      case Z80::H:
+      } else if ((reg == Z80::H) && !MixedIPtrAndReg) {
         if (HasDD)
           Op.setReg(Z80::XH);
         else if (HasFD)
           Op.setReg(Z80::YH);
-        break;
-
-      case Z80::L:
+      } else if ((reg == Z80::L) && !MixedIPtrAndReg) {
         if (HasDD)
           Op.setReg(Z80::XL);
         else if (HasFD)
           Op.setReg(Z80::YL);
-        break;
       }
     }
   }
