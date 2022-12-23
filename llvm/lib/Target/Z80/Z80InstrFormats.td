@@ -217,6 +217,21 @@ class FormF<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
   let Inst{23-8} = d16;
 }
 
+class FormSTMEMRP<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
+  : Z80Inst<outs, ins, asmstr, pattern>, Has16BitPayload
+{
+  field bits<32> Inst;
+  bits<16> d16;
+  bits<2> rs;
+
+  int Size = 4;
+
+  let Inst{31-16} = d16;
+  let Inst{15-8} = opcode;
+  let Inst{7-0} = 0xED;
+  let Inst{13-12} = rs;
+}
+
 class FormG<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
   : FormA<opcode, outs, ins, asmstr, pattern>
 {

@@ -618,7 +618,7 @@ void Z80AsmParser::eatComma() {
 bool Z80AsmParser::ParseInstruction(ParseInstructionInfo &Info,
                                     StringRef Mnemonic, SMLoc NameLoc,
                                     OperandVector &Operands) {
-  Operands.push_back(Z80Operand::CreateToken(Mnemonic, NameLoc));
+ /* Operands.push_back(Z80Operand::CreateToken(Mnemonic, NameLoc));
 
   bool first = true;
   while (getLexer().isNot(AsmToken::EndOfStatement)) {
@@ -645,7 +645,7 @@ bool Z80AsmParser::ParseInstruction(ParseInstructionInfo &Info,
       return Error(Loc, "unexpected token in argument list");
     }
   }
-  Parser.Lex(); // Consume the EndOfStatement
+  Parser.Lex(); // Consume the EndOfStatement*/
   return false;
 }
 

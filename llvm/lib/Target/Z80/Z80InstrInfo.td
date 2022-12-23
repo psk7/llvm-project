@@ -276,6 +276,9 @@ Defs = [SREG] in
        def ADC : FormB<0x88, (outs ACC:$rd), (ins ACC:$src, GPR8:$rr), "adc  $rr",
                        [(set i8:$rd, (adde i8:$src, i8:$rr)), (implicit SREG)]>;
 
+       let DecoderMethod="DecodeADDPTR" in
+       def ADCPTR : FormA<0x8E, (outs ACC:$rd), (ins ACC:$src, regref:$ptr), "adc  $ptr", []>;
+
        let DecoderMethod = "DecodeAAk" in
        def ADCk : FormI<0xCE, (outs ACC:$rd), (ins ACC:$src, i8imm:$d8), "adc  $d8",
                        [(set i8:$rd, (adde i8:$src, imm:$d8)), (implicit SREG)]>;
@@ -294,6 +297,9 @@ Defs = [SREG] in
    def SUB : FormB<0x90, (outs ACC:$rd), (ins ACC:$src, GPR8:$rr), "sub  $rr",
                      [(set i8:$rd, (sub i8:$src, i8:$rr)), (implicit SREG)]>;
 
+   let DecoderMethod="DecodeADDPTR" in
+   def SUBPTR : FormA<0x96, (outs ACC:$rd), (ins ACC:$src, regref:$ptr), "sub  $ptr", []>;
+
    let DecoderMethod = "DecodeAAk" in
    def SUBk : FormI<0xd6,
                      (outs ACC:$rd), (ins ACC:$src, i8imm:$d8), "sub  $d8",
@@ -303,8 +309,11 @@ Defs = [SREG] in
                      [(set i16:$rd, (sub i16:$src, i16:$rr)), (implicit SREG)]>;
 
    let Uses = [SREG] in {
-      def SBC8 : FormB<0x98, (outs ACC:$rd), (ins ACC:$src, GPR8:$rr), "sbc  $rr",
+      def SBC : FormB<0x98, (outs ACC:$rd), (ins ACC:$src, GPR8:$rr), "sbc  $rr",
                      [(set i8:$rd, (sube i8:$src, i8:$rr)), (implicit SREG)]>;
+
+      let DecoderMethod="DecodeADDPTR" in
+      def SBCPTR : FormA<0x9E, (outs ACC:$rd), (ins ACC:$src, regref:$ptr), "sbc  $ptr", []>;
 
       let DecoderMethod = "DecodeAAk" in
       def SBCk : FormI<0xde, (outs ACC:$rd), (ins ACC:$src, i8imm:$d8), "sbc  $d8",
@@ -356,12 +365,12 @@ def : Pat<(add i8:$src, -2), (DEC (DEC $src))>;
 def : Pat<(add i8:$src, -3), (DEC (DEC (DEC $src)))>;
 def : Pat<(add i8:$src, -4), (DEC (DEC (DEC (DEC $src))))>;
 
-let Defs = [SREG] in
+let Defs = [SREG], DecoderMethod="DecodeSingleRegref" in
 {
-  def INCPTR : Pseudo<(outs), (ins memri:$addr), "inc  $addr",
+  def INCPTR : FormA<0x34, (outs), (ins regref:$addr), "inc  $addr",
                       [(store (i8 (add (i8 (load addr:$addr)), 1)), addr:$addr)]>, IsPtrInstr;
 
-  def DECPTR : Pseudo<(outs), (ins memri:$addr), "dec  $addr",
+  def DECPTR : FormA<0x35, (outs), (ins regref:$addr), "dec  $addr",
                       [(store (i8 (add (i8 (load addr:$addr)), -1)), addr:$addr)]>, IsPtrInstr;
 }
 
@@ -520,6 +529,7 @@ isBarrier = 1 in
 //===----------------------------------------------------------------------===//
 let Defs = [SREG] in
 {
+    let DecoderMethod = "DecodeCP" in
     def CP : FormB<0xb8, (outs), (ins ACC:$rd, GPR8:$rr), "cp   $rr", []>;
 
     let DecoderMethod = "DecodeCPPTR" in
@@ -613,6 +623,16 @@ isReMaterializable = 1 in
                         [(set i16:$reg, (load i16:$ptrreg))]>;
 }
 
+let Uses=[A] in {
+    def LDIA : FormA_ED<0x47, (outs), (ins), "ld   i, a", []>;
+    def LDRA : FormA_ED<0x4F, (outs), (ins), "ld   r, a", []>;
+}
+
+let Defs=[A] in {
+    def LDAI : FormA_ED<0x57, (outs), (ins), "ld   a, i", []>;
+    def LDAR : FormA_ED<0x5F, (outs), (ins), "ld   a, r", []>;
+}
+
 // Load indirect with displacement operations.
 let canFoldAsLoad = 1,
 isReMaterializable = 1 in
@@ -637,8 +657,9 @@ def STSKRr : Pseudo<(outs), (ins imm16:$d16, ACC:$rd), "ld   ($d16 ), $rd", [(st
 let DecoderMethod="DecodeSTSWMEM" in
 def STSWMEM : FormF<0x22, (outs), (ins addr8:$d16, HLREG:$rd), "ld   $d16, $rd", [(store i16:$rd, imm:$d16)]>;
 
-def STSWMEMEXT : FormE<0x43, (outs), (ins imm16:$d16, DREGS:$rd), "ld   ($d16 ), $rd", [(store i16:$rd, imm:$d16)]>, ED;
+//def STSWMEMEXT : FormE<0x43, (outs), (ins imm16:$d16, DREGS:$rd), "ld   ($d16 ), $rd", [(store i16:$rd, imm:$d16)]>, ED;
 
+def STMEMRP : FormSTMEMRP<0x43, (outs), (ins addr8:$d16, BDREGS:$rs), "ld   $d16, $rs", []>;
 def STMEMA : FormF<0x32, (outs), (ins addr8:$d16), "ld   $d16, a", []>;
 def STDEA : FormA<0x12, (outs), (ins), "ld   (de), a", []>;
 def STBCA : FormA<0x2, (outs), (ins), "ld   (bc), a", []>;

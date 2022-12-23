@@ -227,9 +227,16 @@ void Z80InstPrinter::printRegref(const MCInst *MI, unsigned OpNo,
   O << "(";
   printOperand(MI, OpNo, O);
 
-  if ((MI->getOperand(OpNo).getReg() != Z80::HL) && (MI->getOperand(OpNo+1).getImm() != 0)) {
-    O << "+";
-    printOperand(MI, OpNo + 1, O);
+  int displacement;
+
+  if ((MI->getOperand(OpNo).getReg() != Z80::HL) && ((displacement = (MI->getOperand(OpNo+1).getImm())) != 0)) {
+
+    if (displacement > 0)
+      O << "+";
+
+    O << displacement;
+
+    //printOperand(MI, OpNo + 1, O);
   }
 
   O << ")";
