@@ -35,6 +35,17 @@ void llvm::dumpBytes(ArrayRef<uint8_t> bytes, raw_ostream &OS) {
   }
 }
 
+void llvm::dumpOctal(ArrayRef<uint8_t> bytes, raw_ostream &OS) {
+  unsigned idx = 0;
+
+  while (idx < bytes.size()) {
+    const unsigned v = bytes[idx] + (bytes[idx+1] << 8);
+    idx += 2;
+
+    OS << format("%06" PRIo64 " ", v & 0xffff);
+  }
+}
+
 MCInstPrinter::~MCInstPrinter() = default;
 
 /// getOpcodeName - Return the name of the specified opcode enum (e.g.
@@ -222,6 +233,10 @@ format_object<uint64_t> MCInstPrinter::formatHex(uint64_t Value) const {
       return format("%" PRIx64 "h", Value);
   }
   llvm_unreachable("unsupported print style");
+}
+
+format_object<int64_t> MCInstPrinter::formatOct(int64_t Value) const {
+  return format("%" PRIo64, Value);
 }
 
 MCInstPrinter::WithMarkup MCInstPrinter::markup(raw_ostream &OS, Markup S) {

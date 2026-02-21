@@ -104,6 +104,9 @@ inline unsigned hexDigitValue(char C) {
 /// Checks if character \p C is one of the 10 decimal digits.
 inline bool isDigit(char C) { return C >= '0' && C <= '9'; }
 
+/// Checks if character \p C is one of the octal digits.
+inline bool isOctalDigit(char C) { return C >= '0' && C <= '7'; }
+
 /// Checks if character \p C is a hexadecimal numeric character.
 inline bool isHexDigit(char C) { return hexDigitValue(C) != ~0U; }
 

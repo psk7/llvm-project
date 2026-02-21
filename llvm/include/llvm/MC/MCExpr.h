@@ -252,6 +252,15 @@ public:
     VK_AVR_DIFF32,
     VK_AVR_PM,
 
+    VK_PDP_NONE,
+//    VK_PDP_LO8,
+//    VK_PDP_HI8,
+//    VK_PDP_HLO8,
+//    VK_PDP_DIFF8,
+//    VK_PDP_DIFF16,
+//    VK_PDP_DIFF32,
+//    VK_PDP_PM,
+
     VK_PPC_LO,              // symbol@l
     VK_PPC_HI,              // symbol@h
     VK_PPC_HA,              // symbol@ha

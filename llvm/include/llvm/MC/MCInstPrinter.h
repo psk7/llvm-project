@@ -29,6 +29,7 @@ class StringRef;
 
 /// Convert `Bytes' to a hex string and output to `OS'
 void dumpBytes(ArrayRef<uint8_t> Bytes, raw_ostream &OS);
+void dumpOctal(ArrayRef<uint8_t> Bytes, raw_ostream &OS);
 
 namespace HexStyle {
 
@@ -65,6 +66,9 @@ protected:
 
   /// True if we are printing immediates as hex.
   bool PrintImmHex = false;
+
+  /// True if we are printing immediates as octal.
+  bool PrintImmOct = false;
 
   /// Which style to use for printing hexadecimal values.
   HexStyle::Style PrintHexStyle = HexStyle::C;
@@ -162,6 +166,9 @@ public:
   bool getPrintImmHex() const { return PrintImmHex; }
   void setPrintImmHex(bool Value) { PrintImmHex = Value; }
 
+  bool getPrintImmOct() const { return PrintImmOct; }
+  void setPrintImmOct(bool Value) { PrintImmOct = Value; }
+
   void setPrintHexStyle(HexStyle::Style Value) { PrintHexStyle = Value; }
 
   void setPrintBranchImmAsAddress(bool Value) {
@@ -173,13 +180,16 @@ public:
 
   /// Utility function to print immediates in decimal or hex.
   format_object<int64_t> formatImm(int64_t Value) const {
-    return PrintImmHex ? formatHex(Value) : formatDec(Value);
+    return PrintImmOct   ? formatOct(Value)
+           : PrintImmHex ? formatHex(Value)
+                         : formatDec(Value);
   }
 
   /// Utility functions to print decimal/hexadecimal values.
   format_object<int64_t> formatDec(int64_t Value) const;
   format_object<int64_t> formatHex(int64_t Value) const;
   format_object<uint64_t> formatHex(uint64_t Value) const;
+  format_object<int64_t> formatOct(int64_t Value) const;
 };
 
 /// Map from opcode to pattern list by binary search.

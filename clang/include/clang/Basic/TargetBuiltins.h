@@ -382,6 +382,16 @@ namespace clang {
     };
   }
 
+  /// PDP11 builtins
+  namespace PDP {
+    enum {
+        LastTIBuiltin = clang::Builtin::FirstTSBuiltin-1,
+#define BUILTIN(ID, TYPE, ATTRS) BI##ID,
+#include "clang/Basic/BuiltinsPDP11.def"
+        LastTSBuiltin
+    };
+  }
+
   /// SystemZ builtins
   namespace SystemZ {
     enum {

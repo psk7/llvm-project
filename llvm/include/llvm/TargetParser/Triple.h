@@ -105,7 +105,8 @@ public:
     renderscript32, // 32-bit RenderScript
     renderscript64, // 64-bit RenderScript
     ve,             // NEC SX-Aurora Vector Engine
-    LastArchType = ve
+    pdp11,          // PDP11
+    LastArchType = pdp11
   };
   enum SubArchType {
     NoSubArch,
@@ -239,6 +240,9 @@ public:
     LiteOS,
     Serenity,
     Vulkan, // Vulkan SPIR-V
+    Mon10,
+    Mon11M,
+    Rt11,
     LastOSType = Vulkan
   };
   enum EnvironmentType {
@@ -1053,6 +1057,10 @@ public:
   /// Tests whether the target is x86 (32- or 64-bit).
   bool isX86() const {
     return getArch() == Triple::x86 || getArch() == Triple::x86_64;
+  }
+
+  bool isPDP() const {
+    return getArch() == Triple::pdp11;
   }
 
   /// Tests whether the target is VE

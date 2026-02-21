@@ -84,6 +84,7 @@ StringRef Triple::getArchTypeName(ArchType Kind) {
   case x86_64:         return "x86_64";
   case xcore:          return "xcore";
   case xtensa:         return "xtensa";
+  case pdp11:          return "pdp11";
   }
 
   llvm_unreachable("Invalid ArchType!");
@@ -248,6 +249,8 @@ StringRef Triple::getArchTypePrefix(ArchType Kind) {
   case dxil:        return "dx";
 
   case xtensa:      return "xtensa";
+
+  case pdp11:       return "pdp11";
   }
 }
 
@@ -319,6 +322,9 @@ StringRef Triple::getOSTypeName(OSType Kind) {
   case LiteOS: return "liteos";
   case XROS: return "xros";
   case Vulkan: return "vulkan";
+  case Mon10: return "mon10";
+  case Mon11M: return "mon11m";
+  case Rt11: return "rt11";
   }
 
   llvm_unreachable("Invalid OSType");
@@ -486,6 +492,7 @@ Triple::ArchType Triple::getArchTypeForLLVMName(StringRef Name) {
     .Case("loongarch64", loongarch64)
     .Case("dxil", dxil)
     .Case("xtensa", xtensa)
+    .Case("pdp11", pdp11)
     .Default(UnknownArch);
 }
 
@@ -632,6 +639,7 @@ static Triple::ArchType parseArch(StringRef ArchName) {
                  "dxilv1.4", "dxilv1.5", "dxilv1.6", "dxilv1.7", "dxilv1.8",
                  Triple::dxil)
           .Case("xtensa", Triple::xtensa)
+          .Case("pdp11", Triple::pdp11)
           .Default(Triple::UnknownArch);
 
   // Some architectures require special parsing logic just to compute the
@@ -711,6 +719,9 @@ static Triple::OSType parseOS(StringRef OSName) {
     .StartsWith("liteos", Triple::LiteOS)
     .StartsWith("serenity", Triple::Serenity)
     .StartsWith("vulkan", Triple::Vulkan)
+    .StartsWith("mon10", Triple::Mon10)
+    .StartsWith("mon11m", Triple::Mon11M)
+    .StartsWith("rt11", Triple::Rt11)
     .Default(Triple::UnknownOS);
 }
 
@@ -973,6 +984,7 @@ static Triple::ObjectFormatType getDefaultFormat(const Triple &T) {
   case Triple::ve:
   case Triple::xcore:
   case Triple::xtensa:
+  case Triple::pdp11:
     return Triple::ELF;
 
   case Triple::mipsel:
@@ -1645,6 +1657,7 @@ unsigned Triple::getArchPointerBitWidth(llvm::Triple::ArchType Arch) {
 
   case llvm::Triple::avr:
   case llvm::Triple::msp430:
+  case llvm::Triple::pdp11:
     return 16;
 
   case llvm::Triple::aarch64_32:
@@ -1754,6 +1767,7 @@ Triple Triple::get32BitArchVariant() const {
   case Triple::msp430:
   case Triple::systemz:
   case Triple::ve:
+  case Triple::pdp11:
     T.setArch(UnknownArch);
     break;
 
@@ -1842,6 +1856,7 @@ Triple Triple::get64BitArchVariant() const {
   case Triple::tcele:
   case Triple::xcore:
   case Triple::xtensa:
+  case Triple::pdp11:
     T.setArch(UnknownArch);
     break;
 
@@ -1946,6 +1961,8 @@ Triple Triple::getBigEndianArchVariant() const {
   // drop any arch suffixes.
   case Triple::arm:
   case Triple::thumb:
+
+  case Triple::pdp11:
     T.setArch(UnknownArch);
     break;
 
@@ -2050,6 +2067,7 @@ bool Triple::isLittleEndian() const {
   case Triple::x86_64:
   case Triple::xcore:
   case Triple::xtensa:
+  case Triple::pdp11:
     return true;
   default:
     return false;
@@ -2083,6 +2101,9 @@ bool Triple::isCompatibleWith(const Triple &Other) const {
     return getArch() == Other.getArch() && getSubArch() == Other.getSubArch() &&
            (getVendor() == Other.getVendor() || IgnoreVendor) &&
            getOS() == Other.getOS();
+
+  if (getArch() == Triple::pdp11 && Other.getArch() == Triple::pdp11)
+    return true;
 
   return getArch() == Other.getArch() && getSubArch() == Other.getSubArch() &&
          (getVendor() == Other.getVendor() || IgnoreVendor) &&

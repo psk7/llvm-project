@@ -504,9 +504,24 @@ enum : unsigned {
                                     // relaxation to be applied
 };
 
+  // AVR specific e_flags
+enum : unsigned {
+  EF_PDP_ARCH_VM1 = 1,
+
+  EF_PDP11_ARCH_MASK = 0x7f, // EF_AVR_ARCH_xxx selection mask
+
+  EF_PDP11_LINKRELAX_PREPARED = 0x80, // The file is prepared for linker
+                                    // relaxation to be applied
+};
+
 // ELF Relocation types for AVR
 enum {
 #include "ELFRelocs/AVR.def"
+};
+
+// ELF Relocation types for PDP
+enum {
+#include "ELFRelocs/PDP.def"
 };
 
 // Mips Specific e_flags

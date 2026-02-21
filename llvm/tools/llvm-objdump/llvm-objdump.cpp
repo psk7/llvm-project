@@ -328,6 +328,7 @@ static bool Offloading;
 static bool RawClangAST;
 bool objdump::Relocations;
 bool objdump::PrintImmHex;
+bool objdump::PrintImmOctal;
 bool objdump::PrivateHeaders;
 std::vector<std::string> objdump::FilterSections;
 bool objdump::SectionHeaders;
@@ -592,7 +593,16 @@ static bool getHidden(RelocationRef RelRef) {
 /// Get the column at which we want to start printing the instruction
 /// disassembly, taking into account anything which appears to the left of it.
 unsigned objdump::getInstStartColumn(const MCSubtargetInfo &STI) {
-  return !ShowRawInsn ? 16 : STI.getTargetTriple().isX86() ? 40 : 24;
+  if (!ShowRawInsn)
+    return 16;
+
+  if (STI.getTargetTriple().isX86())
+    return 40;
+
+  if (STI.getTargetTriple().isPDP())
+    return 30;
+
+  return 24;
 }
 
 static void AlignToInstStartColumn(size_t Start, const MCSubtargetInfo &STI,
@@ -608,11 +618,18 @@ void objdump::printRawData(ArrayRef<uint8_t> Bytes, uint64_t Address,
                            formatted_raw_ostream &OS,
                            MCSubtargetInfo const &STI) {
   size_t Start = OS.tell();
-  if (LeadingAddr)
-    OS << format("%8" PRIx64 ":", Address);
+  if (LeadingAddr) {
+    if (STI.getTargetTriple().isPDP())
+      OS << format("%08" PRIo16 ":", Address);
+    else
+      OS << format("%8" PRIx64 ":", Address);
+  }
   if (ShowRawInsn) {
     OS << ' ';
-    dumpBytes(Bytes, OS);
+    if (STI.getTargetTriple().getArch() == Triple::pdp11)
+      dumpOctal(Bytes, OS);
+    else
+      dumpBytes(Bytes, OS);
   }
   AlignToInstStartColumn(Start, STI, OS);
 }
@@ -2077,7 +2094,7 @@ disassembleObject(ObjectFile &Obj, const ObjectFile &DbgObj,
           PrintedLabel = true;
         }
         if (LeadingAddr)
-          outs() << format(Is64Bits ? "%016" PRIx64 " " : "%08" PRIx64 " ",
+          outs() << format(PrintImmOctal ? "%08" PRIo16 : (Is64Bits ? "%016" PRIx64 " " : "%08" PRIx64 " "),
                            SectionAddr + Start + VMAAdjustment);
         if (Obj.isXCOFF() && SymbolDescription) {
           outs() << getXCOFFSymbolDescription(Symbol, SymbolName) << ":\n";
@@ -2958,7 +2975,9 @@ void Dumper::printSymbol(const SymbolRef &Symbol,
   else if (Type == SymbolRef::ST_Data)
     FileFunc = 'O';
 
-  const char *Fmt = O.getBytesInAddress() > 4 ? "%016" PRIx64 : "%08" PRIx64;
+  const char *Fmt = PrintImmOctal ? "%08" PRIo16
+                                  : (O.getBytesInAddress() > 4 ? "%016" PRIx64
+                                                               : "%08" PRIx64);
 
   outs() << format(Fmt, Address) << " "
          << GlobLoc            // Local -> 'l', Global -> 'g', Neither -> ' '
@@ -3264,6 +3283,9 @@ static void checkForInvalidStartStopAddress(ObjectFile *Obj,
 
 static void dumpObject(ObjectFile *O, const Archive *A = nullptr,
                        const Archive::Child *C = nullptr) {
+  if (O->getArch() == Triple::pdp11)
+    PrintImmOctal = true;
+
   Expected<std::unique_ptr<Dumper>> DumperOrErr = createDumper(*O);
   if (!DumperOrErr) {
     reportError(DumperOrErr.takeError(), O->getFileName(),

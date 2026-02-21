@@ -287,6 +287,26 @@ static unsigned doHexLookAhead(const char *&CurPtr, unsigned DefaultRadix,
   return DefaultRadix;
 }
 
+static unsigned doDecLookAhead(const char *&CurPtr, unsigned DefaultRadix) {
+  const char *LookAhead = CurPtr;
+  while (true) {
+    if (isOctalDigit(*LookAhead)) {
+      ++LookAhead;
+    } else {
+        break;
+    }
+  }
+
+  bool isDec = *LookAhead == '.';
+  CurPtr = LookAhead;
+
+  if (isDec) {
+    return 10;
+  }
+
+  return DefaultRadix;
+}
+
 static const char *findLastDigit(const char *CurPtr, unsigned DefaultRadix) {
   while (hexDigitValue(*CurPtr) < DefaultRadix) {
     ++CurPtr;
@@ -461,9 +481,11 @@ AsmToken AsmLexer::LexDigit() {
   // FIXME: Later on, support for fb for HLASM has to be added in
   // as they probably would be needed for asm goto
   if (LexHLASMIntegers || CurPtr[-1] != '0' || CurPtr[0] == '.') {
-    unsigned Radix = doHexLookAhead(CurPtr, 10, LexMasmIntegers);
+    unsigned Radix = MAI.getForceOctalImmediates()
+                         ? doDecLookAhead(CurPtr, 8)
+                         : doHexLookAhead(CurPtr, 10, LexMasmIntegers);
 
-    if (!LexHLASMIntegers) {
+    if (!LexHLASMIntegers && !MAI.getForceOctalImmediates()) {
       bool IsHex = Radix == 16;
       // Check for floating point literals.
       if (!IsHex && (*CurPtr == '.' || *CurPtr == 'e' || *CurPtr == 'E')) {
@@ -483,6 +505,9 @@ AsmToken AsmLexer::LexDigit() {
       // The darwin/x86 (and x86-64) assembler accepts and ignores type
       // suffices on integer literals.
       SkipIgnoredIntegerSuffix(CurPtr);
+
+    if (MAI.getForceOctalImmediates() && Radix == 10)
+      ++CurPtr;
 
     return intToken(Result, Value);
   }

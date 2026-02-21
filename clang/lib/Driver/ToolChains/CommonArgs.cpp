@@ -16,6 +16,7 @@
 #include "Arch/PPC.h"
 #include "Arch/RISCV.h"
 #include "Arch/Sparc.h"
+#include "Arch/PDP11.h"
 #include "Arch/SystemZ.h"
 #include "Arch/VE.h"
 #include "Arch/X86.h"
@@ -632,6 +633,9 @@ std::string tools::getCPUName(const Driver &D, const ArgList &Args,
     if (const Arg *A = Args.getLastArg(options::OPT_mmcu_EQ))
       return A->getValue();
     return "";
+
+  case llvm::Triple::pdp11:
+    return pdp11::getPDP11TargetCPU(D, Args, T);
 
   case llvm::Triple::m68k:
     return m68k::getM68kTargetCPU(Args);

@@ -38,6 +38,7 @@ add_clang_library(clangDriver
   ToolChains/Arch/PPC.cpp
   ToolChains/Arch/RISCV.cpp
   ToolChains/Arch/Sparc.cpp
+  ToolChains/Arch/PDP11.cpp
   ToolChains/Arch/SystemZ.cpp
   ToolChains/Arch/VE.cpp
   ToolChains/Arch/X86.cpp
@@ -45,6 +46,7 @@ add_clang_library(clangDriver
   ToolChains/AMDGPU.cpp
   ToolChains/AMDGPUOpenMP.cpp
   ToolChains/AVR.cpp
+  ToolChains/PDP.cpp
   ToolChains/BareMetal.cpp
   ToolChains/Clang.cpp
   ToolChains/CommonArgs.cpp

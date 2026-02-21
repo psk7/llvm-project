@@ -18,6 +18,7 @@
 #include "Targets/ARC.h"
 #include "Targets/ARM.h"
 #include "Targets/AVR.h"
+#include "Targets/PDP.h"
 #include "Targets/BPF.h"
 #include "Targets/CSKY.h"
 #include "Targets/DirectX.h"
@@ -265,6 +266,9 @@ std::unique_ptr<TargetInfo> AllocateTarget(const llvm::Triple &Triple,
 
   case llvm::Triple::avr:
     return std::make_unique<AVRTargetInfo>(Triple, Opts);
+  case llvm::Triple::pdp11:
+    return std::make_unique<PDPTargetInfo>(Triple, Opts);
+
   case llvm::Triple::bpfeb:
   case llvm::Triple::bpfel:
     return std::make_unique<BPFTargetInfo>(Triple, Opts);

@@ -31,6 +31,7 @@ class AsmLexer : public MCAsmLexer {
   bool IsAtStartOfStatement = true;
   bool IsPeeking = false;
   bool EndStatementAtEOF = true;
+  bool OctalImmediates = true;
 
 protected:
   /// LexToken - Read the next token and return its code.

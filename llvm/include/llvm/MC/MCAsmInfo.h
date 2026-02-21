@@ -67,6 +67,7 @@ protected:
   //===------------------------------------------------------------------===//
   // Properties to be set by the target writer, used to configure asm printer.
   //
+  bool ForceOctalImmediates = false;
 
   /// Code pointer size in bytes.  Default is 4.
   unsigned CodePointerSize = 4;
@@ -588,6 +589,7 @@ public:
   void setFullRegisterNames(bool V) { PPCUseFullRegisterNames = V; }
 
   const char *getZeroDirective() const { return ZeroDirective; }
+  const bool getForceOctalImmediates() const { return ForceOctalImmediates;}
   const char *getAsciiDirective() const { return AsciiDirective; }
   const char *getAscizDirective() const { return AscizDirective; }
   AsmCharLiteralSyntax characterLiteralSyntax() const {
