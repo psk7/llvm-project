@@ -3839,6 +3839,8 @@ static bool isFunctionDeclarationName(const LangOptions &LangOpts,
   } else {
     if (Current.isNot(TT_StartOfName) || Current.NestingLevel != 0)
       return false;
+    while (Next && Next->startsSequence(tok::hashhash, tok::identifier))
+      Next = Next->Next->Next;
     for (; Next; Next = Next->Next) {
       if (Next->is(TT_TemplateOpener) && Next->MatchingParen) {
         Next = Next->MatchingParen;
@@ -3961,8 +3963,10 @@ void TokenAnnotator::calculateFormattingInformation(AnnotatedLine &Line) const {
   FormatToken *AfterLastAttribute = nullptr;
   FormatToken *ClosingParen = nullptr;
 
-  for (auto *Tok = FirstNonComment ? FirstNonComment->Next : nullptr; Tok;
-       Tok = Tok->Next) {
+  for (auto *Tok = FirstNonComment && FirstNonComment->isNot(tok::kw_using)
+                       ? FirstNonComment->Next
+                       : nullptr;
+       Tok; Tok = Tok->Next) {
     if (Tok->is(TT_StartOfName))
       SeenName = true;
     if (Tok->Previous->EndsCppAttributeGroup)
